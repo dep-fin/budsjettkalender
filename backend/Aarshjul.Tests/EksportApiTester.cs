@@ -25,7 +25,7 @@ public class EksportApiTester(TestApplikasjon app) : IClassFixture<TestApplikasj
         var bytes = await svar.Content.ReadAsByteArrayAsync();
         using var strøm = new MemoryStream(bytes);
         using var dok = WordprocessingDocument.Open(strøm, false);
-        return dok.MainDocumentPart!.Document.Body!.InnerText;
+        return Assert.IsType<DocumentFormat.OpenXml.Wordprocessing.Body>(dok.MainDocumentPart!.Document!.Body).InnerText;
     }
 
     [Fact]

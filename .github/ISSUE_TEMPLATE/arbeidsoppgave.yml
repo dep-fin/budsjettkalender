@@ -1,0 +1,29 @@
+name: Arbeidsoppgave
+description: Avgrens en vertikal endring før implementering.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem og forventet atferd
+      description: Hvem gjør hva, hva skjer i dag, og hva skal skje?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Avgrensning og moduler
+      description: Hva inngår, og hvilke moduler og testgrenser berøres?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Akseptansekriterier
+      description: Observerbar atferd og konkrete eksempeldata.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Blokkeringer og beslutninger
+      description: Blocked by-referanser, åpne produktvalg og relevante ADR-er.

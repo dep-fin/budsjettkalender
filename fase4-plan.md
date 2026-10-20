@@ -1,3 +1,5 @@
+> Historisk faseplan. Gjeldende arbeidsflyt: [CONTRIBUTING.md](CONTRIBUTING.md). Åpne funn: [gjennomgangen](docs/reviews/2026-10-20.md).
+
 # Fase 4 — Internkalender for SBR: plan og gjennomføring
 
 Byggeplan for internkalenderen — en SBR-intern arbeidsliste atskilt fra de publiserte

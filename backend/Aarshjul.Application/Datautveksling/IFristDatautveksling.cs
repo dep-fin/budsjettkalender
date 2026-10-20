@@ -15,6 +15,7 @@ public sealed record FristEksport
     public DateOnly Dato { get; init; }
     public Datopresisjon Datopresisjon { get; init; }
     public Datokvalifikator? Datokvalifikator { get; init; }
+    public TimeOnly? Klokkeslett { get; init; }
     public int Budsjettaar { get; init; }
     public Kategori Kategori { get; init; }
     public string? Loep { get; init; }
@@ -38,6 +39,7 @@ public sealed record FristDatabase
 {
     public int Versjon { get; init; } = 1;
     public DateTimeOffset EksportertTid { get; init; }
+    [System.Text.Json.Serialization.JsonRequired]
     public IReadOnlyList<FristEksport> Frister { get; init; } = [];
 }
 

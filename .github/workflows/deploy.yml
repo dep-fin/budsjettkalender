@@ -21,8 +21,15 @@ env:
   MILJO: ${{ vars.MILJO }}
 
 jobs:
+  checks:
+    name: Kontroller revisjonen før utrulling
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   infra:
     name: Infrastruktur (Bicep)
+    needs: checks
     runs-on: ubuntu-latest
     outputs:
       webAppNavn: ${{ steps.deploy.outputs.webAppNavn }}
@@ -77,7 +84,9 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Publiser
-        run: dotnet publish backend/Aarshjul.Web/Aarshjul.Web.csproj -c Release -o publish
+        run: |
+          dotnet restore backend/Aarshjul.slnx --locked-mode
+          dotnet publish backend/Aarshjul.Web/Aarshjul.Web.csproj -c Release --no-restore -o publish
 
       - name: Logg inn på Azure (OIDC)
         uses: azure/login@v2

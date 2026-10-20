@@ -92,4 +92,22 @@ public class AdminTilgangTester
         var lagret = await tdb.Db.Brukere.FindAsync("u-seed");
         Assert.False(lagret!.AdminViaEntra);
     }
+
+    [Fact]
+    public async Task Manuell_admin_beholder_rollen_etter_inn_og_ut_av_SBR()
+    {
+        using var tdb = new Testdatabase();
+        tdb.Db.Brukere.Add(new Bruker
+        {
+            Id = "u-noed", Navn = "Nødadministrator", ErFin = true,
+            Funksjonsrolle = Funksjonsrolle.Administrator, AdminViaEntra = false
+        });
+        await tdb.Db.SaveChangesAsync();
+        var tjeneste = Tjeneste(tdb);
+        await tjeneste.HentEllerOpprettAsync(Principal("u-noed", "Nødadministrator", iSbr: true));
+
+        var etter = await tjeneste.HentEllerOpprettAsync(Principal("u-noed", "Nødadministrator", iSbr: false));
+
+        Assert.Equal(Funksjonsrolle.Administrator, etter.Funksjonsrolle);
+    }
 }

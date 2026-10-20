@@ -1,3 +1,5 @@
+> Historisk faseplan. Gjeldende arbeidsflyt: [CONTRIBUTING.md](CONTRIBUTING.md). Åpne funn: [gjennomgangen](docs/reviews/2026-10-20.md).
+
 # Utviklingsplan: Årshjul for budsjettfrister
 
 Plan for prosjektutvikling og påfølgende programmering av en delt fristoversikt for arbeidet med statsbudsjettet. Eier: Seksjon for statsbudsjett og regnskap (SBR), Finansavdelingen, Finansdepartementet. Planen bygger på kravdokumentet (@kravdokument-aarshjul-frister_v2.md) og legger til grunn kontekstopplegget for Claude Code beskrevet i opplegget for CLAUDE.md.
@@ -24,8 +26,8 @@ To av disse — tverrdepartemental tilgang og endelig attributtmapping — kan l
 Prosjektet bygges med Claude Code over mange økter. Hver økt starter med tomt kontekstvindu, og det som overlever mellom økter er det som står skrevet på disk. Før første kodeøkt opprettes derfor tre filer i repoet, etter opplegget for CLAUDE.md:
 
 1. `CLAUDE.md` i rotmappen — kort, stabil indeks med bærende prinsipper og pekere. Holdes under om lag 80 linjer. Innholdet er allerede utformet i opplegget og kopieres inn som det står, med kravdokumentets filnavn som import (`@kravdokument-aarshjul-frister_v2.md`).
-2. `.claude/rules/beslutningslogg.md` — prosjektets hukommelse. Kronologisk logg der hver oppføring fanger én beslutning med dato, begrunnelse og konsekvens, samt en «Status nå»-blokk øverst.
-3. `.claude/rules/arkitektur.md` — stabil teknisk referanse med stack, mappestruktur og kommandoer. Fylles ut når stacken er valgt tidlig i fase 1.
+2. `docs/archive/beslutningslogg-claude.md` — prosjektets hukommelse. Kronologisk logg der hver oppføring fanger én beslutning med dato, begrunnelse og konsekvens, samt en «Status nå»-blokk øverst.
+3. `docs/architecture.md` — stabil teknisk referanse med stack, mappestruktur og kommandoer. Fylles ut når stacken er valgt tidlig i fase 1.
 
 Den daglige rytmen følges fra første økt: les beslutningsloggen ved start og oppsummer status, skriv inn beslutninger i det de tas, og oppdater «Status nå» ved slutten av hver økt. Denne planen henviser eksplisitt til hva som skal skrives til loggen ved avslutning av hver fase, slik at hukommelsen holdes oppdatert uten at det glemmes.
 

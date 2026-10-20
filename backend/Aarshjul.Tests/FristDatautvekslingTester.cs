@@ -2,6 +2,7 @@ using Aarshjul.Application.Datautveksling;
 using Aarshjul.Domain;
 using Aarshjul.Infrastructure;
 using Aarshjul.Infrastructure.Datautveksling;
+using Microsoft.EntityFrameworkCore;
 
 namespace Aarshjul.Tests;
 
@@ -119,6 +120,60 @@ public class FristDatautvekslingTester : IDisposable
         var frist = Assert.Single((await Tjeneste().EksporterAsync()).Frister);
         Assert.Equal(["FA"], frist.SynligFor); // ukjent kode utelatt, ingen FK-feil
     }
+
+    [Fact]
+    public async Task Eksport_import_bevarer_klokkeslett()
+    {
+        LeggTilFrist("Tidfestet frist", ["FA"]);
+        _t.Db.ChangeTracker.Entries<Frist>().Single().Entity.Klokkeslett = new TimeOnly(14, 30);
+        await _t.Db.SaveChangesAsync();
+
+        var database = await Tjeneste().EksporterAsync();
+        await Tjeneste().ImporterAsync(database);
+
+        var lesing = new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(_t.Db);
+        var frist = await lesing.HentForRedigeringAsync(database.Frister.Single().Id);
+        Assert.Equal(new TimeOnly(14, 30), frist!.Klokkeslett);
+    }
+
+    [Fact]
+    public async Task Feil_under_lagring_bevarer_gamle_frister_og_synlighet()
+    {
+        LeggTilFrist("Behold meg", ["FA", "POL"]);
+        await _t.Db.SaveChangesAsync();
+        var tjeneste = Tjeneste();
+        var foer = await tjeneste.EksporterAsync();
+        await _t.Db.Database.ExecuteSqlRawAsync("""
+            CREATE TRIGGER avvis_import BEFORE INSERT ON Frister
+            BEGIN SELECT RAISE(ABORT, 'Simulert lagringsfeil'); END;
+            """);
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => tjeneste.ImporterAsync(foer));
+
+        var etter = Assert.Single((await tjeneste.EksporterAsync()).Frister);
+        Assert.Equal(foer.Frister.Single().Id, etter.Id);
+        Assert.Equal(["FA", "POL"], etter.SynligFor);
+        await _t.Db.Database.ExecuteSqlRawAsync("DROP TRIGGER avvis_import;");
+        var resultat = await tjeneste.ImporterAsync(foer);
+        Assert.Equal(1, resultat.AntallImportert);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    public async Task Ukjent_filversjon_avvises_uten_aa_slette_frister(int versjon)
+    {
+        LeggTilFrist("Behold meg", ["FA"]);
+        await _t.Db.SaveChangesAsync();
+        await Assert.ThrowsAsync<Aarshjul.Application.Valideringsfeil>(() =>
+            Tjeneste().ImporterAsync(new FristDatabase { Versjon = versjon }));
+        Assert.Single((await Tjeneste().EksporterAsync()).Frister);
+    }
+
+    [Fact]
+    public void Json_uten_fristliste_er_ikke_en_tom_database()
+        => Assert.Throws<System.Text.Json.JsonException>(() =>
+            System.Text.Json.JsonSerializer.Deserialize<FristDatabase>("{}", Aarshjul.Web.Api.FristEndepunkter.DatabaseJson));
 
     public void Dispose() => _t.Dispose();
 }

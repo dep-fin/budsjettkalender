@@ -1,98 +1,53 @@
-# Budsjettkalender — Årshjul for budsjettfrister
+# Budsjettkalender — årshjul for budsjettfrister
 
-Delt fristoversikt for arbeidet med statsbudsjettet. Eier: Seksjon for statsbudsjett og
-regnskap (SBR), Finansavdelingen, Finansdepartementet.
+Delt fristoversikt for Seksjon for statsbudsjett og regnskap (SBR), FIN.
+Forslag fra dokumentuttrekk og årsmaler krever administratorgodkjenning.
+Synlighet håndheves på server.
 
-Løsningen samler budsjettfrister fra FINs offentlige rundskriv på regjeringen.no,
-suppleres manuelt, og presenterer dem som et flerårig årshjul med tre visninger
-(tidslinje/liste, kalender, årshjul). Innlogging skjer med departementenes SSO (Entra ID),
-synlighet håndheves på server, og automatiske uttrekk passerer alltid en godkjenningskø.
-Drift på Azure med infrastruktur som kode (Bicep).
+ASP.NET Core / .NET 10, Blazor Interactive Server, EF Core og Azure SQL.
+Lokal demo bruker SQLite og persona-innlogging.
 
-## Prøv demoen (uten å installere .NET lokalt)
+## Prøv demoen
 
-Løsningen har en **lokal demo-modus** med SQLite og en dev-innlogging, uten
-Azure SQL eller Entra. Den kan kjøres i nettleseren via **GitHub Codespaces** — da kjører alt
-i skyen, og du trenger ikke laste ned .NET til egen maskin:
-
-1. Åpne <https://codespaces.new/depmartin/Budsjettkalender> (eller grønn **Code**-knapp på GitHub →
-   **Codespaces** → **Create codespace on main**).
-2. Vent mens miljøet bygges — devcontaineren installerer .NET 10, bygger løsningen og
-   **starter demoen automatisk**. Første gang tar det et par minutter.
-3. Når appen er oppe, tilbyr Codespaces en klikkbar URL til port 5014 (åpnes vanligvis av seg selv).
-   Klikk **Logg inn** (eller **Bytt persona** i demo-banneret) for å komme til persona-velgeren,
-   og velg en rolle: admin, FA, FIN-FAG, FAG eller POL.
-
-> Starter den ikke automatisk (eller du lukket fanen), kjør i terminalen:
-> ```
-> dotnet run --project backend/Aarshjul.Web --launch-profile demo
-> ```
-> Åpne så port 5014. Codespaces må være tillatt for kontoen/organisasjonen din; er det sperret,
-> kan demoen kjøres lokalt med samme kommando etter at .NET 10 SDK er installert.
-
-Kjøre lokalt (krever [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)):
-
-```
+Krever .NET 10 SDK:
+```sh
 dotnet run --project backend/Aarshjul.Web --launch-profile demo
 ```
+Åpne `http://localhost:5014/demo` og velg persona.
+[GitHub Codespaces](https://codespaces.new/depmartin/Budsjettkalender) bygger og starter
+demoen på port 5014 gjennom devcontaineren.
 
-Åpne så `http://localhost:5014/demo`. Demo-profilen kjører i `Development`-miljøet med
-konfig-flagget `Demo=true` (SQLite + dev-innlogging + demo-data), slik at `dotnet run`
-serverer statiske filer riktig.
+## Utvikling og arbeidsmåte
 
-## Dokumentasjon
+- [CONTRIBUTING.md](CONTRIBUTING.md): Matt Pocock-arbeidsflyt fra avklaring til PR.
+- [AGENTS.md](AGENTS.md): felles instruksjoner; CLAUDE.md importerer disse.
+- [Utviklingsoppsett](docs/development.md): bygg, test, demo, pakker og migrasjoner.
+- [Arkitektur](docs/architecture.md) og [kodestandarder](CODING_STANDARDS.md).
+- [Begreper](GLOSSARY.md), [beslutninger](docs/adr/) og [ferdighetsoppsett](docs/agents/skills.md).
+- [Gjennomgang 20. oktober 2026](docs/reviews/2026-10-20.md): funn, rettinger og gjenstående arbeid.
 
-- [`kravdokument-aarshjul-frister_v2.md`](kravdokument-aarshjul-frister_v2.md) — full kravspesifikasjon.
-- [`SYSTEMARKITEKTUR.md`](SYSTEMARKITEKTUR.md) — teknisk arkitektur og datamodell.
-- [`BRUKERHISTORIER.md`](BRUKERHISTORIER.md) — roller og brukerhistorier.
-- [`utviklingsplan-aarshjul-frister.md`](utviklingsplan-aarshjul-frister.md) — prosjektramme og faseplan.
-- [`fase2-plan.md`](fase2-plan.md) — detaljert byggeplan for fase 2 (automatikk).
-- [`fase3-plan.md`](fase3-plan.md) — detaljert byggeplan for fase 3 (mal og generering).
-- [`claude-md-opplegg.md`](claude-md-opplegg.md) — opplegg for kontekstbevaring mellom byggeøkter.
-
-## Utviklingskontekst (Claude Code)
-
-- [`CLAUDE.md`](CLAUDE.md) — stabil indeks med bærende prinsipper og pekere; lastes hver økt.
-- [`.claude/rules/beslutningslogg.md`](.claude/rules/beslutningslogg.md) — prosjektets hukommelse. Les denne først hver økt.
-- [`.claude/rules/arkitektur.md`](.claude/rules/arkitektur.md) — stack, mappestruktur og kommandoer.
-
-## Mappestruktur
-
-- `infra/` — Bicep-maler for Azure-infrastruktur.
-- `backend/` — API, forretningslogikk, autorisering, synlighetsfiltrering.
-- `backend/kilder/` — `Kilde`-grensesnittet og `RegjeringenKilde`.
-- `backend/jobb/` — bakgrunnsjobb: oppdagelse, dedup, uttrekk, klassifisering.
-- `frontend/` — de tre visningene, landingsflate, godkjenningskø, administratorflater.
-- `.github/workflows/` — GitHub Actions (Bicep what-if → deploy).
-
-## Status
-
-Alt kodet så langt er på `main`. Kort oppsummert:
-
-- **Fase 1 (fundament):** .NET 10 / ASP.NET Core + EF Core, Azure SQL, Blazor (Interactive
-  Server), server-side synlighetsfiltrering, Entra-innlogging, manuell innlegging, de tre
-  visningene, administrator-innsyn, Bicep + CI.
-- **Fase 2 (automatikk) — offline-delene:** kildeabstraksjon, totrinns filtrering, godkjenningskø,
-  brukerforslag, endringsforslag, varsel, Word-utskrift, og **manuell dokumentopplasting**
-  (`/admin/last-opp`) med samme uttrekk som automatisk innhenting. Gjenstående Fase 2 (live
-  oppdagelse/henting/datouttrekk fra regjeringen.no + bakgrunnsjobb) er blokkert til egress mot
-  `www.regjeringen.no` åpnes.
-- **Fase 3 (mal og generering):** gjentaksregler, «generér neste år», synlighetsregler,
-  valgårslogikk.
-- **Lokal demo-modus** (SQLite + dev-innlogging + demo-data) for kjøring uten Azure SQL/Entra —
-  se «Prøv demoen» over.
-
-140 tester grønt på .NET 10.
-
-**Kilde til fremdrift:** `.claude/rules/beslutningslogg.md` («Status nå» + beslutningsloggen) er
-den autoritative, oppdaterte oversikten over fremdrift, beslutninger og neste steg. `README`
-her holdes bevisst kort. Se `.claude/rules/arkitektur.md` for stack, miljøoppsett og kommandoer.
-
-### Bygg og test
-
-Krever .NET 10 SDK (se «Miljøoppsett» i `arkitektur.md` hvis det mangler i miljøet).
-
-```bash
-dotnet build backend/Aarshjul.slnx
-dotnet test backend/Aarshjul.slnx
+```sh
+dotnet restore backend/Aarshjul.slnx --locked-mode
+dotnet build backend/Aarshjul.slnx -c Release --no-restore
+dotnet test backend/Aarshjul.slnx -c Release --no-build
 ```
+
+## Funksjonsstatus
+
+Implementert: kalender-/årshjulvisninger, Entra-innlogging, manuell fristforvaltning,
+forslag/godkjenningskø, dokumentopplasting med heuristisk uttrekk, årsmaler/generering,
+Word/JSON/ICS-eksport, tokenbasert kalenderabonnement og SBRs internkalender.
+
+Gjenstår: live oppdagelse/henting fra regjeringen.no, versjonsmatching og kjørende
+bakgrunnsjobb. Historiske miljøsperrer i faseplanene er ikke bekreftet i dagens driftsmiljø.
+Azure SQL, ekte Entra og Outlook-abonnement må verifiseres ved utrulling.
+
+## Krav og historikk
+
+[Full kravspesifikasjon](kravdokument-aarshjul-frister_v2.md),
+[teknisk detaljmodell](SYSTEMARKITEKTUR.md) og [brukerhistorier](BRUKERHISTORIER.md)
+beholdes som produktreferanser. Tidligere faseplaner ligger i roten.
+[docs/archive](docs/archive/) inneholder tidligere Claude-kontekst som historikk.
+
+Kode og Blazor-grensesnitt ligger i `backend/`. `frontend/` er en historisk mappepeker,
+`infra/` inneholder Bicep og `.github/workflows/` inneholder CI/deploy.

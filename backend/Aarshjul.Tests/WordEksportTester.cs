@@ -20,7 +20,7 @@ public class WordEksportTester
     {
         using var strøm = new MemoryStream(docx);
         using var dok = WordprocessingDocument.Open(strøm, false);
-        return dok.MainDocumentPart!.Document.Body!.InnerText;
+        return Assert.IsType<DocumentFormat.OpenXml.Wordprocessing.Body>(dok.MainDocumentPart!.Document!.Body).InnerText;
     }
 
     [Fact]

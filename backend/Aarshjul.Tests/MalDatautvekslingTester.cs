@@ -1,6 +1,7 @@
 using Aarshjul.Application.Datautveksling;
 using Aarshjul.Domain;
 using Aarshjul.Infrastructure.Datautveksling;
+using Microsoft.EntityFrameworkCore;
 
 namespace Aarshjul.Tests;
 
@@ -84,6 +85,39 @@ public class MalDatautvekslingTester : IDisposable
         Assert.Single(r.Advarsler);
         Assert.Single((await Tjeneste().EksporterAsync()).Regler);
     }
+
+    [Fact]
+    public async Task Import_av_egen_eksport_med_samme_id_erstatter_regelen()
+    {
+        LeggTilRegel("rammefordeling", Regeltype.FastDato, "{\"maaned\":3,\"dag\":20}", "Opprinnelig");
+        await _t.Db.SaveChangesAsync();
+        var tjeneste = Tjeneste();
+        var database = await tjeneste.EksporterAsync();
+        var endret = database with { Regler = [database.Regler.Single() with { Tittel = "Oppdatert" }] };
+
+        await tjeneste.ImporterAsync(endret);
+
+        var regel = Assert.Single((await tjeneste.EksporterAsync()).Regler);
+        Assert.Equal(database.Regler.Single().Id, regel.Id);
+        Assert.Equal("Oppdatert", regel.Tittel);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    public async Task Ukjent_filversjon_avvises_uten_aa_slette_malen(int versjon)
+    {
+        LeggTilRegel("rammefordeling", Regeltype.FastDato, "{\"maaned\":3,\"dag\":20}");
+        await _t.Db.SaveChangesAsync();
+        await Assert.ThrowsAsync<Aarshjul.Application.Valideringsfeil>(() =>
+            Tjeneste().ImporterAsync(new MalDatabase { Versjon = versjon }));
+        Assert.Single((await Tjeneste().EksporterAsync()).Regler);
+    }
+
+    [Fact]
+    public void Json_uten_regelliste_er_ikke_en_tom_mal()
+        => Assert.Throws<System.Text.Json.JsonException>(() =>
+            System.Text.Json.JsonSerializer.Deserialize<MalDatabase>("{}", Aarshjul.Web.Api.FristEndepunkter.DatabaseJson));
 
     public void Dispose() => _t.Dispose();
 }

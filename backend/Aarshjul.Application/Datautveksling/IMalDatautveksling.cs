@@ -25,6 +25,7 @@ public sealed record MalDatabase
 {
     public int Versjon { get; init; } = 1;
     public DateTimeOffset EksportertTid { get; init; }
+    [System.Text.Json.Serialization.JsonRequired]
     public IReadOnlyList<MalRegelEksport> Regler { get; init; } = [];
 }
 
