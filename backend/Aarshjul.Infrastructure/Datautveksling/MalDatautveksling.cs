@@ -11,10 +11,11 @@ namespace Aarshjul.Infrastructure.Datautveksling;
 /// og fila blir fasiten. Regler med parametre som ikke lar seg tolke for regeltypen, hoppes over med
 /// en advarsel, slik at en senere genereringskjøring ikke feiler på en ugyldig regel.
 /// </summary>
-public sealed class MalDatautveksling(AppDbContext db, TimeProvider klokke) : IMalDatautveksling
+public sealed class MalDatautveksling(IDbContextFactory<AppDbContext> dbFactory, TimeProvider klokke) : IMalDatautveksling
 {
     public async Task<MalDatabase> EksporterAsync(CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var regler = await db.Gjentaksregler
             .AsNoTracking()
             .OrderBy(r => r.Loep)
@@ -39,6 +40,7 @@ public sealed class MalDatautveksling(AppDbContext db, TimeProvider klokke) : IM
 
     public async Task<ImportResultat> ImporterAsync(MalDatabase database, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         ArgumentNullException.ThrowIfNull(database);
         Importvalidering.Kontroller(database.Versjon, database.Regler, r => r.Id);
 

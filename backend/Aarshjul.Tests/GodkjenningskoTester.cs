@@ -25,7 +25,7 @@ public class GodkjenningskoTester : IDisposable
         _t.Db.SaveChanges();
     }
 
-    private GodkjenningskoTjeneste Tjeneste() => new(_t.Db);
+    private GodkjenningskoTjeneste Tjeneste() => new(_t.Factory);
 
     private Guid LeggForslag(Opphav opphav = Opphav.Robot, string? kilde = "R-4/2027", string? loep = "rammefordeling",
         DateOnly? dato = null, string synlighetJson = "[\"FA\"]", ForslagType type = ForslagType.NyFrist, Guid? endrerFristId = null)
@@ -65,7 +65,8 @@ public class GodkjenningskoTester : IDisposable
         Assert.NotNull(frist.DokumentId);
         Assert.Equal(["FA", "FIN-FAG"], frist.Synlighet.Select(s => s.GruppeKode).OrderBy(k => k));
 
-        var forslag = await _t.Db.Forslag.SingleAsync(f => f.Id == id);
+        await using var kontroll = await _t.Factory.CreateDbContextAsync();
+        var forslag = await kontroll.Forslag.SingleAsync(f => f.Id == id);
         Assert.Equal(FristStatus.Godkjent, forslag.Status);
     }
 
@@ -112,7 +113,8 @@ public class GodkjenningskoTester : IDisposable
 
         await Tjeneste().AvvisAsync(id, "Dublett av eksisterende frist.");
 
-        var forslag = await _t.Db.Forslag.SingleAsync(f => f.Id == id);
+        await using var kontroll = await _t.Factory.CreateDbContextAsync();
+        var forslag = await kontroll.Forslag.SingleAsync(f => f.Id == id);
         Assert.Equal(FristStatus.Avvist, forslag.Status);
 
         var varsel = await _t.Db.Varsler.SingleAsync(v => v.BrukerId == "bruker-123");
@@ -248,7 +250,8 @@ public class GodkjenningskoTester : IDisposable
         Assert.Equal("gulbok", frist.Loep);
         Assert.Equal(["FA", "FIN-FAG"], frist.Synlighet.Select(s => s.GruppeKode).OrderBy(k => k));
 
-        var forslag = await _t.Db.Forslag.SingleAsync(f => f.Id == id);
+        await using var kontroll = await _t.Factory.CreateDbContextAsync();
+        var forslag = await kontroll.Forslag.SingleAsync(f => f.Id == id);
         Assert.Equal(FristStatus.Godkjent, forslag.Status);
     }
 

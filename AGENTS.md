@@ -2,6 +2,7 @@
 
 Delt årshjul for budsjettfrister i FIN/SBR. Bruk norsk domenespråk i kode og diskusjoner.
 Les `GLOSSARY.md` før domeneanalyse, og relevante beslutninger i `docs/adr/`.
+Les [gjeldende status](docs/status.md) for leverte endringer og åpne oppgaver.
 
 ## Bærende regler
 

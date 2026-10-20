@@ -10,21 +10,23 @@ namespace Aarshjul.Infrastructure.Frister;
 /// spørringen før projeksjon, slik at frister brukeren ikke har rett til aldri hentes fra
 /// databasen — og dermed aldri kan sendes til klienten.
 /// </summary>
-public class FristTjeneste(AppDbContext db, TimeProvider klokke) : IFristlesing
+public class FristTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvider klokke) : IFristlesing
 {
     public async Task<IReadOnlyList<FristDto>> HentSynligeAsync(
         ISynlighetskontekst ctx, FristFilter filter, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var idag = Idag();
-        var spørring = GrunnSpørring(ctx, filter, idag);
+        var spørring = GrunnSpørring(db, ctx, filter, idag);
         return await ProjiserAsync(spørring.OrderBy(f => f.Sorteringsdag).ThenBy(f => f.Tittel), ct);
     }
 
     public async Task<IReadOnlyList<FristDto>> HentLandingsutvalgAsync(
         ISynlighetskontekst ctx, DateOnly fraOgMed, FristFilter filter, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         // Landingsflaten er alltid framoverskuende fra angitt dag.
-        var spørring = GrunnSpørring(ctx, filter, fraOgMed, kunFramover: true)
+        var spørring = GrunnSpørring(db, ctx, filter, fraOgMed, kunFramover: true)
             .OrderBy(f => f.Sorteringsdag).ThenBy(f => f.Tittel);
 
         var kommende = await ProjiserAsync(spørring, ct);
@@ -38,6 +40,7 @@ public class FristTjeneste(AppDbContext db, TimeProvider klokke) : IFristlesing
 
     public async Task<FristDto?> HentEnAsync(ISynlighetskontekst ctx, Guid fristId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         // Samme synlighetsfilter som listene — en frist konteksten ikke ser hentes aldri fra db.
         var spørring = db.Frister
             .AsNoTracking()
@@ -50,6 +53,7 @@ public class FristTjeneste(AppDbContext db, TimeProvider klokke) : IFristlesing
     public async Task<IReadOnlyList<int>> HentTilgjengeligeBudsjettaarAsync(
         ISynlighetskontekst ctx, bool inkluderHistorikk, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var idag = Idag();
         var spørring = db.Frister
             .AsNoTracking()
@@ -69,7 +73,7 @@ public class FristTjeneste(AppDbContext db, TimeProvider klokke) : IFristlesing
     }
 
     /// <summary>Synlige, godkjente frister som matcher kategori-/budsjettårsfilter og historikkregel.</summary>
-    private IQueryable<Frist> GrunnSpørring(ISynlighetskontekst ctx, FristFilter filter, DateOnly idag, bool kunFramover = false)
+    private static IQueryable<Frist> GrunnSpørring(AppDbContext db, ISynlighetskontekst ctx, FristFilter filter, DateOnly idag, bool kunFramover = false)
     {
         var spørring = db.Frister
             .AsNoTracking()

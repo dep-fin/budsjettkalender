@@ -13,12 +13,13 @@ namespace Aarshjul.Infrastructure.Godkjenningsko;
 /// valg — her håndhevet på serveren via <see cref="GodkjennInndata.PolBekreftet"/>). Avvisning
 /// bevarer forslaget (status avvist) og oppretter et varsel ved brukerforslag.
 /// </summary>
-public class GodkjenningskoTjeneste(AppDbContext db) : IGodkjenningsko
+public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) : IGodkjenningsko
 {
     private const string Pol = "POL";
 
     public async Task<IReadOnlyList<Koelement>> HentKoAsync(Kofilter? filter = null, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         // Genererte forslag behandles på sin egen generér-flate, adskilt fra den løpende køen
         // (beslutning 2026-06-18). De utelates derfor her.
         var forslag = await db.Forslag
@@ -79,16 +80,17 @@ public class GodkjenningskoTjeneste(AppDbContext db) : IGodkjenningsko
 
     public async Task<Guid> GodkjennAsync(GodkjennInndata inndata, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var forslag = await db.Forslag
             .FirstOrDefaultAsync(f => f.Id == inndata.ForslagId && f.Status == FristStatus.Forslag, ct)
             ?? throw new Valideringsfeil("Forslaget finnes ikke eller er allerede behandlet.");
 
-        return await PubliserAsync(forslag, inndata.Synlighetskoder, inndata.PolBekreftet, ct);
+        return await PubliserAsync(db, forslag, inndata.Synlighetskoder, inndata.PolBekreftet, ct);
     }
 
     /// <summary>Felles publisering: gjelder både ren godkjenning og «juster og godkjenn». For
     /// endringsforslag oppdateres kun mål-fristens innhold; <c>synlig_for</c> står urørt (punkt C).</summary>
-    private async Task<Guid> PubliserAsync(Forslag forslag, IReadOnlyList<string> synlighetskoder, bool polBekreftet, CancellationToken ct)
+    private async Task<Guid> PubliserAsync(AppDbContext db, Forslag forslag, IReadOnlyList<string> synlighetskoder, bool polBekreftet, CancellationToken ct)
     {
         if (forslag.Dato is not { } dato)
             throw new Valideringsfeil("Forslaget mangler dato. Juster forslaget og sett en dato før godkjenning.");
@@ -108,7 +110,7 @@ public class GodkjenningskoTjeneste(AppDbContext db) : IGodkjenningsko
         }
         else
         {
-            var koder = await ValiderSynlighetAsync(synlighetskoder, polBekreftet, ct);
+            var koder = await ValiderSynlighetAsync(db, synlighetskoder, polBekreftet, ct);
 
             var frist = new Frist
             {
@@ -128,7 +130,7 @@ public class GodkjenningskoTjeneste(AppDbContext db) : IGodkjenningsko
         }
 
         forslag.Status = FristStatus.Godkjent;
-        VarsleVedBrukerforslag(forslag, "Forslaget ditt er godkjent.", null);
+        VarsleVedBrukerforslag(db, forslag, "Forslaget ditt er godkjent.", null);
 
         await db.SaveChangesAsync(ct);
         return fristId;
@@ -136,18 +138,20 @@ public class GodkjenningskoTjeneste(AppDbContext db) : IGodkjenningsko
 
     public async Task AvvisAsync(Guid forslagId, string? begrunnelse = null, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var forslag = await db.Forslag
             .FirstOrDefaultAsync(f => f.Id == forslagId && f.Status == FristStatus.Forslag, ct)
             ?? throw new Valideringsfeil("Forslaget finnes ikke eller er allerede behandlet.");
 
         forslag.Status = FristStatus.Avvist;
-        VarsleVedBrukerforslag(forslag, "Forslaget ditt er avvist.", begrunnelse);
+        VarsleVedBrukerforslag(db, forslag, "Forslaget ditt er avvist.", begrunnelse);
 
         await db.SaveChangesAsync(ct);
     }
 
     public async Task<ForslagForJustering?> HentForslagForJusteringAsync(Guid forslagId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var forslag = await db.Forslag.AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == forslagId && f.Status == FristStatus.Forslag, ct);
         if (forslag is null)
@@ -181,6 +185,7 @@ public class GodkjenningskoTjeneste(AppDbContext db) : IGodkjenningsko
 
     public async Task<Guid> JusterOgGodkjennAsync(Guid forslagId, FristInndata felter, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var forslag = await db.Forslag
             .FirstOrDefaultAsync(f => f.Id == forslagId && f.Status == FristStatus.Forslag, ct)
             ?? throw new Valideringsfeil("Forslaget finnes ikke eller er allerede behandlet.");
@@ -197,7 +202,7 @@ public class GodkjenningskoTjeneste(AppDbContext db) : IGodkjenningsko
         forslag.Notat = string.IsNullOrWhiteSpace(felter.Notat) ? null : felter.Notat.Trim();
 
         var polBekreftet = felter.Synlighetskoder.Any(k => string.Equals(k, Pol, StringComparison.OrdinalIgnoreCase));
-        return await PubliserAsync(forslag, felter.Synlighetskoder, polBekreftet, ct);
+        return await PubliserAsync(db, forslag, felter.Synlighetskoder, polBekreftet, ct);
     }
 
     private static void SettFristfelter(Frist frist, Forslag forslag, DateOnly dato)
@@ -212,7 +217,7 @@ public class GodkjenningskoTjeneste(AppDbContext db) : IGodkjenningsko
         frist.Notat = string.IsNullOrWhiteSpace(forslag.Notat) ? null : forslag.Notat.Trim();
     }
 
-    private void VarsleVedBrukerforslag(Forslag forslag, string tekst, string? begrunnelse)
+    private void VarsleVedBrukerforslag(AppDbContext db, Forslag forslag, string tekst, string? begrunnelse)
     {
         if (forslag.Opphav == Opphav.Bruker && !string.IsNullOrWhiteSpace(forslag.KildeEllerInnsender))
         {
@@ -227,7 +232,7 @@ public class GodkjenningskoTjeneste(AppDbContext db) : IGodkjenningsko
     }
 
     /// <summary>Validerer at synlighet er valgt, peker på aktive grupper, og at POL kun settes ved aktiv bekreftelse.</summary>
-    private async Task<List<string>> ValiderSynlighetAsync(IReadOnlyList<string> innkoder, bool polBekreftet, CancellationToken ct)
+    private async Task<List<string>> ValiderSynlighetAsync(AppDbContext db, IReadOnlyList<string> innkoder, bool polBekreftet, CancellationToken ct)
     {
         var koder = innkoder
             .Where(k => !string.IsNullOrWhiteSpace(k))

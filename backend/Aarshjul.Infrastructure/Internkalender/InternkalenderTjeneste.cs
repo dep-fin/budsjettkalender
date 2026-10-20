@@ -11,12 +11,13 @@ namespace Aarshjul.Infrastructure.Internkalender;
 /// «venter på ankerdato» når en anker-frist ennå ikke finnes. Generering og synkronisering fra
 /// generelle regler ligger i egne tjenester (trinn 2/3).
 /// </summary>
-public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInternkalender
+public class InternkalenderTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvider klokke) : IInternkalender
 {
     // ---------------------------------------------------------------- Runder
 
     public async Task<IReadOnlyList<RundeDto>> HentRunderAsync(CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var runder = await db.InternRunder
             .AsNoTracking()
             .Select(r => new
@@ -43,6 +44,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task<RundeDto?> HentRundeAsync(Guid rundeId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var r = await db.InternRunder.AsNoTracking()
             .Where(x => x.Id == rundeId)
             .Select(x => new
@@ -64,6 +66,12 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
     }
 
     public async Task<Guid> OpprettRundeAsync(Rundetype type, int? aar, string? opprettetAv, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await OpprettRundeAsync(db, type, aar, opprettetAv, ct);
+    }
+
+    private async Task<Guid> OpprettRundeAsync(AppDbContext db, Rundetype type, int? aar, string? opprettetAv, CancellationToken ct)
     {
         if (Runder.HarAar(type) && aar is null)
         {
@@ -95,6 +103,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task<Guid> GenererRundeAsync(Rundetype type, int aar, string? opprettetAv, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (!Runder.Genererbare.Contains(type))
         {
             throw new Valideringsfeil("Denne rundetypen kan ikke genereres.");
@@ -115,10 +124,10 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
         };
         db.InternRunder.Add(runde);
 
-        var regler = await HentReglerForAsync(type, ct);
+        var regler = await HentReglerForAsync(db, type, ct);
         foreach (var regel in regler)
         {
-            db.InterneGjoeremaal.Add(await ByggFraRegelAsync(regel, runde, ct));
+            db.InterneGjoeremaal.Add(await ByggFraRegelAsync(db, regel, runde, ct));
         }
 
         await db.SaveChangesAsync(ct);
@@ -127,6 +136,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task<Guid> HentEllerOpprettOvrigAsync(string? opprettetAv, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var eksisterende = await db.InternRunder
             .Where(r => r.Rundetype == Rundetype.Ovrig)
             .Select(r => r.Id)
@@ -136,11 +146,12 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
             return eksisterende;
         }
 
-        return await OpprettRundeAsync(Rundetype.Ovrig, null, opprettetAv, ct);
+        return await OpprettRundeAsync(db, Rundetype.Ovrig, null, opprettetAv, ct);
     }
 
     public async Task SlettRundeAsync(Guid rundeId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var runde = await db.InternRunder.FirstOrDefaultAsync(r => r.Id == rundeId, ct);
         if (runde is not null)
         {
@@ -153,6 +164,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task<IReadOnlyList<GjoeremaalDto>> HentGjoeremaalAsync(Guid rundeId, string? ansvarligBrukerId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var gjoeremaal = await db.InterneGjoeremaal.AsNoTracking()
             .Include(g => g.Ansvarlige)
             .Where(g => g.RundeId == rundeId)
@@ -170,6 +182,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task<Guid> HurtiglaggAsync(Guid rundeId, string tittel, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (string.IsNullOrWhiteSpace(tittel))
         {
             throw new Valideringsfeil("Tittel må fylles ut.");
@@ -190,6 +203,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task<GjoeremaalInndata?> HentForRedigeringAsync(Guid gjoeremaalId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var g = await db.InterneGjoeremaal.AsNoTracking()
             .Include(x => x.Ansvarlige)
             .FirstOrDefaultAsync(x => x.Id == gjoeremaalId, ct);
@@ -215,6 +229,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task<Guid?> HentRundeIdForGjoeremaalAsync(Guid gjoeremaalId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var rundeId = await db.InterneGjoeremaal.AsNoTracking()
             .Where(g => g.Id == gjoeremaalId)
             .Select(g => (Guid?)g.RundeId)
@@ -224,6 +239,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task<Guid> OpprettGjoeremaalAsync(Guid rundeId, GjoeremaalInndata inndata, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var runde = await db.InternRunder.FirstOrDefaultAsync(r => r.Id == rundeId, ct)
             ?? throw new Valideringsfeil("Runden finnes ikke.");
         Valider(inndata);
@@ -236,7 +252,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
             Opphav = GjoeremaalOpphav.Manuell
         };
         SettFelter(g, inndata);
-        await BeregnTidfestingAsync(g, runde, ct);
+        await BeregnTidfestingAsync(db, g, runde, ct);
         db.InterneGjoeremaal.Add(g);
         await db.SaveChangesAsync(ct);
         return g.Id;
@@ -244,6 +260,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task OppdaterGjoeremaalAsync(Guid gjoeremaalId, GjoeremaalInndata inndata, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var g = await db.InterneGjoeremaal
             .Include(x => x.Ansvarlige)
             .Include(x => x.Runde)
@@ -255,7 +272,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
         db.GjoeremaalAnsvarlige.RemoveRange(g.Ansvarlige);
         g.Ansvarlige.Clear();
         SettFelter(g, inndata);
-        await BeregnTidfestingAsync(g, g.Runde!, ct);
+        await BeregnTidfestingAsync(db, g, g.Runde!, ct);
 
         // Et generert gjøremål som endres manuelt beskyttes mot senere synkronisering.
         if (g.Opphav == GjoeremaalOpphav.Generert)
@@ -268,6 +285,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task SlettGjoeremaalAsync(Guid gjoeremaalId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var g = await db.InterneGjoeremaal.FirstOrDefaultAsync(x => x.Id == gjoeremaalId, ct);
         if (g is not null)
         {
@@ -280,6 +298,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task FullfoerAsync(Guid gjoeremaalId, string brukerId, string brukerNavn, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var g = await db.InterneGjoeremaal.FirstOrDefaultAsync(x => x.Id == gjoeremaalId, ct)
             ?? throw new Valideringsfeil("Gjøremålet finnes ikke.");
         g.Status = GjoeremaalStatus.Fullfoert;
@@ -291,6 +310,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task GjenaapneAsync(Guid gjoeremaalId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var g = await db.InterneGjoeremaal.FirstOrDefaultAsync(x => x.Id == gjoeremaalId, ct)
             ?? throw new Valideringsfeil("Gjøremålet finnes ikke.");
         g.Status = GjoeremaalStatus.Aktiv;
@@ -304,6 +324,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task<IReadOnlyList<MittGjoeremaalDto>> HentMineAsync(string brukerId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (string.IsNullOrWhiteSpace(brukerId))
         {
             return [];
@@ -331,23 +352,27 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
     // -------------------------------------------------------- Ansvarlig-liste
 
     public async Task<IReadOnlyList<AnsvarligDto>> HentMuligeAnsvarligeAsync(CancellationToken ct = default)
-        => await db.Brukere.AsNoTracking()
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Brukere.AsNoTracking()
             .Where(u => u.Funksjonsrolle == Funksjonsrolle.Administrator)
             .OrderBy(u => u.Navn)
             .Select(u => new AnsvarligDto(u.Id, u.Navn))
             .ToListAsync(ct);
+    }
 
     // -------------------------------------------------------- Synkronisering
 
     public async Task<IReadOnlyList<SynkForslagDto>> ForberedSynkAsync(Guid rundeId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var runde = await db.InternRunder.AsNoTracking().FirstOrDefaultAsync(r => r.Id == rundeId, ct);
         if (runde is null || runde.Rundetype == Rundetype.Ovrig)
         {
             return [];
         }
 
-        var regler = await HentReglerForAsync(runde.Rundetype, ct);
+        var regler = await HentReglerForAsync(db, runde.Rundetype, ct);
         var reglerById = regler.ToDictionary(r => r.Id);
 
         var genererte = await db.InterneGjoeremaal.AsNoTracking()
@@ -377,7 +402,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
                 continue;
             }
 
-            var frisk = await ByggFraRegelAsync(regel, runde, ct);
+            var frisk = await ByggFraRegelAsync(db, regel, runde, ct);
             if (!ErLik(maal, frisk))
             {
                 forslag.Add(new SynkForslagDto(SynkHandling.Oppdater, maal.Id, regel.Id, regel.Tittel, "Regelen er endret"));
@@ -399,6 +424,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
 
     public async Task SynkroniserAsync(Guid rundeId, IReadOnlyList<SynkForslagDto> godkjente, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var runde = await db.InternRunder.FirstOrDefaultAsync(r => r.Id == rundeId, ct)
             ?? throw new Valideringsfeil("Runden finnes ikke.");
 
@@ -407,10 +433,10 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
             switch (f.Handling)
             {
                 case SynkHandling.LeggTil when f.RegelId is { } regelId:
-                    var nyRegel = await HentRegelAsync(regelId, ct);
+                    var nyRegel = await HentRegelAsync(db, regelId, ct);
                     if (nyRegel is not null)
                     {
-                        db.InterneGjoeremaal.Add(await ByggFraRegelAsync(nyRegel, runde, ct));
+                        db.InterneGjoeremaal.Add(await ByggFraRegelAsync(db, nyRegel, runde, ct));
                     }
                     break;
 
@@ -418,11 +444,11 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
                     var maal = await db.InterneGjoeremaal
                         .Include(x => x.Ansvarlige)
                         .FirstOrDefaultAsync(x => x.Id == gid, ct);
-                    var regel = await HentRegelAsync(rid, ct);
+                    var regel = await HentRegelAsync(db, rid, ct);
                     if (maal is not null && regel is not null
                         && maal.Status == GjoeremaalStatus.Aktiv && !maal.ManueltEndret)
                     {
-                        var frisk = await ByggFraRegelAsync(regel, runde, ct);
+                        var frisk = await ByggFraRegelAsync(db, regel, runde, ct);
                         db.GjoeremaalAnsvarlige.RemoveRange(maal.Ansvarlige);
                         maal.Ansvarlige.Clear();
                         KopierRegelfelter(frisk, maal);
@@ -443,7 +469,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task<GjoeremaalRegel?> HentRegelAsync(Guid id, CancellationToken ct)
+    private async Task<GjoeremaalRegel?> HentRegelAsync(AppDbContext db, Guid id, CancellationToken ct)
         => await db.GjoeremaalRegler.Include(r => r.Ansvarlige).FirstOrDefaultAsync(r => r.Id == id, ct);
 
     /// <summary>Kopierer innhold/tidfesting fra et friskt regel-generert gjøremål til et eksisterende (beholder Id/status).</summary>
@@ -522,7 +548,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
     }
 
     /// <summary>Oppløser tidfestingen til Dato/Sorteringsdag/VenterPaaAnker for et gjøremål i en runde.</summary>
-    private async Task BeregnTidfestingAsync(InterntGjoeremaal g, InternRunde runde, CancellationToken ct)
+    private async Task BeregnTidfestingAsync(AppDbContext db, InterntGjoeremaal g, InternRunde runde, CancellationToken ct)
     {
         g.VenterPaaAnker = false;
 
@@ -552,7 +578,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
             case Tidfestingstype.AnkerRelativ:
                 g.Datopresisjon = Datopresisjon.Dag;
                 g.Datokvalifikator = null;
-                var anker = await FinnAnkerdatoAsync(g.AnkerLoep, runde, ct);
+                var anker = await FinnAnkerdatoAsync(db, g.AnkerLoep, runde, ct);
                 if (anker is { } a)
                 {
                     var res = a.AddDays(g.AnkerOffsetDager);
@@ -577,7 +603,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
     /// Finner ankerdatoen for et løp i en runde: en publisert (godkjent) frist på samme løp der
     /// budsjett-/regnskapsåret er rundens år. Returnerer null (→ «venter på ankerdato») hvis ingen finnes.
     /// </summary>
-    private async Task<DateOnly?> FinnAnkerdatoAsync(string? ankerLoep, InternRunde runde, CancellationToken ct)
+    private async Task<DateOnly?> FinnAnkerdatoAsync(AppDbContext db, string? ankerLoep, InternRunde runde, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(ankerLoep) || runde.Aar is null)
         {
@@ -594,7 +620,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
     }
 
     /// <summary>Reglene som gjelder en rundetype (inkludert rundetyper + ansvarlige).</summary>
-    internal async Task<List<GjoeremaalRegel>> HentReglerForAsync(Rundetype type, CancellationToken ct)
+    private async Task<List<GjoeremaalRegel>> HentReglerForAsync(AppDbContext db, Rundetype type, CancellationToken ct)
         => await db.GjoeremaalRegler
             .Include(r => r.Rundetyper)
             .Include(r => r.Ansvarlige)
@@ -606,7 +632,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
     /// årsuavhengige tidfesting til konkrete verdier for rundeåret og oppløser sorteringsdag/anker.
     /// Delt av generering (trinn 2) og synkronisering (trinn 3).
     /// </summary>
-    internal async Task<InterntGjoeremaal> ByggFraRegelAsync(GjoeremaalRegel regel, InternRunde runde, CancellationToken ct)
+    private async Task<InterntGjoeremaal> ByggFraRegelAsync(AppDbContext db, GjoeremaalRegel regel, InternRunde runde, CancellationToken ct)
     {
         var g = new InterntGjoeremaal
         {
@@ -639,7 +665,7 @@ public class InternkalenderTjeneste(AppDbContext db, TimeProvider klokke) : IInt
             g.Ansvarlige.Add(new GjoeremaalAnsvarlig { Id = Guid.NewGuid(), GjoeremaalId = g.Id, BrukerId = a.BrukerId, Navn = a.Navn });
         }
 
-        await BeregnTidfestingAsync(g, runde, ct);
+        await BeregnTidfestingAsync(db, g, runde, ct);
         return g;
     }
 

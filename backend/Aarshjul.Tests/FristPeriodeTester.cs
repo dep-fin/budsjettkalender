@@ -43,7 +43,7 @@ public class FristPeriodeTester : IDisposable
     [Fact]
     public async Task Periodevindu_returnerer_kun_frister_i_intervallet_inkludert_historikk()
     {
-        var tjeneste = new FristTjeneste(_t.Db, new FastKlokke(Idag));
+        var tjeneste = new FristTjeneste(_t.Factory, new FastKlokke(Idag));
         var filter = new FristFilter
         {
             FraDato = new DateOnly(2027, 1, 1),

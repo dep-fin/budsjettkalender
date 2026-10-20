@@ -12,10 +12,11 @@ namespace Aarshjul.Infrastructure.Generering;
 /// <see cref="ForslagType.Generert"/>-forslag. Ingenting publiseres her — godkjenning skjer via
 /// godkjenningskøens publiseringsmønster.
 /// </summary>
-public class GenereringsTjeneste(AppDbContext db, ISynlighetsregel synlighetsregel) : IGenereringstjeneste
+public class GenereringsTjeneste(IDbContextFactory<AppDbContext> dbFactory, ISynlighetsregel synlighetsregel) : IGenereringstjeneste
 {
     public async Task<GenereringsResultat> GenererAsync(GenereringsForespoersel forespoersel, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var maalaar = forespoersel.Maalbudsjettaar;
         var regler = await db.Gjentaksregler.AsNoTracking().ToListAsync(ct);
 
@@ -83,6 +84,7 @@ public class GenereringsTjeneste(AppDbContext db, ISynlighetsregel synlighetsreg
 
     public async Task<IReadOnlyList<GenerertForslagDto>> HentGenererteAsync(int maalbudsjettaar, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var forslag = await db.Forslag
             .AsNoTracking()
             .Where(f => f.ForslagType == ForslagType.Generert
@@ -129,13 +131,16 @@ public class GenereringsTjeneste(AppDbContext db, ISynlighetsregel synlighetsreg
     }
 
     public async Task<IReadOnlyList<int>> HentAarMedForslagAsync(CancellationToken ct = default)
-        => await db.Forslag
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Forslag
             .AsNoTracking()
             .Where(f => f.ForslagType == ForslagType.Generert && f.Status == FristStatus.Forslag)
             .Select(f => f.Budsjettaar)
             .Distinct()
             .OrderBy(a => a)
             .ToListAsync(ct);
+    }
 
     /// <summary>
     /// Videreført synlighet: fjorårets godkjente frist for samme løp gir standard. POL bæres med

@@ -9,7 +9,7 @@ public class VarseltjenesteTester : IDisposable
 {
     private readonly Testdatabase _t = new();
 
-    private Varseltjeneste Tjeneste() => new(_t.Db);
+    private Varseltjeneste Tjeneste() => new(_t.Factory);
 
     private Guid LeggVarsel(string brukerId, bool lest = false)
     {
@@ -46,10 +46,16 @@ public class VarseltjenesteTester : IDisposable
 
         // Annen bruker kan ikke kvittere ut mitt varsel.
         await Tjeneste().MarkerLestAsync(id, "inntrenger");
-        Assert.False((await _t.Db.Varsler.SingleAsync(v => v.Id == id)).Lest);
+        await using (var kontroll = await _t.Factory.CreateDbContextAsync())
+        {
+            Assert.False((await kontroll.Varsler.SingleAsync(v => v.Id == id)).Lest);
+        }
 
         await Tjeneste().MarkerLestAsync(id, "bruker-1");
-        Assert.True((await _t.Db.Varsler.SingleAsync(v => v.Id == id)).Lest);
+        await using (var kontroll = await _t.Factory.CreateDbContextAsync())
+        {
+            Assert.True((await kontroll.Varsler.SingleAsync(v => v.Id == id)).Lest);
+        }
     }
 
     [Fact]

@@ -46,7 +46,7 @@ public class FristlesingHentEnTester : IDisposable
         return frist.Id;
     }
 
-    private FristTjeneste Tjeneste() => new(_t.Db, new FastKlokke(Idag));
+    private FristTjeneste Tjeneste() => new(_t.Factory, new FastKlokke(Idag));
 
     [Fact]
     public async Task Henter_godkjent_frist_naar_konteksten_ser_den()

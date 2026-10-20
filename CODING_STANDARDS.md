@@ -16,6 +16,8 @@ som endres sammen; vurder abstraksjoner ut fra eksisterende behov.
 - Bruk domenebegrepene i `GLOSSARY.md`.
 - Bruk `TimeProvider` og `Datohjelp.Idag` for den norske kalenderdagen.
 - Send `CancellationToken` videre i asynkrone I/O-operasjoner.
+- Runtime-tjenester bruker `IDbContextFactory<AppDbContext>` og `await using` per offentlig
+  operasjon. Private hjelpere deler operasjonens kontekst; se [ADR-0006](docs/adr/0006-operasjonsavgrenset-dbcontext.md).
 - Valider importkontrakter før sletting. Erstatt-alt-operasjoner skal være atomiske.
 - Filtrer synlighet i databasespørringen før projeksjon og retur.
 - Bevar godkjenningskrav, eksplisitt POL-valg og skillet mellom frister og gjøremål.

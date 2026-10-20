@@ -10,17 +10,21 @@ namespace Aarshjul.Infrastructure.Generering;
 /// kan tolkes for den valgte regeltypen (via <see cref="Regelparser"/>) før lagring, slik at en
 /// senere genereringskjøring ikke feiler på en ugyldig regel.
 /// </summary>
-public class Maltjeneste(AppDbContext db) : IMaltjeneste
+public class Maltjeneste(IDbContextFactory<AppDbContext> dbFactory) : IMaltjeneste
 {
     public async Task<IReadOnlyList<MalRegelDto>> HentAlleAsync(CancellationToken ct = default)
-        => await db.Gjentaksregler
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Gjentaksregler
             .AsNoTracking()
             .OrderBy(r => r.Loep)
             .Select(r => new MalRegelDto(r.Id, r.Loep, r.Tittel, r.Kategori, r.Regeltype, r.Regelparametre, r.Valgaarssensitiv))
             .ToListAsync(ct);
+    }
 
     public async Task<MalRegelInndata?> HentForRedigeringAsync(Guid id, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var r = await db.Gjentaksregler.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (r is null)
         {
@@ -40,6 +44,7 @@ public class Maltjeneste(AppDbContext db) : IMaltjeneste
 
     public async Task<Guid> OpprettAsync(MalRegelInndata inndata, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         Valider(inndata);
 
         var regel = new Gjentaksregel
@@ -59,6 +64,7 @@ public class Maltjeneste(AppDbContext db) : IMaltjeneste
 
     public async Task OppdaterAsync(Guid id, MalRegelInndata inndata, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         Valider(inndata);
 
         var regel = await db.Gjentaksregler.FirstOrDefaultAsync(x => x.Id == id, ct)
@@ -76,6 +82,7 @@ public class Maltjeneste(AppDbContext db) : IMaltjeneste
 
     public async Task SlettAsync(Guid id, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var regel = await db.Gjentaksregler.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (regel is not null)
         {

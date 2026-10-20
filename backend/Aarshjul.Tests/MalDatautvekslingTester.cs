@@ -14,7 +14,7 @@ public class MalDatautvekslingTester : IDisposable
     private readonly Testdatabase _t = new();
     private static readonly DateOnly Idag = new(2026, 1, 1);
 
-    private MalDatautveksling Tjeneste() => new(_t.Db, new FastKlokke(Idag));
+    private MalDatautveksling Tjeneste() => new(_t.Factory, new FastKlokke(Idag));
 
     private void LeggTilRegel(string loep, Regeltype type, string parametre, string tittel = "")
         => _t.Db.Gjentaksregler.Add(new Gjentaksregel

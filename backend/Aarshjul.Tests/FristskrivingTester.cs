@@ -22,7 +22,7 @@ public class FristskrivingTester : IDisposable
         _t.Db.SaveChanges();
     }
 
-    private FristskrivingTjeneste Tjeneste() => new(_t.Db);
+    private FristskrivingTjeneste Tjeneste() => new(_t.Factory);
 
     private static FristInndata GyldigInndata(params string[] koder) => new()
     {
@@ -89,7 +89,7 @@ public class FristskrivingTester : IDisposable
         await Tjeneste().OpprettAsync(MedAar(2027, "FA"));
         await Tjeneste().OpprettAsync(MedAar(2028, "FA"));
 
-        var lesing = new FristTjeneste(_t.Db, new FastKlokke(new DateOnly(2026, 1, 1)));
+        var lesing = new FristTjeneste(_t.Factory, new FastKlokke(new DateOnly(2026, 1, 1)));
         var aar = await lesing.HentTilgjengeligeBudsjettaarAsync(new Synlighetskontekst(false, ["FA"]), inkluderHistorikk: true);
 
         Assert.Equal([2027, 2028], aar);

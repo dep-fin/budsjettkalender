@@ -16,8 +16,8 @@ public class InternkalenderGenereringTester : IDisposable
 
     public InternkalenderGenereringTester()
     {
-        _kal = new InternkalenderTjeneste(_t.Db, new FastKlokke(new DateOnly(2026, 8, 3)));
-        _regler = new GjoeremaalRegelTjeneste(_t.Db);
+        _kal = new InternkalenderTjeneste(_t.Factory, new FastKlokke(new DateOnly(2026, 8, 3)));
+        _regler = new GjoeremaalRegelTjeneste(_t.Factory);
     }
 
     [Fact]
