@@ -4,7 +4,7 @@ namespace Aarshjul.Application.Generering;
 
 /// <summary>
 /// Resultatet av å beregne én gjentaksregel for et målbudsjettår. Bærer enten en beregnet dato
-/// (med presisjon) eller en <see cref="Feil"/> (uoppløselig/sirkulær anker-kjede), pluss flagg for
+/// (med presisjon) eller en <see cref="Feil"/> (ugyldig dato/regel eller anker-kjede), pluss flagg for
 /// tentativitet og valgårssensitivitet.
 /// </summary>
 public sealed record BeregnetRegel
@@ -23,7 +23,7 @@ public sealed record BeregnetRegel
     /// <summary>Sant når fristen skal markeres for valgår (per frist, ikke banner — kravdok. 6).</summary>
     public bool Valgaarsflagg { get; init; }
 
-    /// <summary>Feilmelding når anker-kjeden er sirkulær eller mangler et anker-løp.</summary>
+    /// <summary>Norsk feilmelding når regelen eller anker-kjeden ikke kan gi en gyldig dato.</summary>
     public string? Feil { get; init; }
 
     public bool ErFeil => Feil is not null;
@@ -172,7 +172,11 @@ public sealed class Genereringsberegning
             return new BeregnetRegel { Regel = regel, Feil = e.Message };
         }
 
-        var kalenderaar = _maalbudsjettaar + p.AarForskyvning;
+        var (kalenderaar, aarsfeil) = BeregnKalenderaar(regel, p.AarForskyvning);
+        if (aarsfeil is not null)
+        {
+            return new BeregnetRegel { Regel = regel, Feil = aarsfeil };
+        }
         DateOnly dato;
         try
         {
@@ -200,7 +204,11 @@ public sealed class Genereringsberegning
             return new BeregnetRegel { Regel = regel, Feil = e.Message };
         }
 
-        var kalenderaar = _maalbudsjettaar + p.AarForskyvning;
+        var (kalenderaar, aarsfeil) = BeregnKalenderaar(regel, p.AarForskyvning);
+        if (aarsfeil is not null)
+        {
+            return new BeregnetRegel { Regel = regel, Feil = aarsfeil };
+        }
         DateOnly dato;
         try
         {
@@ -216,6 +224,17 @@ public sealed class Genereringsberegning
         }
 
         return MedValgaar(regel, dato);
+    }
+
+    private (int Kalenderaar, string? Feil) BeregnKalenderaar(Gjentaksregel regel, int aarsforskyvning)
+    {
+        var kalenderaar = (long)_maalbudsjettaar + aarsforskyvning;
+        if (kalenderaar is < 1 or > 9999)
+        {
+            return (0, $"Beregnet kalenderår ({kalenderaar}) for «{regel.Loep}» er utenfor området 1–9999.");
+        }
+
+        return ((int)kalenderaar, null);
     }
 
     private BeregnetRegel BeregnRelativTilMilepael(Gjentaksregel regel, HashSet<string> besoeker)
@@ -242,7 +261,19 @@ public sealed class Genereringsberegning
             return new BeregnetRegel { Regel = regel, Feil = $"Anker «{p.AnkerLoep}» mangler dato." };
         }
 
-        var dato = ankerDato.AddDays(p.OffsetDager);
+        DateOnly dato;
+        try
+        {
+            dato = ankerDato.AddDays(p.OffsetDager);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return new BeregnetRegel
+            {
+                Regel = regel,
+                Feil = $"Beregnet dato for «{regel.Loep}» er utenfor datoområdet 0001-01-01–9999-12-31."
+            };
+        }
 
         // Tentativitet arves: arver ankerets presisjon, ikke bare dato (designintervju 2026-06-19).
         // En frist kan dermed bli tentativ uten selv å være valgårssensitiv.

@@ -54,15 +54,12 @@ public static class Datoberegning
 
         var foerste = new DateOnly(aar, maaned, 1);
         var diffTilUkedag = ((int)ukedag - (int)foerste.DayOfWeek + 7) % 7;
-        var resultat = foerste.AddDays(diffTilUkedag + 7 * (uke - 1));
+        var foersteDag = 1 + diffTilUkedag;
+        var sisteForekomst = 1 + (DateTime.DaysInMonth(aar, maaned) - foersteDag) / 7;
+        // Klamp før datoen konstrueres, også når neste måned er utenfor DateOnlys område.
+        var dag = foersteDag + 7 * (Math.Min(uke, sisteForekomst) - 1);
 
-        // Klamp til siste forekomst i måneden om den valgte uken ikke finnes.
-        while (resultat.Month != maaned)
-        {
-            resultat = resultat.AddDays(-7);
-        }
-
-        return Virkedagjuster(resultat);
+        return Virkedagjuster(new DateOnly(aar, maaned, dag));
     }
 
     /// <summary>

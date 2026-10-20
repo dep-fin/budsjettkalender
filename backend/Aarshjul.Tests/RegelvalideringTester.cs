@@ -92,8 +92,46 @@ public class RegelvalideringTester : IDisposable
         { Regeltype.RelativTilMilepael, "{\"anker_loep\":\"manuelt-anker\",\"offset_dager\":0}", 2028, new(2028, 3, 1) },
         { Regeltype.RelativTilMilepael, "{\"anker_loep\":\"manuelt-anker\",\"offset_dager\":1}", 2028, new(2028, 3, 2) },
         { Regeltype.RelativTilMilepael, "{\"anker_loep\":\"manuelt-anker\",\"offset_dager\":-366}", 2028, new(2027, 3, 1) },
-        { Regeltype.RelativTilMilepael, "{\"anker_loep\":\"manuelt-anker\",\"offset_dager\":366}", 2028, new(2029, 3, 2) }
+        { Regeltype.RelativTilMilepael, "{\"anker_loep\":\"manuelt-anker\",\"offset_dager\":366}", 2028, new(2029, 3, 2) },
+        { Regeltype.FastDato, """{"maaned":1,"dag":1,"aar_forskyvning":-2025}""", 2026, new(1, 1, 1) },
+        { Regeltype.FastDato, """{"maaned":12,"dag":31,"aar_forskyvning":7973}""", 2026, new(9999, 12, 31) },
+        { Regeltype.RelativUkedag, """{"maaned":1,"uke":1,"ukedag":"man","aar_forskyvning":-2025}""", 2026, new(1, 1, 1) },
+        { Regeltype.RelativUkedag, """{"maaned":12,"uke":5,"ukedag":"man","aar_forskyvning":7973}""", 2026, new(9999, 12, 27) },
+        { Regeltype.RelativTilMilepael, """{"anker_loep":"manuelt-anker","offset_dager":-740406}""", 2028, new(1, 1, 1) },
+        { Regeltype.RelativTilMilepael, """{"anker_loep":"manuelt-anker","offset_dager":2911652}""", 2028, new(9999, 12, 31) }
     };
+
+    [Theory]
+    [InlineData(Regeltype.FastDato, int.MinValue)]
+    [InlineData(Regeltype.FastDato, int.MaxValue)]
+    [InlineData(Regeltype.RelativUkedag, int.MinValue)]
+    [InlineData(Regeltype.RelativUkedag, int.MaxValue)]
+    [InlineData(Regeltype.RelativTilMilepael, int.MinValue)]
+    [InlineData(Regeltype.RelativTilMilepael, int.MaxValue)]
+    public async Task Manuell_lagring_og_import_beholder_hele_heltallsomraadet_for_forskyvninger(
+        Regeltype type, int forskyvning)
+    {
+        var json = type switch
+        {
+            Regeltype.FastDato => $$"""{"maaned":1,"dag":1,"aar_forskyvning":{{forskyvning}}}""",
+            Regeltype.RelativUkedag => $$"""{"maaned":1,"uke":1,"ukedag":"man","aar_forskyvning":{{forskyvning}}}""",
+            _ => $$"""{"anker_loep":"manuelt-anker","offset_dager":{{forskyvning}}}"""
+        };
+        var mal = Mal;
+        var inndata = Inndata("stor-forskyvning", type, json);
+        var id = await mal.OpprettAsync(inndata);
+        inndata.Tittel = "Oppdatert";
+        await mal.OppdaterAsync(id, inndata);
+        Assert.Equal(json, Assert.Single(await mal.HentAlleAsync()).Regelparametre);
+        var utveksling = Datautveksling;
+        var foer = await utveksling.EksporterAsync();
+
+        var resultat = await utveksling.ImporterAsync(foer);
+
+        Assert.Equal(1, resultat.AntallImportert);
+        Assert.Empty(resultat.Advarsler);
+        Assert.Equal(Assert.Single(foer.Regler), Assert.Single((await utveksling.EksporterAsync()).Regler));
+    }
 
     [Theory]
     [MemberData(nameof(GyldigeParametre))]
