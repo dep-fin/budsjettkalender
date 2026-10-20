@@ -93,3 +93,54 @@ jobs:
       - name: Stopp disponibel SQL Server
         if: always()
         run: docker rm --force aarshjul-sqlserver
+
+  browser-test:
+    name: Nettleser – samlet akseptanse
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sett opp .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: 'backend/**/packages.lock.json'
+      - name: Gjenopprett låste app- og nettleserpakker
+        run: |
+          dotnet restore backend/Aarshjul.slnx --locked-mode
+          dotnet restore backend/Aarshjul.BrowserTests/Aarshjul.BrowserTests.csproj --locked-mode
+      - name: Bygg app og nettlesertester
+        run: |
+          dotnet build backend/Aarshjul.Web --configuration Release --no-restore
+          dotnet build backend/Aarshjul.BrowserTests --configuration Release --no-restore
+      - name: Installer Chromium med systemavhengigheter
+        shell: pwsh
+        run: ./backend/Aarshjul.BrowserTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Kjør reelle nettleserflyter mot disponible demodatabaser
+        run: dotnet test backend/Aarshjul.BrowserTests --configuration Release --no-build --logger 'trx;LogFileName=browser.trx' --results-directory BrowserTestResults
+      - name: Kontroller utførte nettlesertester uten hopp
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse('BrowserTestResults/browser.trx').getroot()
+          ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
+          results = root.findall('t:Results/t:UnitTestResult', ns)
+          counters = root.find('t:ResultSummary/t:Counters', ns)
+          if len(results) != 12 or counters is None:
+              raise SystemExit('Nettleser: forventet 12 utførte scenarioer')
+          if any(r.get('outcome') != 'Passed' for r in results):
+              raise SystemExit('Nettleser: minst ett scenario feilet eller ble hoppet over')
+          if int(counters.get('executed', '0')) != len(results) or int(counters.get('notExecuted', '0')) != 0:
+              raise SystemExit('Nettleser: ugyldig antall utførte/hoppede tester')
+          print('Nettleser: 12 scenarioer bestått, ingen hoppet over')
+          PY
+      - name: Last opp nettleserresultater
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nettleser-testresultater
+          path: BrowserTestResults/*.trx
+          if-no-files-found: error

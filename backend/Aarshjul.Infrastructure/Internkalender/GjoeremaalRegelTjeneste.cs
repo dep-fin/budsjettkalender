@@ -87,6 +87,7 @@ public class GjoeremaalRegelTjeneste(IDbContextFactory<AppDbContext> dbFactory) 
         db.RegelAnsvarlige.RemoveRange(r.Ansvarlige);
         r.Ansvarlige.Clear();
         SettFelter(r, inndata);
+        db.RegelAnsvarlige.AddRange(r.Ansvarlige);
         await db.SaveChangesAsync(ct);
     }
 

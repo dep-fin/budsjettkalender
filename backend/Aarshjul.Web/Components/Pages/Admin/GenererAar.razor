@@ -195,6 +195,10 @@ else if (_lastet && _resultat is not null)
     private async Task LastForslag()
     {
         _forslag = await Generering.HentGenererteAsync(_maalaar);
+        foreach (var f in _forslag.Where(f => f.Tentativ && f.Loep is not null))
+        {
+            _ankre.TryAdd(f.Loep!, null);
+        }
         _tilstand.Clear();
         _lastet = true;
     }

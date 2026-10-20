@@ -12,6 +12,19 @@ ikke en liste over dagens urettede kodefeil.
 | [#23](https://github.com/depmartin/Budsjettkalender/issues/23) | Konkurransekontroll ved behandling av samme forslag, også etter revidert innsending | [PR #32](https://github.com/depmartin/Budsjettkalender/pull/32) |
 | [#24](https://github.com/depmartin/Budsjettkalender/issues/24) | Felles parameterkontroll for manuell mallagring og JSON-import | [PR #33](https://github.com/depmartin/Budsjettkalender/pull/33) |
 | [#34](https://github.com/depmartin/Budsjettkalender/issues/34) | Kontrollert datooverløp per regel, trygg årsregning og femte ukedag ved øvre datogrense | Livsløp i oppgaven |
+| [#36](https://github.com/depmartin/Budsjettkalender/issues/36) | 12 utførte nettleserscenarioer, demo-utlogging, manuelle ankre og ansvar i internkalender rettet | [Akseptanserapport og eksterne porter](acceptance/2026-10-20.md) |
+
+## Samlet akseptanse
+
+[Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
+eksterne miljøporter. 12 reelle Playwright-/Edge-scenarioer og 447 ordinære tester
+passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
+deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
+tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.
+
+Rapporten har konkrete operatørhandlinger for Entra/Azure SQL, Outlook/M365 og infrastruktur.
+Key Vault-provider, vedvarende Data Protection-oppsett og live-kildeworker er fortsatt
+implementerings-/oppsettsgap som demoinnloggingen ikke dekker.
 
 ## DbContext og behandling av forslag
 
@@ -87,15 +100,16 @@ innføres. Datooperasjoner for feed, lister og internoppgaver er utenfor denne r
 
 ## Verifikasjon
 
-SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **442 ordinære
-tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer de tidligere 393 og 49 nye
-tilfeller for #34. Den eksisterende CS0649-advarselen i Runde.razor er uendret.
-SQL Server-prosjektets låste restore og Release-bygg passerer. #34 endrer verken EF-modell,
+SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **447 ordinære
+tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer 442 fra #34 og fem nye
+HTTP-/Application-regresjoner for #36. 12 nettleserscenarioer passerer med 0 feil/hopp.
+Den eksisterende CS0649-advarselen i Runde.razor er uendret.
+SQL Server-prosjektets låste restore og Release-bygg passerer. #36 endrer verken EF-modell,
 migrasjoner eller SQL-kontrakttilfeller. Lokale Markdown-lenker og git diff --check passerer.
 
-[CI for PR #33](https://github.com/depmartin/Budsjettkalender/actions/runs/39439302126)
-bekreftet før merge 393 ordinære og **22 SQL Server-tester**, begge med 0 feil og 0 hopp.
-Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #34.
+[CI for PR #35](https://github.com/depmartin/Budsjettkalender/actions/runs/39443717020)
+bekreftet før merge 442 ordinære og **22 SQL Server-tester**, begge med 0 feil og 0 hopp.
+Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #36.
 CI krever ekte SQL Server-tester uten hopp, og deploy venter på den jobben.
 Kommandoer og miljøkrav står i [utviklingsveiledningen](development.md).
 

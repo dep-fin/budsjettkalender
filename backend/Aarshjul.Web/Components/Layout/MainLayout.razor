@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @inject IWebHostEnvironment Env
+@inject IConfiguration Konfigurasjon
 
 <div class="side">
     @if (ErDemo)
@@ -36,7 +37,7 @@
             <AuthorizeView>
                 <Authorized>
                     <span class="brukernavn">@context.User.Identity?.Name</span>
-                    <a href="@LoggUtUrl">Logg ut</a>
+                    <a href="@LoggUtUrl" data-enhance-nav="false">Logg ut</a>
                 </Authorized>
                 <NotAuthorized>
                     <a href="@LoggInnUrl">Logg inn</a>
@@ -51,7 +52,7 @@
 </div>
 
 @code {
-    private bool ErDemo => Env.IsEnvironment("Demo");
+    private bool ErDemo => Env.IsEnvironment("Demo") || Konfigurasjon.GetValue<bool>("Demo");
     private string LoggInnUrl => ErDemo ? "/demo" : "MicrosoftIdentity/Account/SignIn";
     private string LoggUtUrl => ErDemo ? "/demo/logg-ut" : "MicrosoftIdentity/Account/SignOut";
 }

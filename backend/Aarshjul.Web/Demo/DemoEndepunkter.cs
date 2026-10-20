@@ -59,6 +59,7 @@ public static class DemoEndepunkter
         sb.Append("""
             <!doctype html><html lang="no"><head><meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
+            <link rel="icon" href="data:,">
             <title>Demo-innlogging – Årshjul for budsjettfrister</title>
             <style>
               body { font-family: system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; color: #1a1a1a; }

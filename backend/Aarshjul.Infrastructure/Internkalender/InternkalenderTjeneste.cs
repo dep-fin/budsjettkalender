@@ -272,6 +272,8 @@ public class InternkalenderTjeneste(IDbContextFactory<AppDbContext> dbFactory, T
         db.GjoeremaalAnsvarlige.RemoveRange(g.Ansvarlige);
         g.Ansvarlige.Clear();
         SettFelter(g, inndata);
+        // Nye ansvarlige har allerede Guid. Registrer dem som innsettinger på en sporet forelder.
+        db.GjoeremaalAnsvarlige.AddRange(g.Ansvarlige);
         await BeregnTidfestingAsync(db, g, g.Runde!, ct);
 
         // Et generert gjøremål som endres manuelt beskyttes mot senere synkronisering.
@@ -452,6 +454,7 @@ public class InternkalenderTjeneste(IDbContextFactory<AppDbContext> dbFactory, T
                         db.GjoeremaalAnsvarlige.RemoveRange(maal.Ansvarlige);
                         maal.Ansvarlige.Clear();
                         KopierRegelfelter(frisk, maal);
+                        db.GjoeremaalAnsvarlige.AddRange(maal.Ansvarlige);
                     }
                     break;
 
