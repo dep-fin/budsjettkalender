@@ -32,7 +32,8 @@ public class GenereringsTjenesteTester : IDisposable
         return new GenereringsTjeneste(_t.Factory, new Synlighetsregel(opsjoner));
     }
 
-    private async Task LeggRegel(string loep, string parametre, bool valgaarssensitiv = false)
+    private async Task LeggRegel(string loep, string parametre, bool valgaarssensitiv = false,
+        Regeltype type = Regeltype.FastDato)
     {
         _t.Db.Gjentaksregler.Add(new Gjentaksregel
         {
@@ -40,11 +41,94 @@ public class GenereringsTjenesteTester : IDisposable
             Loep = loep,
             Tittel = $"Tittel {loep}",
             Kategori = Kategori.Budsjett,
-            Regeltype = Regeltype.FastDato,
+            Regeltype = type,
             Regelparametre = parametre,
             Valgaarssensitiv = valgaarssensitiv
         });
         await _t.Db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task Datooverloep_rapporteres_per_regel_og_gyldig_delmengde_bevares_ved_regenerering()
+    {
+        await LeggRegel("gyldig", """{"maaned":3,"dag":20}""");
+        await LeggRegel("siste", """{"anker_loep":"ledd","offset_dager":1}""", type: Regeltype.RelativTilMilepael);
+        await LeggRegel("ledd", """{"anker_loep":"overloep","offset_dager":-1}""", type: Regeltype.RelativTilMilepael);
+        await LeggRegel("overloep", """{"anker_loep":"manuelt","offset_dager":2147483647}""", type: Regeltype.RelativTilMilepael);
+        await LeggRegel("fast-aar", """{"maaned":1,"dag":1,"aar_forskyvning":2147483647}""");
+        await LeggRegel("ukedag-aar", """{"maaned":1,"uke":1,"ukedag":"man","aar_forskyvning":-2147483648}""", type: Regeltype.RelativUkedag);
+        await LeggRegel("etter-maks", """{"maaned":12,"fra_dag":31,"ukedag":"man","aar_forskyvning":7973}""", type: Regeltype.RelativUkedag);
+        await LeggRegel("stor-gyldig", """{"anker_loep":"manuelt","offset_dager":3652058}""", type: Regeltype.RelativTilMilepael);
+        await LeggRegel("femte-mandag", """{"maaned":12,"uke":5,"ukedag":"man","aar_forskyvning":7973}""", type: Regeltype.RelativUkedag);
+        IGenereringstjeneste tjeneste = Tjeneste();
+        var forespoersel = new GenereringsForespoersel(2026,
+            new Dictionary<string, DateOnly> { ["manuelt"] = DateOnly.MinValue });
+
+        for (var kjoring = 0; kjoring < 2; kjoring++)
+        {
+            var resultat = await tjeneste.GenererAsync(forespoersel);
+
+            Assert.Equal(3, resultat.AntallForslag);
+            Assert.Equal(6, resultat.Feil.Count);
+            foreach (var loep in new[] { "siste", "ledd", "overloep", "fast-aar", "ukedag-aar", "etter-maks" })
+            {
+                Assert.Single(resultat.Feil, feil => feil.StartsWith($"Tittel {loep}:"));
+            }
+            var forslag = await tjeneste.HentGenererteAsync(2026);
+            Assert.Equal(3, forslag.Count);
+            Assert.Equal(new DateOnly(2026, 3, 20), Assert.Single(forslag, f => f.Loep == "gyldig").Dato);
+            Assert.Equal(DateOnly.MaxValue, Assert.Single(forslag, f => f.Loep == "stor-gyldig").Dato);
+            Assert.Equal(new DateOnly(9999, 12, 27), Assert.Single(forslag, f => f.Loep == "femte-mandag").Dato);
+        }
+    }
+
+    [Fact]
+    public async Task Helt_mislykket_beregning_erstatter_aarets_aapne_genererte_forslag_med_tom_delmengde()
+    {
+        await LeggRegel("overloep", """{"anker_loep":"manuelt","offset_dager":2147483647}""", type: Regeltype.RelativTilMilepael);
+        IGenereringstjeneste tjeneste = Tjeneste();
+        var manuelle = new Dictionary<string, DateOnly> { ["overloep"] = new(2026, 3, 20) };
+        await tjeneste.GenererAsync(new GenereringsForespoersel(2026, manuelle));
+        await tjeneste.GenererAsync(new GenereringsForespoersel(2027, manuelle));
+        Assert.Single(await tjeneste.HentGenererteAsync(2026));
+
+        var resultat = await tjeneste.GenererAsync(new GenereringsForespoersel(2026,
+            new Dictionary<string, DateOnly> { ["manuelt"] = DateOnly.MinValue }));
+
+        Assert.Equal(0, resultat.AntallForslag);
+        Assert.Single(resultat.Feil);
+        Assert.Empty(await tjeneste.HentGenererteAsync(2026));
+        Assert.Single(await tjeneste.HentGenererteAsync(2027));
+        Assert.Equal([2027], await tjeneste.HentAarMedForslagAsync());
+    }
+
+    [Fact]
+    public async Task Lagringsfeil_ruller_tilbake_hele_regenereringen_og_neste_kall_lykkes()
+    {
+        await LeggRegel("gyldig", """{"maaned":3,"dag":20}""");
+        IGenereringstjeneste tjeneste = Tjeneste();
+        var forespoersel = new GenereringsForespoersel(2026,
+            new Dictionary<string, DateOnly> { ["manuelt"] = DateOnly.MinValue });
+        await tjeneste.GenererAsync(forespoersel);
+        var foer = Assert.Single(await tjeneste.HentGenererteAsync(2026));
+        await LeggRegel("overloep", """{"anker_loep":"manuelt","offset_dager":2147483647}""", type: Regeltype.RelativTilMilepael);
+        await _t.Db.Database.ExecuteSqlRawAsync("""
+            CREATE TRIGGER avvis_generering AFTER INSERT ON Forslag
+            BEGIN SELECT RAISE(ABORT, 'Simulert lagringsfeil'); END;
+            """);
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => tjeneste.GenererAsync(forespoersel));
+
+        var bevart = Assert.Single(await tjeneste.HentGenererteAsync(2026));
+        Assert.Equal(foer.ForslagId, bevart.ForslagId);
+        Assert.Equal(foer.Dato, bevart.Dato);
+        await _t.Db.Database.ExecuteSqlRawAsync("DROP TRIGGER avvis_generering;");
+        var resultat = await tjeneste.GenererAsync(forespoersel);
+        Assert.Equal(1, resultat.AntallForslag);
+        Assert.Single(resultat.Feil);
+        var nytt = Assert.Single(await tjeneste.HentGenererteAsync(2026));
+        Assert.Equal("gyldig", nytt.Loep);
+        Assert.Equal(new DateOnly(2026, 3, 20), nytt.Dato);
     }
 
     private async Task LeggGodkjentFjoraarsfrist(string loep, int budsjettaar, DateOnly dato, params string[] grupper)

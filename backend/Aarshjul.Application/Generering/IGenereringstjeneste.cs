@@ -49,7 +49,8 @@ public sealed record GenerertForslagDto
 public interface IGenereringstjeneste
 {
     /// <summary>Beregner og lagrer genererte forslag for målåret. Erstatter eventuelle tidligere
-    /// åpne genererte forslag for samme år, slik at en ny kjøring ikke gir dubletter.</summary>
+    /// åpne genererte forslag for samme år atomisk med den gyldige delmengden, også når den er tom.
+    /// Beregningsfeil rapporteres per regel uten forslag for regelen eller dens avhengige regler.</summary>
     Task<GenereringsResultat> GenererAsync(GenereringsForespoersel forespoersel, CancellationToken ct = default);
 
     /// <summary>Henter de åpne genererte forslagene for et målår, beriket med fjorårssammenligning.</summary>

@@ -10,7 +10,8 @@ ikke en liste over dagens urettede kodefeil.
 | [#21](https://github.com/depmartin/Budsjettkalender/issues/21) | Pocock-arbeidsflyt, kort agentindeks, dokumenterte standarder og rettinger fra gjennomgangen | [PR #25](https://github.com/depmartin/Budsjettkalender/pull/25) |
 | [#22](https://github.com/depmartin/Budsjettkalender/issues/22) | Én DbContext per offentlig tjenesteoperasjon | [PR #31](https://github.com/depmartin/Budsjettkalender/pull/31) |
 | [#23](https://github.com/depmartin/Budsjettkalender/issues/23) | Konkurransekontroll ved behandling av samme forslag, også etter revidert innsending | [PR #32](https://github.com/depmartin/Budsjettkalender/pull/32) |
-| [#24](https://github.com/depmartin/Budsjettkalender/issues/24) | Felles parameterkontroll for manuell mallagring og JSON-import | Implementert i denne endringen |
+| [#24](https://github.com/depmartin/Budsjettkalender/issues/24) | Felles parameterkontroll for manuell mallagring og JSON-import | [PR #33](https://github.com/depmartin/Budsjettkalender/pull/33) |
+| [#34](https://github.com/depmartin/Budsjettkalender/issues/34) | Kontrollert datooverløp per regel, trygg årsregning og femte ukedag ved øvre datogrense | Livsløp i oppgaven |
 
 ## DbContext og behandling av forslag
 
@@ -59,27 +60,47 @@ null/tom tittel til tom tekst. En rød test viste tidligere NullReferenceExcepti
 En AFTER DELETE-trigger viser rollback av import, og neste import på samme tjeneste lykkes.
 Eldre lagrede regler med JSON-feil rapporteres som genereringsfeil uten å stanse gyldige regler.
 
+## Datooverløp ved generering
+
+[Oppgave #34](https://github.com/depmartin/Budsjettkalender/issues/34) håndteres ved
+Genereringsberegning.Beregn og IGenereringstjeneste. Relativ dagforskyvning utenfor
+0001-01-01–9999-12-31 gir norsk feil per regel og ingen dato. FastDato og RelativUkedag
+summerer målår og årsforskyvning som long og avviser kalenderår utenfor 1–9999 kontrollert.
+Femte ukedag klampes før datokonstruksjon, også i desember 9999: mandag blir 27. desember,
+mens femte fredag fortsatt blir 31. desember. Se feilkontrakten i
+[ADR-0008](adr/0008-felles-validering-av-gjentaksregler.md).
+
+Feil i ankeret forplanter seg gjennom hele kjeden uavhengig av reglenes rekkefølge.
+Manuelle ankre overstyrer fortsatt beregningen. Gyldige uavhengige regler blir forslag;
+feilede regler og deres avhengige regler blir det ikke. Den gyldige delmengden erstatter
+årets tidligere åpne genererte forslag i én atomisk lagring. Regenerering gir ingen
+dubletter. En helt mislykket beregning gir en tom erstatning, som før; en lagringsfeil
+ruller tilbake hele erstatningen. Et nytt kall på samme tjeneste kan lykkes når feilen er fjernet.
+
+Regresjonene viste først ukontrollert AddDays-unntak, feil kalenderdato etter
+heltallsoverløp og avvist femte mandag i desember 9999. Testene dekker int.MinValue/MaxValue,
+én dag utenfor området, eksakte yttergrenser, store gyldige positive og negative
+forskyvninger, null, rekursive ankerkjeder og SQLite-lagring med rollback.
+Manuell oppretting, oppdatering og import beholder hele int-området for forskyvningene;
+gyldige store forskyvninger beregnes også etter import. Ingen vilkårlig parametergrense
+innføres. Datooperasjoner for feed, lister og internoppgaver er utenfor denne rettingen.
+
 ## Verifikasjon
 
-SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **393 ordinære
-tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer de tidligere 255 og 138 nye
-tilfeller for #24. Den eksisterende CS0649-advarselen i Runde.razor er uendret.
-SQL Server-prosjektets låste restore og Release-bygg passerer. #24 endrer verken EF-modell,
+SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **442 ordinære
+tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer de tidligere 393 og 49 nye
+tilfeller for #34. Den eksisterende CS0649-advarselen i Runde.razor er uendret.
+SQL Server-prosjektets låste restore og Release-bygg passerer. #34 endrer verken EF-modell,
 migrasjoner eller SQL-kontrakttilfeller. Lokale Markdown-lenker og git diff --check passerer.
 
-[CI for PR #32](https://github.com/depmartin/Budsjettkalender/actions/runs/39435808475)
-bekreftet før merge 255 ordinære og **22 SQL Server-tester**, begge med 0 feil og 0 hopp.
-Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #24.
+[CI for PR #33](https://github.com/depmartin/Budsjettkalender/actions/runs/39439302126)
+bekreftet før merge 393 ordinære og **22 SQL Server-tester**, begge med 0 feil og 0 hopp.
+Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #34.
 CI krever ekte SQL Server-tester uten hopp, og deploy venter på den jobben.
 Kommandoer og miljøkrav står i [utviklingsveiledningen](development.md).
 
 ## Gjenstående grenser
 
-- For RelativTilMilepael har offset_dager ingen vilkårlig grense utover heltallstypen,
-  jf. [ADR-0008](adr/0008-felles-validering-av-gjentaksregler.md). En forskyvning utenfor
-  DateOnlys datoområde gir fortsatt en uhåndtert ArgumentOutOfRangeException fra AddDays i
-  [Genereringsberegning](../backend/Aarshjul.Application/Generering/Genereringsberegning.cs)
-  og avbryter genereringen. Begrensningen fantes før #24 og er ikke rettet i denne endringen.
 - Azure SQL/Entra, feed-/M365-policy og tokenvern, SQL-brannmur, migrering og Data Protection
   krever eget driftsoppsett og miljøtest. Lokal SQLite-verifikasjon erstatter ikke disse.
 - Live kildehenting er fortsatt uferdig.

@@ -32,3 +32,26 @@ operasjonskonteksten disponeres etter ADR-0006. Testene ved IMaltjeneste og
 IMalDatautveksling bruker samme ugyldige datasett, kontrollerer blandet og helt ugyldig
 import og viser rollback med en AFTER DELETE-trigger samt vellykket ny import på samme
 tjeneste. Ingen publisering, synlighet eller feed-policy endres.
+
+## Feil ved beregning
+
+Parameterkontrollen vurderer malens struktur; en datoforskyvning avhenger også av målåret
+eller ankerets dato. Derfor beholder manuell lagring og import hele int-området for både
+offset_dager og aar_forskyvning. Ved generering gir et resultat utenfor
+0001-01-01–9999-12-31 en norsk BeregnetRegel.Feil og Dato = null. FastDato og RelativUkedag
+summerer målår og årsforskyvning som long og kontrollerer 1–9999 før datokonstruksjon.
+RelativTilMilepael håndterer AddDays-feil ved selve beregningen. Femte ukedag klampes til
+siste forekomst før en dato konstrueres, slik at desember 9999 også kan beregnes.
+
+En feil forplanter seg gjennom alle avhengige regler, også når ankeret løses rekursivt.
+Manuelt satte ankre overstyrer fortsatt beregningen. Null, negative og store forskyvninger
+med representerbart resultat beholdes, også datoene på de eksakte yttergrensene.
+IGenereringstjeneste rapporterer feilene og lager bare forslag for den gyldige delmengden.
+Én SaveChangesAsync erstatter årets tidligere åpne genererte forslag atomisk; en
+regenerering gir ikke dubletter. Er ingen regler beregnbare, blir erstatningen tom.
+Dette viderefører eksisterende erstatt-alt-semantikk. En lagringsfeil ruller derimot
+tilbake hele erstatningen; neste kall bruker en ny operasjonskontekst etter ADR-0006.
+
+[Oppgave #34](https://github.com/depmartin/Budsjettkalender/issues/34) dekker beregningsgrensen
+og IGenereringstjeneste med SQLite, samt bevaring av forskyvninger ved IMaltjeneste og
+IMalDatautveksling. Andre datooperasjoner i feed, lister og internoppgaver har egne kontrakter.
