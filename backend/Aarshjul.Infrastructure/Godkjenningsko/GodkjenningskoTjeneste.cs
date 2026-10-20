@@ -132,7 +132,7 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
         forslag.Status = FristStatus.Godkjent;
         VarsleVedBrukerforslag(db, forslag, "Forslaget ditt er godkjent.", null);
 
-        await db.SaveChangesAsync(ct);
+        await LagreBehandlingAsync(db, ct);
         return fristId;
     }
 
@@ -146,7 +146,22 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
         forslag.Status = FristStatus.Avvist;
         VarsleVedBrukerforslag(db, forslag, "Forslaget ditt er avvist.", begrunnelse);
 
-        await db.SaveChangesAsync(ct);
+        await LagreBehandlingAsync(db, ct);
+    }
+
+    private static async Task LagreBehandlingAsync(AppDbContext db, CancellationToken ct)
+    {
+        try
+        {
+            // Forslag, frist og varsel lagres i samme transaksjon. Versjonen i UPDATE-vilkåret
+            // avviser også en gammel behandling etter avvisning og ny innsending av samme rad.
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException feil) when (
+            feil.Entries.Count > 0 && feil.Entries.All(e => e.Entity is Forslag))
+        {
+            throw new Valideringsfeil("Forslaget er allerede behandlet eller endret. Oppdater godkjenningskøen.");
+        }
     }
 
     public async Task<ForslagForJustering?> HentForslagForJusteringAsync(Guid forslagId, CancellationToken ct = default)

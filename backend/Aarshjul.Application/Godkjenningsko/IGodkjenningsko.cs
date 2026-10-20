@@ -83,10 +83,12 @@ public interface IGodkjenningsko
     Task<IReadOnlyList<Koelement>> HentKoAsync(Kofilter? filter = null, CancellationToken ct = default);
 
     /// <summary>Publiserer forslaget som frist. Returnerer fristens id. Kaster <see cref="Valideringsfeil"/>
-    /// ved tom synlighet, uautorisert POL eller manglende dato.</summary>
+    /// ved tom synlighet, uautorisert POL, manglende dato eller et allerede behandlet forslag,
+    /// også når en annen administrator fullfører behandlingen samtidig.</summary>
     Task<Guid> GodkjennAsync(GodkjennInndata inndata, CancellationToken ct = default);
 
-    /// <summary>Avviser forslaget (bevares med status avvist) og varsler innsender ved brukerforslag.</summary>
+    /// <summary>Avviser forslaget (bevares med status avvist) og varsler innsender ved brukerforslag.
+    /// Kaster <see cref="Valideringsfeil"/> hvis en annen administrator allerede har behandlet det.</summary>
     Task AvvisAsync(Guid forslagId, string? begrunnelse = null, CancellationToken ct = default);
 
     /// <summary>Henter et åpent forslag forberedt for «juster» i redigeringsskjemaet (kravdok. 5.2).

@@ -35,3 +35,61 @@ jobs:
           name: testresultater
           path: TestResults/*.trx
           if-no-files-found: ignore
+
+  sqlserver-test:
+    name: SQL Server – godkjenning og rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sett opp .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: 'backend/**/packages.lock.json'
+      - name: Start disponibel SQL Server
+        shell: bash
+        run: |
+          password="Aa9!$(openssl rand -base64 30)"
+          echo "::add-mask::$password"
+          connection="Server=localhost,1433;Database=master;User Id=sa;Password=$password;Encrypt=True;TrustServerCertificate=True"
+          echo "::add-mask::$connection"
+          echo "AARSHJUL_TEST_SQLSERVER=$connection" >> "$GITHUB_ENV"
+          docker run --detach --name aarshjul-sqlserver \
+            --publish 127.0.0.1:1433:1433 \
+            --env ACCEPT_EULA=Y --env MSSQL_PID=Developer \
+            --env MSSQL_SA_PASSWORD="$password" \
+            mcr.microsoft.com/mssql/server:2022-CU22-GDR1-ubuntu-22.04 > /dev/null
+      - name: Gjenopprett låste SQL-testpakker
+        run: dotnet restore backend/Aarshjul.SqlServerTests/Aarshjul.SqlServerTests.csproj --locked-mode
+      - name: Test mot SQL Server med ekte migrasjoner
+        run: dotnet test backend/Aarshjul.SqlServerTests/Aarshjul.SqlServerTests.csproj --configuration Release --no-restore --logger 'trx;LogFileName=sqlserver.trx' --results-directory SqlServerTestResults
+      - name: Kontroller at SQL-testene faktisk kjørte uten hopp
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse('SqlServerTestResults/sqlserver.trx').getroot()
+          ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
+          results = root.findall('t:Results/t:UnitTestResult', ns)
+          counters = root.find('t:ResultSummary/t:Counters', ns)
+          if not results or counters is None:
+              raise SystemExit('SQL Server: ingen utførte tester')
+          if any(r.get('outcome') != 'Passed' for r in results):
+              raise SystemExit('SQL Server: minst én test feilet eller ble hoppet over')
+          if int(counters.get('executed', '0')) != len(results) or int(counters.get('notExecuted', '0')) != 0:
+              raise SystemExit('SQL Server: antall utførte/hoppede tester er ugyldig')
+          print(f'SQL Server: {len(results)} tester bestått, ingen hoppet over')
+          PY
+      - name: Last opp SQL-testresultater
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlserver-testresultater
+          path: SqlServerTestResults/*.trx
+          if-no-files-found: error
+      - name: Stopp disponibel SQL Server
+        if: always()
+        run: docker rm --force aarshjul-sqlserver
