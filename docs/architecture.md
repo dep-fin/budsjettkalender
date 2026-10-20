@@ -6,7 +6,7 @@ SQLite i lokal demo og tester. Entra ID autentiserer produksjonsbrukere.
 | Modul | Ansvar og testgrense |
 | --- | --- |
 | Aarshjul.Domain | Frist, forslag, regler, internrunde og rene datoberegninger |
-| Aarshjul.Application | Offentlige tjenestegrensesnitt og DTO-er |
+| Aarshjul.Application | Offentlige tjenestegrensesnitt, DTO-er og tolkning/validering av regelkontrakter |
 | Aarshjul.Infrastructure | EF Core, import/eksport, generering og uttrekk |
 | Aarshjul.Web | Blazor, lese-/eksport-API, autentisering og policyer |
 | Aarshjul.Kilder (backend/kilder) | IKilde og kildeuavhengige utfall/filtrering |
@@ -33,6 +33,7 @@ Ved nye innganger må policyene håndheves og testes der.
 - [Arbeidsflyt](adr/0005-arbeidsflyt.md).
 - [Én DbContext per tjenesteoperasjon](adr/0006-operasjonsavgrenset-dbcontext.md).
 - [Konkurransekontroll ved godkjenning](adr/0007-konkurransekontroll-ved-godkjenning.md).
+- [Felles validering av gjentaksregler](adr/0008-felles-validering-av-gjentaksregler.md).
 
 Se [gjeldende status](status.md) for leverte endringer og åpne oppgaver.
 

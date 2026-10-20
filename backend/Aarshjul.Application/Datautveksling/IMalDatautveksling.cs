@@ -32,7 +32,10 @@ public sealed record MalDatabase
 /// <summary>
 /// Eksport og import av alle gjentaksregler (årsmalen) som en gjenopprettbar JSON-«database» —
 /// tilsvarende <see cref="IFristDatautveksling"/> for frister. Kun administrator (håndheves i
-/// web-laget). Import bruker <b>erstatt-alt</b>: eksisterende regler fjernes og erstattes av fila.
+/// web-laget). Import bruker <b>erstatt-alt</b>: eksisterende regler erstattes atomisk av filas
+/// gyldige regler. Ugyldige regler utelates med én advarsel per regel; dette gjelder også når
+/// ingen regler er gyldige. Eldre filer uten tittel støttes; null/tom tittel lagres som tom tekst.
+/// Filfeil (versjon, null-liste/-rad eller duplisert ID) avviser hele importen før endring.
 /// </summary>
 public interface IMalDatautveksling
 {

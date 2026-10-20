@@ -28,8 +28,9 @@ public sealed class MalRegelInndata
 
 /// <summary>
 /// Forvalter årsmalen (kravdok. 3.3, 5.4): gjentaksreglene «generér neste år» bygger på. Alle
-/// handlinger er administratorhandlinger (policy håndheves i web-laget). Validerer at parametrene
-/// kan tolkes for den valgte regeltypen før lagring.
+/// handlinger er administratorhandlinger (policy håndheves i web-laget). Ugyldig regeltype,
+/// manglende parameterfelter og ugyldige parameterverdier gir <see cref="Valideringsfeil"/>
+/// før malen endres. Manuell lagring krever også løp og tittel.
 /// </summary>
 public interface IMaltjeneste
 {
