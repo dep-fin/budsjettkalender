@@ -19,7 +19,7 @@ jobs:
       - name: Sett opp .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
           cache: true
           cache-dependency-path: 'backend/**/packages.lock.json'
       - name: Gjenopprett låste pakker og kontroller sårbarheter

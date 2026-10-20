@@ -1,6 +1,9 @@
 # Utvikling
 
-Krever .NET 10 SDK som passer `global.json`. Kjør fra repo-roten.
+Krever SDK-versjonen i `global.json` (10.0.402). Kjør fra repo-roten.
+SDK-en er eksakt låst fordi Blazor legger til en SDK-avhengig asset-pakke i avhengighetsgrafen.
+CI, deploy og devcontainer bruker samme versjon. Ved SDK-oppdatering endres også
+devcontainerens versjon, og pakkelåsene regenereres og verifiseres.
 
 ```sh
 dotnet restore backend/Aarshjul.slnx --locked-mode
