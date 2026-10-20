@@ -19,7 +19,7 @@ namespace Aarshjul.Infrastructure.Opplasting;
 /// kilde «opplastet» for deduplisering på filnavn + innholdshash.
 /// </summary>
 public sealed class OpplastingsTjeneste(
-    AppDbContext db,
+    IDbContextFactory<AppDbContext> dbFactory,
     IPdftekst pdftekst,
     IDatouttrekk datouttrekk,
     ISynlighetsregel synlighetsregel,
@@ -31,6 +31,7 @@ public sealed class OpplastingsTjeneste(
     public async Task<OpplastingsResultat> LesOgLagForslagAsync(
         OpplastetDokument dokument, int budsjettaar, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var tekst = pdftekst.HentTekst(dokument.Innhold);
         var nokkel = Normaliser(dokument.Filnavn);
         var hash = Innholdshash(tekst);

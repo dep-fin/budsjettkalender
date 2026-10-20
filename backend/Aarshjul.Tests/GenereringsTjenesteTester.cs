@@ -29,7 +29,7 @@ public class GenereringsTjenesteTester : IDisposable
         {
             StandardKoder = standardKoder.Length > 0 ? standardKoder.ToList() : ["FA", "FIN-FAG"]
         });
-        return new GenereringsTjeneste(_t.Db, new Synlighetsregel(opsjoner));
+        return new GenereringsTjeneste(_t.Factory, new Synlighetsregel(opsjoner));
     }
 
     private async Task LeggRegel(string loep, string parametre, bool valgaarssensitiv = false)
@@ -126,7 +126,7 @@ public class GenereringsTjenesteTester : IDisposable
         await LeggRegel("marskonferanse", "{\"maaned\":3,\"dag\":2,\"aar_forskyvning\":-1}");
         await Tjeneste().GenererAsync(new GenereringsForespoersel(2030));
 
-        var ko = await new GodkjenningskoTjeneste(_t.Db).HentKoAsync();
+        var ko = await new GodkjenningskoTjeneste(_t.Factory).HentKoAsync();
 
         Assert.Empty(ko);
     }
@@ -173,7 +173,7 @@ public class GenereringsTjenesteTester : IDisposable
         await Tjeneste().GenererAsync(new GenereringsForespoersel(2030));
         var dto = Assert.Single(await Tjeneste().HentGenererteAsync(2030));
 
-        var ko = new GodkjenningskoTjeneste(_t.Db);
+        var ko = new GodkjenningskoTjeneste(_t.Factory);
         var fristId = await ko.GodkjennAsync(new GodkjennInndata
         {
             ForslagId = dto.ForslagId,
@@ -194,7 +194,7 @@ public class GenereringsTjenesteTester : IDisposable
         await Tjeneste().GenererAsync(new GenereringsForespoersel(2030));
         var dto = Assert.Single(await Tjeneste().HentGenererteAsync(2030));
 
-        var ko = new GodkjenningskoTjeneste(_t.Db);
+        var ko = new GodkjenningskoTjeneste(_t.Factory);
         await Assert.ThrowsAsync<Aarshjul.Application.Valideringsfeil>(() => ko.GodkjennAsync(new GodkjennInndata
         {
             ForslagId = dto.ForslagId,

@@ -53,7 +53,7 @@ public class SynlighetTester : IDisposable
         _t.Db.Frister.Add(frist);
     }
 
-    private FristTjeneste Tjeneste() => new(_t.Db, new FastKlokke(Idag));
+    private FristTjeneste Tjeneste() => new(_t.Factory, new FastKlokke(Idag));
 
     private static FristFilter AlleKategorier => new();
 

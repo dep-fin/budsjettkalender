@@ -61,11 +61,11 @@ if (erDemo)
     {
         demoConn = "Data Source=aarshjul-demo.db";
     }
-    builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(demoConn));
+    builder.Services.AddDbContextFactory<AppDbContext>(o => o.UseSqlite(demoConn));
 }
 else if (!erTesting)
 {
-    builder.Services.AddDbContext<AppDbContext>(o =>
+    builder.Services.AddDbContextFactory<AppDbContext>(o =>
         o.UseSqlServer(builder.Configuration.GetConnectionString("Aarshjul")
             ?? "Server=(localdb)\\mssqllocaldb;Database=Aarshjul;Trusted_Connection=True;"));
 }
@@ -160,7 +160,7 @@ if (erDemo)
 if (erDemo)
 {
     using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContextAsync();
     // SQLite-skjema fra modellen (EF-migrasjonene er SqlServer-spesifikke).
     db.Database.EnsureCreated();
     var opsjoner = scope.ServiceProvider.GetRequiredService<IOptions<StartdataOpsjoner>>().Value;
@@ -170,7 +170,7 @@ if (erDemo)
 else if (!erTesting)
 {
     using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContextAsync();
     db.Database.Migrate();
     var opsjoner = scope.ServiceProvider.GetRequiredService<IOptions<StartdataOpsjoner>>().Value;
     await Startdata.SeedAsync(db, opsjoner);

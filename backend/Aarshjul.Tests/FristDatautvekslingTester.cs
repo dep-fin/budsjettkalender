@@ -29,7 +29,7 @@ public class FristDatautvekslingTester : IDisposable
         await _t.Db.SaveChangesAsync();
     }
 
-    private FristDatautveksling Tjeneste() => new(_t.Db, new FastKlokke(Idag));
+    private FristDatautveksling Tjeneste() => new(_t.Factory, new FastKlokke(Idag));
 
     private void LeggTilFrist(string tittel, string[] grupper, int budsjettaar = 2027)
     {
@@ -131,7 +131,7 @@ public class FristDatautvekslingTester : IDisposable
         var database = await Tjeneste().EksporterAsync();
         await Tjeneste().ImporterAsync(database);
 
-        var lesing = new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(_t.Db);
+        var lesing = new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(_t.Factory);
         var frist = await lesing.HentForRedigeringAsync(database.Frister.Single().Id);
         Assert.Equal(new TimeOnly(14, 30), frist!.Klokkeslett);
     }

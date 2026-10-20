@@ -26,7 +26,7 @@ public class ForslagsinnsendingTester : IDisposable
         _t.Db.SaveChanges();
     }
 
-    private ForslagsinnsendingTjeneste Tjeneste() => new(_t.Db);
+    private ForslagsinnsendingTjeneste Tjeneste() => new(_t.Factory);
 
     private static BrukerforslagInndata Inndata(params string[] synlighet) => new()
     {
@@ -42,7 +42,8 @@ public class ForslagsinnsendingTester : IDisposable
     {
         var id = await Tjeneste().SendInnAsync(Inndata("FA"), Innsender);
 
-        var forslag = await _t.Db.Forslag.SingleAsync(f => f.Id == id);
+        await using var kontroll = await _t.Factory.CreateDbContextAsync();
+        var forslag = await kontroll.Forslag.SingleAsync(f => f.Id == id);
         Assert.Equal(Opphav.Bruker, forslag.Opphav);
         Assert.Equal("bruker-1", forslag.KildeEllerInnsender);
         Assert.Equal(FristStatus.Forslag, forslag.Status);
@@ -96,7 +97,8 @@ public class ForslagsinnsendingTester : IDisposable
 
         await Tjeneste().SendInnPaaNyttAsync(id, redigering, Innsender);
 
-        var forslag = await _t.Db.Forslag.SingleAsync(f => f.Id == id);
+        await using var kontroll = await _t.Factory.CreateDbContextAsync();
+        var forslag = await kontroll.Forslag.SingleAsync(f => f.Id == id);
         Assert.Equal(FristStatus.Forslag, forslag.Status);
         Assert.Equal("Justert tittel", forslag.Tittel);
     }

@@ -15,7 +15,7 @@ public class AdminTilgangTester
     private const string SbrGruppe = "sbr-objekt-id";
 
     private static BrukeroppslagTjeneste Tjeneste(Testdatabase tdb) => new(
-        tdb.Db,
+        tdb.Factory,
         Options.Create(new EntraGruppeOpsjoner()),
         Options.Create(new AdministratortilgangOpsjoner { KildeClaimType = "groups", Gruppeider = [SbrGruppe] }));
 
@@ -41,7 +41,8 @@ public class AdminTilgangTester
         var resultat = await Tjeneste(tdb).HentEllerOpprettAsync(Principal("u-sbr", "Sivert SBR", iSbr: true));
 
         Assert.Equal(Funksjonsrolle.Administrator, resultat.Funksjonsrolle);
-        var lagret = await tdb.Db.Brukere.FindAsync("u-sbr");
+        await using var kontroll = await tdb.Factory.CreateDbContextAsync();
+        var lagret = await kontroll.Brukere.FindAsync("u-sbr");
         Assert.True(lagret!.AdminViaEntra);
         Assert.True(lagret.ErFin);
     }
@@ -70,7 +71,8 @@ public class AdminTilgangTester
         var resultat = await Tjeneste(tdb).HentEllerOpprettAsync(Principal("u-forlot", "Forlot SBR", iSbr: false));
 
         Assert.Equal(Funksjonsrolle.Bidragsyter, resultat.Funksjonsrolle); // FIN-ansatt faller til bidragsyter
-        var lagret = await tdb.Db.Brukere.FindAsync("u-forlot");
+        await using var kontroll = await tdb.Factory.CreateDbContextAsync();
+        var lagret = await kontroll.Brukere.FindAsync("u-forlot");
         Assert.False(lagret!.AdminViaEntra);
     }
 
@@ -89,7 +91,8 @@ public class AdminTilgangTester
         var resultat = await Tjeneste(tdb).HentEllerOpprettAsync(Principal("u-seed", "Seedet Admin", iSbr: false));
 
         Assert.Equal(Funksjonsrolle.Administrator, resultat.Funksjonsrolle);
-        var lagret = await tdb.Db.Brukere.FindAsync("u-seed");
+        await using var kontroll = await tdb.Factory.CreateDbContextAsync();
+        var lagret = await kontroll.Brukere.FindAsync("u-seed");
         Assert.False(lagret!.AdminViaEntra);
     }
 

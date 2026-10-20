@@ -30,6 +30,9 @@ Ved nye innganger må policyene håndheves og testes der.
 - [Entra-roller og tokenfeed](adr/0003-tilgang-og-kalenderdeling.md).
 - [Internkalender](adr/0004-internkalender.md).
 - [Arbeidsflyt](adr/0005-arbeidsflyt.md).
+- [Én DbContext per tjenesteoperasjon](adr/0006-operasjonsavgrenset-dbcontext.md).
+
+Se [gjeldende status](status.md) for leverte endringer og åpne oppgaver.
 
 Detaljmodellen finnes i `SYSTEMARKITEKTUR.md`; kravene i
 `kravdokument-aarshjul-frister_v2.md` og `BRUKERHISTORIER.md`.

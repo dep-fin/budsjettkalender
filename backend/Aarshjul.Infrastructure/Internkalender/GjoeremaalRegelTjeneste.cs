@@ -10,10 +10,11 @@ namespace Aarshjul.Infrastructure.Internkalender;
 /// og knyttes til én eller flere rundetyper; ved generering (se <see cref="InternkalenderTjeneste"/>)
 /// beregnes et konkret gjøremål per runde. Alle handlinger er SBR-handlinger (policy i web-laget).
 /// </summary>
-public class GjoeremaalRegelTjeneste(AppDbContext db) : IGjoeremaalRegler
+public class GjoeremaalRegelTjeneste(IDbContextFactory<AppDbContext> dbFactory) : IGjoeremaalRegler
 {
     public async Task<IReadOnlyList<RegelDto>> HentAlleAsync(CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var regler = await db.GjoeremaalRegler.AsNoTracking()
             .Include(r => r.Rundetyper)
             .Include(r => r.Ansvarlige)
@@ -32,6 +33,7 @@ public class GjoeremaalRegelTjeneste(AppDbContext db) : IGjoeremaalRegler
 
     public async Task<RegelInndata?> HentForRedigeringAsync(Guid id, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var r = await db.GjoeremaalRegler.AsNoTracking()
             .Include(x => x.Rundetyper)
             .Include(x => x.Ansvarlige)
@@ -60,6 +62,7 @@ public class GjoeremaalRegelTjeneste(AppDbContext db) : IGjoeremaalRegler
 
     public async Task<Guid> OpprettAsync(RegelInndata inndata, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         Valider(inndata);
         var r = new GjoeremaalRegel { Id = Guid.NewGuid(), Tittel = inndata.Tittel.Trim() };
         SettFelter(r, inndata);
@@ -70,6 +73,7 @@ public class GjoeremaalRegelTjeneste(AppDbContext db) : IGjoeremaalRegler
 
     public async Task OppdaterAsync(Guid id, RegelInndata inndata, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         Valider(inndata);
         var r = await db.GjoeremaalRegler
             .Include(x => x.Rundetyper)
@@ -88,6 +92,7 @@ public class GjoeremaalRegelTjeneste(AppDbContext db) : IGjoeremaalRegler
 
     public async Task SlettAsync(Guid id, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var r = await db.GjoeremaalRegler.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (r is not null)
         {

@@ -27,7 +27,7 @@ public class OpplastingsTjenesteTester : IDisposable
     {
         var synlighetsregel = new Synlighetsregel(Options.Create(new SynlighetsregelOpsjoner()));
         return new OpplastingsTjeneste(
-            _t.Db, new StubPdftekst(dokumenttekst), new HeuristiskDatouttrekk(),
+            _t.Factory, new StubPdftekst(dokumenttekst), new HeuristiskDatouttrekk(),
             synlighetsregel, new FastKlokke(new DateOnly(2026, 6, 1)));
     }
 

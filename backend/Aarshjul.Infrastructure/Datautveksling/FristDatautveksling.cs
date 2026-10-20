@@ -11,10 +11,11 @@ namespace Aarshjul.Infrastructure.Datautveksling;
 /// bryte fremmednøkkelen mot <see cref="Synlighetsgruppe"/>. Ingen synlighet slippes til klienten
 /// her; dette er en administratoroperasjon i backend.
 /// </summary>
-public sealed class FristDatautveksling(AppDbContext db, TimeProvider klokke) : IFristDatautveksling
+public sealed class FristDatautveksling(IDbContextFactory<AppDbContext> dbFactory, TimeProvider klokke) : IFristDatautveksling
 {
     public async Task<FristDatabase> EksporterAsync(CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var frister = await db.Frister
             .AsNoTracking()
             .Include(f => f.Synlighet)
@@ -53,6 +54,7 @@ public sealed class FristDatautveksling(AppDbContext db, TimeProvider klokke) : 
 
     public async Task<ImportResultat> ImporterAsync(FristDatabase database, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         ArgumentNullException.ThrowIfNull(database);
         Importvalidering.Kontroller(database.Versjon, database.Frister, f => f.Id);
 
@@ -121,10 +123,6 @@ public sealed class FristDatautveksling(AppDbContext db, TimeProvider klokke) : 
         catch
         {
             await transaksjon.RollbackAsync(CancellationToken.None);
-            // Blazor kan gjenbruke tjenesten etter en feil: kast bare importens sporede rader.
-            foreach (var entry in db.ChangeTracker.Entries()
-                .Where(e => e.Entity is FristSynlighet or Frist).ToList())
-                entry.State = EntityState.Detached;
             throw;
         }
     }

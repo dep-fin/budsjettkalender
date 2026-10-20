@@ -18,7 +18,7 @@ public class InternkalenderTester : IDisposable
 
     public InternkalenderTester()
     {
-        _tj = new InternkalenderTjeneste(_t.Db, new FastKlokke(new DateOnly(2026, 8, 3)));
+        _tj = new InternkalenderTjeneste(_t.Factory, new FastKlokke(new DateOnly(2026, 8, 3)));
     }
 
     // --- Runder ---

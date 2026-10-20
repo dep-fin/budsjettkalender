@@ -12,7 +12,7 @@ namespace Aarshjul.Infrastructure.Brukere;
 /// Administrator følger konfigurert Entra-gruppe; manuell admin bevares. POL mappes aldri automatisk.
 /// </summary>
 public class BrukeroppslagTjeneste(
-    AppDbContext db,
+    IDbContextFactory<AppDbContext> dbFactory,
     IOptions<EntraGruppeOpsjoner> opsjoner,
     IOptions<AdministratortilgangOpsjoner> adminOpsjoner) : IBrukeroppslag
 {
@@ -24,10 +24,11 @@ public class BrukeroppslagTjeneste(
 
     public async Task<GjeldendeBruker> HentEllerOpprettAsync(ClaimsPrincipal principal, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var id = HentId(principal) ?? throw new InvalidOperationException("Mangler stabil bruker-id (oid/sub) i token.");
         var navn = HentNavn(principal) ?? id;
 
-        var entraKoder = await UtledEntraGrupperAsync(principal, ct);
+        var entraKoder = await UtledEntraGrupperAsync(db, principal, ct);
         var erAdminGruppe = ErIAdminGruppe(principal);
         // SBR er i Finansavdelingen; admin-gruppemedlemskap innebærer FIN-tilhørighet.
         var erFin = erAdminGruppe || entraKoder.Any(k => FinGrupper.Contains(k));
@@ -117,7 +118,7 @@ public class BrukeroppslagTjeneste(
         }
     }
 
-    private async Task<IReadOnlyList<string>> UtledEntraGrupperAsync(ClaimsPrincipal principal, CancellationToken ct)
+    private async Task<IReadOnlyList<string>> UtledEntraGrupperAsync(AppDbContext db, ClaimsPrincipal principal, CancellationToken ct)
     {
         var koder = principal.FindAll(_opsjoner.KildeClaimType)
             .Select(c => c.Value)

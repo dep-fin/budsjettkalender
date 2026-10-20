@@ -10,7 +10,7 @@ namespace Aarshjul.Tests;
 /// </summary>
 public class KalenderabonnementTester
 {
-    private static KalenderabonnementTjeneste Tjeneste(Testdatabase tdb) => new(tdb.Db, TimeProvider.System);
+    private static KalenderabonnementTjeneste Tjeneste(Testdatabase tdb) => new(tdb.Factory, TimeProvider.System);
 
     private static async Task SeedGruppe(Testdatabase tdb, string kode, string navn)
     {

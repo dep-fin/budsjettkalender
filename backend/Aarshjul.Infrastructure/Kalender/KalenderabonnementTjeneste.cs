@@ -11,10 +11,11 @@ namespace Aarshjul.Infrastructure.Kalender;
 /// Base64 — praktisk umulig å gjette, og feed-endepunktet svarer 404 på ukjente/avskrudde tokens
 /// slik at lenker ikke kan enumeres. Gruppen valideres mot aktive synlighetsgrupper ved opprettelse.
 /// </summary>
-public class KalenderabonnementTjeneste(AppDbContext db, TimeProvider klokke) : IKalenderabonnement
+public class KalenderabonnementTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvider klokke) : IKalenderabonnement
 {
     public async Task<KalenderabonnementDto> OpprettAsync(string? gruppeKode, string opprettetAv, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         string etikett;
         if (string.IsNullOrWhiteSpace(gruppeKode))
         {
@@ -48,6 +49,7 @@ public class KalenderabonnementTjeneste(AppDbContext db, TimeProvider klokke) : 
 
     public async Task<IReadOnlyList<KalenderabonnementDto>> HentAlleAsync(CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var abonnementer = await db.Kalenderabonnementer
             .AsNoTracking()
             .OrderByDescending(a => a.OpprettetTid)
@@ -57,6 +59,7 @@ public class KalenderabonnementTjeneste(AppDbContext db, TimeProvider klokke) : 
 
     public async Task SettAktivAsync(Guid id, bool aktiv, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var abonnement = await db.Kalenderabonnementer.FirstOrDefaultAsync(a => a.Id == id, ct)
             ?? throw new Valideringsfeil("Abonnementslenken finnes ikke.");
         abonnement.Aktiv = aktiv;
@@ -65,6 +68,7 @@ public class KalenderabonnementTjeneste(AppDbContext db, TimeProvider klokke) : 
 
     public async Task SlettAsync(Guid id, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var abonnement = await db.Kalenderabonnementer.FirstOrDefaultAsync(a => a.Id == id, ct);
         if (abonnement is null)
         {
@@ -76,6 +80,7 @@ public class KalenderabonnementTjeneste(AppDbContext db, TimeProvider klokke) : 
 
     public async Task<Feedutvalg?> HentAktivtUtvalgAsync(string token, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (string.IsNullOrWhiteSpace(token))
         {
             return null;

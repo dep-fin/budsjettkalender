@@ -14,11 +14,12 @@ namespace Aarshjul.Infrastructure.Brukerforslag;
 /// men er kun et forslag administrator beslutter endelig. Avviste forslag bevares og kan
 /// redigeres og sendes inn på nytt.
 /// </summary>
-public class ForslagsinnsendingTjeneste(AppDbContext db) : IForslagsinnsending
+public class ForslagsinnsendingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : IForslagsinnsending
 {
     public async Task<Guid> SendInnAsync(BrukerforslagInndata inndata, GjeldendeBruker innsender, CancellationToken ct = default)
     {
-        var (synlighet, type) = await ValiderAsync(inndata, ct);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var (synlighet, type) = await ValiderAsync(db, inndata, ct);
 
         var forslag = new Forslag
         {
@@ -40,6 +41,7 @@ public class ForslagsinnsendingTjeneste(AppDbContext db) : IForslagsinnsending
 
     public async Task<IReadOnlyList<MineForslagElement>> HentMineAsync(string brukerId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var forslag = await db.Forslag.AsNoTracking()
             .Where(f => f.Opphav == Opphav.Bruker && f.KildeEllerInnsender == brukerId)
             .ToListAsync(ct);
@@ -55,6 +57,7 @@ public class ForslagsinnsendingTjeneste(AppDbContext db) : IForslagsinnsending
 
     public async Task<BrukerforslagInndata?> HentForRedigeringAsync(Guid forslagId, string brukerId, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var f = await db.Forslag.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == forslagId && x.Opphav == Opphav.Bruker && x.KildeEllerInnsender == brukerId, ct);
         if (f is null)
@@ -76,6 +79,7 @@ public class ForslagsinnsendingTjeneste(AppDbContext db) : IForslagsinnsending
 
     public async Task SendInnPaaNyttAsync(Guid forslagId, BrukerforslagInndata inndata, GjeldendeBruker innsender, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var forslag = await db.Forslag
             .FirstOrDefaultAsync(x => x.Id == forslagId && x.Opphav == Opphav.Bruker && x.KildeEllerInnsender == innsender.Id, ct)
             ?? throw new Valideringsfeil("Forslaget finnes ikke eller tilhører ikke deg.");
@@ -83,7 +87,7 @@ public class ForslagsinnsendingTjeneste(AppDbContext db) : IForslagsinnsending
         if (forslag.Status != FristStatus.Avvist)
             throw new Valideringsfeil("Bare avviste forslag kan sendes inn på nytt.");
 
-        var (synlighet, type) = await ValiderAsync(inndata, ct);
+        var (synlighet, type) = await ValiderAsync(db, inndata, ct);
         SettFelter(forslag, inndata);
         forslag.ForeslaattSynlighet = JsonSerializer.Serialize(synlighet);
         forslag.ForslagType = type;
@@ -104,7 +108,7 @@ public class ForslagsinnsendingTjeneste(AppDbContext db) : IForslagsinnsending
     }
 
     /// <summary>Validerer tittel + (valgfri) foreslått synlighet, og utleder forslagstype.</summary>
-    private async Task<(List<string> Synlighet, ForslagType Type)> ValiderAsync(BrukerforslagInndata inndata, CancellationToken ct)
+    private async Task<(List<string> Synlighet, ForslagType Type)> ValiderAsync(AppDbContext db, BrukerforslagInndata inndata, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(inndata.Tittel))
             throw new Valideringsfeil("Tittel må fylles ut.");

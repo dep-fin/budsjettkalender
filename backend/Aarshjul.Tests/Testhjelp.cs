@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Aarshjul.Tests;
 
 /// <summary>
-/// Bygger en <see cref="AppDbContext"/> mot SQLite in-memory (åpen tilkobling holdes i live),
-/// slik at synlighetstestene kjører mot ekte EF-oversettelse uten ekstern database.
+/// Holder en navngitt SQLite-minnedatabase i live. Fabrikken lager en ny kontekst og
+/// tilkobling per operasjon; Db er en separat kontekst for testoppsett.
 /// </summary>
 public sealed class Testdatabase : IDisposable
 {
@@ -15,24 +15,32 @@ public sealed class Testdatabase : IDisposable
 
     public Testdatabase()
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
+        var tilkobling = $"Data Source=test-{Guid.NewGuid()};Mode=Memory;Cache=Shared";
+        _connection = new SqliteConnection(tilkobling);
         _connection.Open();
 
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite(_connection)
+            .UseSqlite(tilkobling)
             .Options;
 
-        Db = new AppDbContext(options);
+        Factory = new Testkontekstfabrikk(options);
+        Db = Factory.CreateDbContext();
         Db.Database.EnsureCreated();
     }
 
     public AppDbContext Db { get; }
+    public IDbContextFactory<AppDbContext> Factory { get; }
 
     public void Dispose()
     {
         Db.Dispose();
         _connection.Dispose();
     }
+}
+
+internal sealed class Testkontekstfabrikk(DbContextOptions<AppDbContext> options) : IDbContextFactory<AppDbContext>
+{
+    public AppDbContext CreateDbContext() => new(options);
 }
 
 /// <summary>TimeProvider med fast «nå», for deterministiske dato-/historikktester.</summary>

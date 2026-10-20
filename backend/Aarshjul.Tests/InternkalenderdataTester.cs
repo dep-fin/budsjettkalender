@@ -52,7 +52,7 @@ public class InternkalenderdataTester : IDisposable
         await Internkalenderdata.SeedReglerAsync(_t.Db);
         await _t.Db.SaveChangesAsync();
 
-        var kal = new InternkalenderTjeneste(_t.Db, new FastKlokke(new DateOnly(2026, 1, 1)));
+        var kal = new InternkalenderTjeneste(_t.Factory, new FastKlokke(new DateOnly(2026, 1, 1)));
         var runde = await kal.GenererRundeAsync(Rundetype.Marsrunden, 2028, "Test");
         var gjoeremaal = await kal.HentGjoeremaalAsync(runde, null);
 
@@ -72,7 +72,7 @@ public class InternkalenderdataTester : IDisposable
     {
         await Internkalenderdata.SeedReglerAsync(_t.Db);
         await _t.Db.SaveChangesAsync();
-        var kal = new InternkalenderTjeneste(_t.Db, new FastKlokke(new DateOnly(2026, 1, 1)));
+        var kal = new InternkalenderTjeneste(_t.Factory, new FastKlokke(new DateOnly(2026, 1, 1)));
 
         var mars = await kal.HentGjoeremaalAsync(await kal.GenererRundeAsync(Rundetype.Marsrunden, 2028, "T"), null);
         var rnb = await kal.HentGjoeremaalAsync(await kal.GenererRundeAsync(Rundetype.Rnb, 2028, "T"), null);

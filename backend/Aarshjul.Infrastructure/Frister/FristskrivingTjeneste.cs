@@ -9,11 +9,12 @@ namespace Aarshjul.Infrastructure.Frister;
 /// Oppretter og oppdaterer frister på vegne av administrator. Håndhever at synlighet er valgt
 /// aktivt (ingen stilltiende standard) og at valgte koder peker på eksisterende, aktive grupper.
 /// </summary>
-public class FristskrivingTjeneste(AppDbContext db) : IFristskriving
+public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : IFristskriving
 {
     public async Task<Guid> OpprettAsync(FristInndata inndata, CancellationToken ct = default)
     {
-        var koder = await ValiderAsync(inndata, ct);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var koder = await ValiderAsync(db, inndata, ct);
 
         var frist = new Frist
         {
@@ -36,7 +37,8 @@ public class FristskrivingTjeneste(AppDbContext db) : IFristskriving
 
     public async Task OppdaterAsync(Guid id, FristInndata inndata, CancellationToken ct = default)
     {
-        var koder = await ValiderAsync(inndata, ct);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var koder = await ValiderAsync(db, inndata, ct);
 
         var frist = await db.Frister
             .Include(f => f.Synlighet)
@@ -63,6 +65,7 @@ public class FristskrivingTjeneste(AppDbContext db) : IFristskriving
 
     public async Task<FristInndata?> HentForRedigeringAsync(Guid id, CancellationToken ct = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         var frist = await db.Frister
             .AsNoTracking()
             .Include(f => f.Synlighet)
@@ -104,7 +107,7 @@ public class FristskrivingTjeneste(AppDbContext db) : IFristskriving
     }
 
     /// <summary>Validerer skjemaet og returnerer normaliserte, gyldige gruppekoder.</summary>
-    private async Task<List<string>> ValiderAsync(FristInndata inndata, CancellationToken ct)
+    private static async Task<List<string>> ValiderAsync(AppDbContext db, FristInndata inndata, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(inndata.Tittel))
         {

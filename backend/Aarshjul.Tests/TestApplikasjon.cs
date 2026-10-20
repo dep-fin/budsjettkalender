@@ -22,13 +22,14 @@ namespace Aarshjul.Tests;
 /// </summary>
 public class TestApplikasjon : WebApplicationFactory<Program>
 {
-    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private readonly string _tilkobling = $"Data Source=web-{Guid.NewGuid()};Mode=Memory;Cache=Shared";
+    private SqliteConnection? _connection;
 
     public TestApplikasjon()
     {
         // Bygg host (kjører ConfigureWebHost), opprett skjema og seed mot SQLite-tilkoblingen.
         using var scope = Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        using var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext();
         db.Database.EnsureCreated();
         Seed(db);
     }
@@ -36,13 +37,12 @@ public class TestApplikasjon : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        _connection = new SqliteConnection(_tilkobling);
         _connection.Open();
 
         builder.ConfigureServices(services =>
         {
-            services.AddSingleton(_connection);
-            services.AddDbContext<AppDbContext>((sp, o) =>
-                o.UseSqlite(sp.GetRequiredService<SqliteConnection>()));
+            services.AddDbContextFactory<AppDbContext>(o => o.UseSqlite(_tilkobling));
 
             // Test-autentiseringen injiserer rolle/grupper direkte som claims; fjern
             // claims-transformasjonen (dekket av egen enhetstest) så den ikke overstyrer dem.
@@ -100,7 +100,7 @@ public class TestApplikasjon : WebApplicationFactory<Program>
         base.Dispose(disposing);
         if (disposing)
         {
-            _connection.Dispose();
+            _connection?.Dispose();
         }
     }
 }
