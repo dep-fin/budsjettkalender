@@ -105,39 +105,11 @@ public class Maltjeneste(IDbContextFactory<AppDbContext> dbFactory) : IMaltjenes
 
         try
         {
-            switch (inndata.Regeltype)
-            {
-                case Regeltype.FastDato:
-                    Regelparser.FastDato(inndata.Regelparametre);
-                    break;
-                case Regeltype.RelativUkedag:
-                    var u = Regelparser.RelativUkedag(inndata.Regelparametre);
-                    Regelparser.TolkUkedag(u.Ukedag);
-                    if (u.Maaned is < 1 or > 12)
-                    {
-                        throw new Valideringsfeil("Måned må være 1–12.");
-                    }
-                    if (u.FraDag is int fd && (fd < 1 || fd > 31))
-                    {
-                        throw new Valideringsfeil("«fra_dag» må være mellom 1 og 31.");
-                    }
-                    break;
-                case Regeltype.RelativTilMilepael:
-                    var m = Regelparser.RelativTilMilepael(inndata.Regelparametre);
-                    if (string.IsNullOrWhiteSpace(m.AnkerLoep))
-                    {
-                        throw new Valideringsfeil("Anker-løp må fylles ut for relativ-til-milepæl-regel.");
-                    }
-                    break;
-            }
+            Regelparser.Valider(inndata.Regeltype, inndata.Regelparametre);
         }
         catch (FormatException e)
         {
             throw new Valideringsfeil($"Regelparametrene kan ikke tolkes: {e.Message}");
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            throw new Valideringsfeil("Regelparametrene er ikke gyldig JSON.");
         }
     }
 }

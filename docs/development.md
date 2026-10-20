@@ -62,6 +62,16 @@ Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også 
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.
 
+## Malregler og import
+
+Regresjonene for felles parameterkontroll ligger ved IMaltjeneste og IMalDatautveksling:
+`dotnet test backend/Aarshjul.slnx --filter FullyQualifiedName~RegelvalideringTester`.
+Testene dekker avvisning før manuell endring, advarsel/utelating per importregel,
+kompatible eldre titler, gyldige datoberegninger og rollback etter faktisk sletting.
+Samme tjeneste kan brukes igjen etter en lagringsfeil; operasjonskonteksten disponeres.
+Se [ADR-0008](adr/0008-felles-validering-av-gjentaksregler.md) for parameterfelter,
+innstrammingen til uke 1–5 og hvorfor en helt ugyldig erstatt-alt-fil gir en tom mal.
+
 ## Avhengigheter
 
 `packages.lock.json` i hvert prosjekt låser hele avhengighetsgrafen.

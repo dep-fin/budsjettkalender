@@ -21,6 +21,8 @@ som endres sammen; vurder abstraksjoner ut fra eksisterende behov.
 - Forslag bruker et lagringsinternt versjonstoken som AppDbContext fornyer ved alle sporede
   innsettinger og endringer. Ikke omgå dette med bulkoppdateringer; se [ADR-0007](docs/adr/0007-konkurransekontroll-ved-godkjenning.md).
 - Valider importkontrakter før sletting. Erstatt-alt-operasjoner skal være atomiske.
+- Gjentaksreglenes parameterkontrakt valideres i Regelparser for både manuell lagring og import;
+  se [ADR-0008](docs/adr/0008-felles-validering-av-gjentaksregler.md) for feil- og kompatibilitetskrav.
 - Filtrer synlighet i databasespørringen før projeksjon og retur.
 - Bevar godkjenningskrav, eksplisitt POL-valg og skillet mellom frister og gjøremål.
 

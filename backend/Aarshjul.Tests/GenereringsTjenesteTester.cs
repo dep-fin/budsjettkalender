@@ -68,6 +68,26 @@ public class GenereringsTjenesteTester : IDisposable
     }
 
     [Fact]
+    public async Task Eldre_lagrede_regler_med_ugyldig_json_eller_nullukedag_rapporteres_uten_aa_stanse_genereringen()
+    {
+        await LeggRegel("gyldig", "{\"maaned\":3,\"dag\":20}");
+        _t.Db.Gjentaksregler.AddRange(
+            new Gjentaksregel { Loep = "jsonfeil", Regeltype = Regeltype.FastDato, Regelparametre = "{" },
+            new Gjentaksregel { Loep = "nullukedag", Regeltype = Regeltype.RelativUkedag, Regelparametre = "{\"maaned\":3,\"uke\":2,\"ukedag\":null}" },
+            new Gjentaksregel { Loep = "mangler-offset", Regeltype = Regeltype.RelativTilMilepael, Regelparametre = "{\"anker_loep\":\"gyldig\"}" });
+        await _t.Db.SaveChangesAsync();
+        IGenereringstjeneste tjeneste = Tjeneste();
+
+        var resultat = await tjeneste.GenererAsync(new GenereringsForespoersel(2026));
+
+        Assert.Equal(1, resultat.AntallForslag);
+        Assert.Equal(3, resultat.Feil.Count);
+        var forslag = Assert.Single(await tjeneste.HentGenererteAsync(2026));
+        Assert.Equal("gyldig", forslag.Loep);
+        Assert.Equal(new DateOnly(2026, 3, 20), forslag.Dato);
+    }
+
+    [Fact]
     public async Task Generering_lager_forslag_av_type_generert()
     {
         await LeggRegel("marskonferanse", "{\"maaned\":3,\"dag\":2,\"aar_forskyvning\":-1}");

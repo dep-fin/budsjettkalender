@@ -45,12 +45,7 @@ public sealed class MalDatautveksling(IDbContextFactory<AppDbContext> dbFactory,
         Importvalidering.Kontroller(database.Versjon, database.Regler, r => r.Id);
 
         var advarsler = new List<string>();
-
-        var eksisterende = await db.Gjentaksregler.ToListAsync(ct);
-        var antallErstattet = eksisterende.Count;
-        db.Gjentaksregler.RemoveRange(eksisterende);
-
-        var importert = 0;
+        var kandidater = new List<Gjentaksregel>();
         foreach (var kilde in database.Regler)
         {
             if (string.IsNullOrWhiteSpace(kilde.Loep))
@@ -59,60 +54,32 @@ public sealed class MalDatautveksling(IDbContextFactory<AppDbContext> dbFactory,
                 continue;
             }
 
-            if (!ParametreErGyldige(kilde, out var grunn))
+            try
             {
-                advarsler.Add($"«{(string.IsNullOrWhiteSpace(kilde.Tittel) ? kilde.Loep : kilde.Tittel)}»: hoppet over — {grunn}");
+                Regelparser.Valider(kilde.Regeltype, kilde.Regelparametre);
+            }
+            catch (FormatException e)
+            {
+                advarsler.Add($"«{(string.IsNullOrWhiteSpace(kilde.Tittel) ? kilde.Loep : kilde.Tittel)}»: hoppet over — {e.Message}");
                 continue;
             }
 
-            db.Gjentaksregler.Add(new Gjentaksregel
+            kandidater.Add(new Gjentaksregel
             {
                 Id = kilde.Id == Guid.Empty ? Guid.NewGuid() : kilde.Id,
                 Loep = kilde.Loep.Trim(),
-                Tittel = kilde.Tittel.Trim(),
+                Tittel = (kilde.Tittel ?? "").Trim(),
                 Kategori = kilde.Kategori,
                 Regeltype = kilde.Regeltype,
-                Regelparametre = string.IsNullOrWhiteSpace(kilde.Regelparametre) ? "{}" : kilde.Regelparametre.Trim(),
+                Regelparametre = kilde.Regelparametre.Trim(),
                 Valgaarssensitiv = kilde.Valgaarssensitiv
             });
-            importert++;
         }
 
+        var eksisterende = await db.Gjentaksregler.ToListAsync(ct);
+        db.Gjentaksregler.RemoveRange(eksisterende);
+        db.Gjentaksregler.AddRange(kandidater);
         await db.SaveChangesAsync(ct);
-        return new ImportResultat(importert, antallErstattet, advarsler);
-    }
-
-    /// <summary>Kontrollerer at parametrene kan tolkes for regeltypen (samme krav som ved manuell lagring).</summary>
-    private static bool ParametreErGyldige(MalRegelEksport regel, out string grunn)
-    {
-        try
-        {
-            switch (regel.Regeltype)
-            {
-                case Regeltype.FastDato:
-                    Regelparser.FastDato(regel.Regelparametre);
-                    break;
-                case Regeltype.RelativUkedag:
-                    var u = Regelparser.RelativUkedag(regel.Regelparametre);
-                    Regelparser.TolkUkedag(u.Ukedag);
-                    break;
-                case Regeltype.RelativTilMilepael:
-                    var m = Regelparser.RelativTilMilepael(regel.Regelparametre);
-                    if (string.IsNullOrWhiteSpace(m.AnkerLoep))
-                    {
-                        grunn = "mangler anker-løp.";
-                        return false;
-                    }
-                    break;
-            }
-        }
-        catch (Exception e) when (e is FormatException or System.Text.Json.JsonException)
-        {
-            grunn = "ugyldige regelparametre.";
-            return false;
-        }
-
-        grunn = "";
-        return true;
+        return new ImportResultat(kandidater.Count, eksisterende.Count, advarsler);
     }
 }
