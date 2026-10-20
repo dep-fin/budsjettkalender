@@ -9,7 +9,7 @@ namespace Aarshjul.Infrastructure.Brukere;
 /// <summary>
 /// Oppretter/oppdaterer brukeren fra token-claims og synkroniserer Entra-utledede
 /// gruppemedlemskap, uten å røre manuelt satte medlemskap (beslutning 2026-06-18).
-/// Setter aldri administratorrolle automatisk og mapper aldri POL automatisk.
+/// Administrator følger konfigurert Entra-gruppe; manuell admin bevares. POL mappes aldri automatisk.
 /// </summary>
 public class BrukeroppslagTjeneste(
     AppDbContext db,
@@ -64,8 +64,9 @@ public class BrukeroppslagTjeneste(
         // manuelt satt administrator (AdminViaEntra == false) røres aldri.
         if (erAdminGruppe)
         {
+            var erManuellAdmin = bruker.Funksjonsrolle == Funksjonsrolle.Administrator && !bruker.AdminViaEntra;
             bruker.Funksjonsrolle = Funksjonsrolle.Administrator;
-            bruker.AdminViaEntra = true;
+            bruker.AdminViaEntra = !erManuellAdmin;
         }
         else if (bruker.AdminViaEntra)
         {

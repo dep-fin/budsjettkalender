@@ -1,7 +1,5 @@
-# frontend
+# Brukergrensesnitt
 
-Presentasjon alene — mottar ferdig filtrerte data og håndhever ingen tilgang. De tre
-visningene (tidslinje/liste, kalender, årshjul), landingsflate, godkjenningskø og
-administratorflater. Serveres fra samme Azure-ledd som API-et. Se kravdokumentet kap. 7.
-
-Plassholder — fylles ut i Fase 1 når stacken er bekreftet.
+Dette er en historisk mappepeker. Det aktive grensesnittet er Blazor Interactive Server
+i `backend/Aarshjul.Web/Components/`, med delte komponenter i `Komponenter/` og CSS i
+`wwwroot/app.css`. Arbeidsmåten står i [CONTRIBUTING.md](../CONTRIBUTING.md).

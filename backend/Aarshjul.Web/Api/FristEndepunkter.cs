@@ -29,7 +29,7 @@ public static class FristEndepunkter
 
         gruppe.MapGet("/landing", async (HttpContext http, ISynlighetskontekst ctx, IFristlesing lesing, TimeProvider klokke, CancellationToken ct) =>
         {
-            var idag = DateOnly.FromDateTime(klokke.GetUtcNow().UtcDateTime);
+            var idag = Datohjelp.Idag(klokke);
             var frister = await lesing.HentLandingsutvalgAsync(ctx, idag, LesFilter(http.Request.Query), ct);
             return Results.Ok(frister);
         });

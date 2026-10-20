@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Aarshjul.Tests;
 
@@ -56,6 +58,24 @@ public class FristApiTester(TestApplikasjon app) : IClassFixture<TestApplikasjon
         var klient = app.CreateClient();
         var svar = await klient.GetAsync("/api/frister");
         Assert.Equal(HttpStatusCode.Unauthorized, svar.StatusCode);
+    }
+
+    [Fact]
+    public async Task Landing_flytter_frist_til_historikk_ved_norsk_midnatt()
+    {
+        using var lokalApp = app.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddSingleton<TimeProvider>(new MidnattKlokke())));
+        using var klient = lokalApp.CreateClient();
+        klient.DefaultRequestHeaders.Add("X-Test-Rolle", "Administrator");
+
+        // Fristene i testappen er 1. juni; i Oslo er det allerede 2. juni.
+        var svar = await klient.GetFromJsonAsync<List<FristSvar>>("/api/frister/landing", Json);
+        Assert.Empty(svar!);
+    }
+
+    private sealed class MidnattKlokke : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(2027, 6, 1, 22, 30, 0, TimeSpan.Zero);
     }
 
     private sealed record FristSvar(string Tittel, IReadOnlyList<string> Synlighet);

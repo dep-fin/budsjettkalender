@@ -40,6 +40,7 @@ public sealed class MalDatautveksling(AppDbContext db, TimeProvider klokke) : IM
     public async Task<ImportResultat> ImporterAsync(MalDatabase database, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(database);
+        Importvalidering.Kontroller(database.Versjon, database.Regler, r => r.Id);
 
         var advarsler = new List<string>();
 

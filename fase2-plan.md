@@ -1,11 +1,13 @@
+> Historisk faseplan. Gjeldende arbeidsflyt: [CONTRIBUTING.md](CONTRIBUTING.md). Åpne funn: [gjennomgangen](docs/reviews/2026-10-20.md).
+
 # Fase 2 — Automatikk og samhandling: detaljert plan
 
 Detaljert byggeplan for fase 2, lagt fram før kode skrives (jf. utviklingsplanen
 Del C). Planen er forankret i den faktiske fase 1-koden (PR #1, merget til main):
 .NET 10-solution `backend/Aarshjul.slnx` lagdelt i Domain/Application/Infrastructure/
 Web/Tests, Blazor Web App (Interactive Server) + minimal-API, EF Core mot Azure SQL.
-Se @.claude/rules/arkitektur.md for stack, miljøoppsett, kommandoer og kart over hvor
-fase 1-koden bor, og @.claude/rules/beslutningslogg.md for fremdrift og åpne forhold.
+Se @docs/architecture.md for stack, miljøoppsett, kommandoer og kart over hvor
+fase 1-koden bor, og @docs/archive/beslutningslogg-claude.md for fremdrift og åpne forhold.
 
 Kravgrunnlag: @kravdokument-aarshjul-frister_v2.md kap. 4, 5, 8, 9.5;
 @SYSTEMARKITEKTUR.md kap. 3.2, 3.4, 5, 6, 9.

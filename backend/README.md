@@ -1,6 +1,7 @@
-# backend
+# Backend og web
 
-API, forretningslogikk, autorisering og synlighetsfiltrering. All tilgangskontroll ligger
-her, aldri i frontend. Se kravdokumentet kap. 9.1 og SYSTEMARKITEKTUR.md kap. 2 og 4.
+Løsningen i `Aarshjul.slnx` inneholder Domain, Application, Infrastructure, Web,
+Tests og Kilder. Blazor-grensesnittet ligger i `Aarshjul.Web/Components`.
 
-Plassholder — fylles ut i Fase 1 når stacken er bekreftet.
+Se [arkitektur](../docs/architecture.md), [utvikling](../docs/development.md) og
+[arbeidsflyt](../CONTRIBUTING.md). Tilgangskontroll håndheves på server.

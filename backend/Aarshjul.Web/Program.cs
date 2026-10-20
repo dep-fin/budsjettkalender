@@ -47,6 +47,8 @@ var erTesting = builder.Environment.IsEnvironment("Testing");
 // `MapStaticAssets` i et ikke-Development-miljø forventer publisert asset-layout).
 var erDemo = builder.Configuration.GetValue<bool>("Demo")
              || builder.Environment.IsEnvironment("Demo");
+if (erDemo && !builder.Environment.IsDevelopment() && !builder.Environment.IsEnvironment("Demo"))
+    throw new InvalidOperationException("Demo er bare tillatt i Development- eller Demo-miljøet.");
 var brukEntra = !erTesting && !erDemo;
 
 // --- Database. Produksjon: Azure SQL. Demo: SQLite-fil. Test: registreres av testene. ---

@@ -29,6 +29,7 @@ public sealed class FristDatautveksling(AppDbContext db, TimeProvider klokke) : 
             Dato = f.Dato,
             Datopresisjon = f.Datopresisjon,
             Datokvalifikator = f.Datokvalifikator,
+            Klokkeslett = f.Klokkeslett,
             Budsjettaar = f.Budsjettaar,
             Kategori = f.Kategori,
             Loep = f.Loep,
@@ -53,61 +54,78 @@ public sealed class FristDatautveksling(AppDbContext db, TimeProvider klokke) : 
     public async Task<ImportResultat> ImporterAsync(FristDatabase database, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(database);
+        Importvalidering.Kontroller(database.Versjon, database.Frister, f => f.Id);
 
         var gyldigeKoder = (await db.Synlighetsgrupper.AsNoTracking().Select(g => g.Kode).ToListAsync(ct))
             .ToHashSet(StringComparer.Ordinal);
         var advarsler = new List<string>();
 
-        // Erstatt-alt: fjern eksisterende frister (synlighet kaskaderes via FristSynlighet-FK).
-        var eksisterende = await db.Frister.Include(f => f.Synlighet).ToListAsync(ct);
-        var antallErstattet = eksisterende.Count;
-        db.Frister.RemoveRange(eksisterende);
-
-        // Fjern tilbakestående synlighetsrader eksplisitt (robust dersom kaskade er avslått i test).
-        db.FristSynlighet.RemoveRange(db.FristSynlighet);
-        await db.SaveChangesAsync(ct);
-
-        var importert = 0;
-        foreach (var kilde in database.Frister)
+        // Sletting og innlegging må lykkes samlet, også hvis innleggingen feiler.
+        await using var transaksjon = await db.Database.BeginTransactionAsync(ct);
+        try
         {
-            var koder = new List<string>();
-            foreach (var kode in kilde.SynligFor.Distinct(StringComparer.Ordinal))
+            // Erstatt-alt: fjern eksisterende frister (synlighet kaskaderes via FristSynlighet-FK).
+            var eksisterende = await db.Frister.Include(f => f.Synlighet).ToListAsync(ct);
+            var antallErstattet = eksisterende.Count;
+            db.Frister.RemoveRange(eksisterende);
+
+            // Fjern tilbakestående synlighetsrader eksplisitt (robust dersom kaskade er avslått i test).
+            db.FristSynlighet.RemoveRange(db.FristSynlighet);
+            await db.SaveChangesAsync(ct);
+
+            var importert = 0;
+            foreach (var kilde in database.Frister)
             {
-                if (gyldigeKoder.Contains(kode))
+                var koder = new List<string>();
+                foreach (var kode in kilde.SynligFor.Distinct(StringComparer.Ordinal))
                 {
-                    koder.Add(kode);
+                    if (gyldigeKoder.Contains(kode))
+                    {
+                        koder.Add(kode);
+                    }
+                    else
+                    {
+                        advarsler.Add($"«{kilde.Tittel}»: hoppet over ukjent synlighetsgruppe «{kode}».");
+                    }
                 }
-                else
+
+                var frist = new Frist
                 {
-                    advarsler.Add($"«{kilde.Tittel}»: hoppet over ukjent synlighetsgruppe «{kode}».");
-                }
+                    Id = kilde.Id == Guid.Empty ? Guid.NewGuid() : kilde.Id,
+                    Tittel = kilde.Tittel,
+                    Dato = kilde.Dato,
+                    Datopresisjon = kilde.Datopresisjon,
+                    Datokvalifikator = kilde.Datokvalifikator,
+                    Klokkeslett = kilde.Klokkeslett,
+                    Budsjettaar = kilde.Budsjettaar,
+                    Kategori = kilde.Kategori,
+                    Loep = kilde.Loep,
+                    Kilde = kilde.Kilde,
+                    DokumentId = kilde.DokumentId,
+                    Status = kilde.Status,
+                    Opphav = kilde.Opphav,
+                    ForeslaattAv = kilde.ForeslaattAv,
+                    Notat = kilde.Notat,
+                    GjentaRegelId = kilde.GjentaRegelId,
+                    Synlighet = koder.Select(k => new FristSynlighet { GruppeKode = k }).ToList()
+                };
+                frist.OppdaterSorteringsdag();
+                db.Frister.Add(frist);
+                importert++;
             }
 
-            var frist = new Frist
-            {
-                Id = kilde.Id == Guid.Empty ? Guid.NewGuid() : kilde.Id,
-                Tittel = kilde.Tittel,
-                Dato = kilde.Dato,
-                Datopresisjon = kilde.Datopresisjon,
-                Datokvalifikator = kilde.Datokvalifikator,
-                Budsjettaar = kilde.Budsjettaar,
-                Kategori = kilde.Kategori,
-                Loep = kilde.Loep,
-                Kilde = kilde.Kilde,
-                DokumentId = kilde.DokumentId,
-                Status = kilde.Status,
-                Opphav = kilde.Opphav,
-                ForeslaattAv = kilde.ForeslaattAv,
-                Notat = kilde.Notat,
-                GjentaRegelId = kilde.GjentaRegelId,
-                Synlighet = koder.Select(k => new FristSynlighet { GruppeKode = k }).ToList()
-            };
-            frist.OppdaterSorteringsdag();
-            db.Frister.Add(frist);
-            importert++;
+            await db.SaveChangesAsync(ct);
+            await transaksjon.CommitAsync(ct);
+            return new ImportResultat(importert, antallErstattet, advarsler);
         }
-
-        await db.SaveChangesAsync(ct);
-        return new ImportResultat(importert, antallErstattet, advarsler);
+        catch
+        {
+            await transaksjon.RollbackAsync(CancellationToken.None);
+            // Blazor kan gjenbruke tjenesten etter en feil: kast bare importens sporede rader.
+            foreach (var entry in db.ChangeTracker.Entries()
+                .Where(e => e.Entity is FristSynlighet or Frist).ToList())
+                entry.State = EntityState.Detached;
+            throw;
+        }
     }
 }

@@ -1,0 +1,49 @@
+# Årshjul for budsjettfrister
+
+Felles språk for publiserte budsjettfrister og SBRs interne arbeidsliste.
+Begrepene beskriver eksisterende kode og produktkrav.
+
+## Frister
+
+**Frist**: En datofestet enhet med budsjettår, kategori og synlighet. Bare godkjente frister
+inngår i ordinære leseutvalg.
+_Unngå_: Gjøremål (som er en annen enhet).
+
+**Løp** (`Loep`): Funksjonen fristen tilhører, for eksempel rammefordeling.
+Rundskrivnummer er kildeinformasjon og identifiserer ikke løpet.
+
+**Budsjettår**: Året budsjettet gjelder. Fristens kalenderdato kan falle i et annet år.
+
+**Forslag**: En upublisert kandidat fra bruker, robot eller generering, med behandlingsstatus.
+Et endringsforslag viser til en eksisterende frist og endrer innholdet uten å endre synlighet.
+
+**Godkjenningskø**: Administratorens behandling av løpende forslag. Genererte forslag
+behandles på egen genereringsflate.
+
+**Uttrekksbevis**: Kildeutdrag og tolket verdi per felt i et robotforslag.
+
+**Gjentaksregel**: Malregel som beregner en frist for et budsjettår.
+_Unngå_: Gjøremålsregel (som hører til internkalenderen).
+
+**Anker**: Et annet løps dato som en relativ gjentaksregel beregnes fra.
+
+**Tentativ frist**: Frist uten sikker dagsdato, representert med månedspresisjon og eventuell
+primo/medio/ultimo-kvalifikator. Sorteringsdagen er et avledet visningspunkt.
+
+## Tilgang og deling
+
+**Funksjonsrolle**: Administrator, bidragsyter eller leser; avgjør tillatte handlinger.
+
+**Synlighetsgruppe**: Et publikum for fristdata, blant annet FA, FIN-FAG, FAG og POL.
+POL betyr politisk ledelse og tildeles eksplisitt.
+
+**Kalenderabonnement**: Tilbakekallbar tokenlenke til en serverfiltrert iCalendar-feed.
+En nedlastet ICS-fil er et øyeblikksbilde, mens abonnementet hentes på nytt av kalenderklienten.
+
+## Internkalender
+
+**Internrunde**: SBRs arbeidsrunde for en rundetype og et år, med egne interne gjøremål.
+
+**Internt gjøremål**: En arbeidsoppgave med ansvarlige og fullføringsstatus, skilt fra publiserte frister.
+
+**Gjøremålsregel**: En mal for å generere interne gjøremål i en internrunde.
