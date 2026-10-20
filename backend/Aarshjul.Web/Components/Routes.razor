@@ -15,3 +15,20 @@
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
+
+@* Første interaktive render er en observerbar klar-tilstand for nettleserkontroll.
+   Prerender har ennå ingen hendelsesbehandlere, selv om skjemaene er synlige. *@
+<span hidden data-interaktiv="@(_interaktiv ? "klar" : "venter")"></span>
+
+@code {
+    private bool _interaktiv;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _interaktiv = true;
+            StateHasChanged();
+        }
+    }
+}

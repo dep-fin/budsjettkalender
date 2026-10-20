@@ -20,6 +20,44 @@ demoinnlogging. Miljøet Demo krever publiserte assets; bruk launch-profilen und
 Ved modellendring må demo-databasen flyttes til en sikkerhetskopi eller gjenskapes;
 `EnsureCreated` oppgraderer ikke skjemaet.
 
+## Obligatorisk nettleserakseptanse
+
+`backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
+eksisterende app eller database: hvert av de 12 scenarioene starter Kestrel i Development
+med Demo=true, tilfeldig loopback-port og ny SQLite-fil. Ingen eksterne tjenester brukes.
+Bare syntetiske personaer og filer benyttes. Kjør fra repo-roten:
+
+```sh
+dotnet restore backend/Aarshjul.BrowserTests/Aarshjul.BrowserTests.csproj --locked-mode
+dotnet build backend/Aarshjul.Web -c Release --no-restore
+dotnet build backend/Aarshjul.BrowserTests -c Release --no-restore
+pwsh backend/Aarshjul.BrowserTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+dotnet test backend/Aarshjul.BrowserTests -c Release --no-build --logger 'trx;LogFileName=browser.trx' --results-directory BrowserTestResults
+```
+
+På Windows kan installert Edge brukes ved å sette `$env:AARSHJUL_BROWSER_CHANNEL = 'msedge'`;
+da trengs ikke browserinstallasjonen. `AARSHJUL_DOTNET` kan angi en absolutt SDK-kjørbar fil,
+ellers brukes `dotnet` fra PATH. `AARSHJUL_BROWSER_EVIDENCE` kan angi en lokal mappe for nye
+undermapper med demo-database, app-logg, representative kalenderskjermbilder og nedlastinger.
+Standard er systemets tempmappe. Testen stopper bare app-prosessen den selv opprettet.
+Oppstartsfeil og feil ved lukking utløser opprydding av alle opprettede kontekster,
+nettleseren, Playwright og demoprosessen. Oppryddingsfeil rapporteres samlet og beholder
+en eventuell opprinnelig oppstarts- eller scenariofeil; de gjør ikke et feilet scenario grønt.
+
+Alle UI-handler bruker tilgjengelige navn og avgrensede forventninger. Før skriving venter
+testen på første interaktive render; synlig prerender alene er ikke tilstrekkelig.
+Nye personakontekster gir nye cookies. API-kontroller krysser samme serversynlighet som UI.
+JavaScript-/konsollfeil og brudd i Blazor-kretsen gjør scenarioet rødt.
+En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighetskontrakten
+for to operasjoner forblir i Application-/SQL-testene.
+
+CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
+installerer systemavhengigheter og krever nøyaktig 12 beståtte scenarioer uten hopp.
+Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
+unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
+`deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
+Se [akseptansematrisen](acceptance/2026-10-20.md) for faktisk prøvd scope og eksterne grenser.
+
 ## Obligatorisk SQL Server-kontroll i CI
 
 `backend/Aarshjul.SqlServerTests` kjører samme 21 kontrakttilfeller ved IGodkjenningsko som

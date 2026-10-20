@@ -12,6 +12,7 @@ SQLite i lokal demo og tester. Entra ID autentiserer produksjonsbrukere.
 | Aarshjul.Kilder (backend/kilder) | IKilde og kildeuavhengige utfall/filtrering |
 | Aarshjul.Tests | xUnit med SQLite og WebApplicationFactory |
 | Aarshjul.SqlServerTests | Ekte SQL Server med migrasjoner; egen obligatorisk CI-jobb |
+| Aarshjul.BrowserTests | Ekte Playwright-nettleser mot Kestrel og disponibel demo; egen obligatorisk CI-jobb |
 
 ## Kritiske strømmer
 
@@ -34,6 +35,7 @@ Ved nye innganger må policyene håndheves og testes der.
 - [Én DbContext per tjenesteoperasjon](adr/0006-operasjonsavgrenset-dbcontext.md).
 - [Konkurransekontroll ved godkjenning](adr/0007-konkurransekontroll-ved-godkjenning.md).
 - [Felles validering av gjentaksregler](adr/0008-felles-validering-av-gjentaksregler.md).
+- [Separat nettleserakseptanse](adr/0009-nettleserakseptanse.md).
 
 Se [gjeldende status](status.md) for leverte endringer og åpne oppgaver.
 
