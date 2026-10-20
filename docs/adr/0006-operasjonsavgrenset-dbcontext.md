@@ -14,5 +14,5 @@ Application-grensesnittene og serverens synlighetsfiltrering beholdes.
 
 Oppgave #22 verifiseres ved IFristlesing og IFristskriving: samme tjeneste i samme scope
 fullfører et nytt kall mens første SELECT venter i en deterministisk testport. SQLite
-bruker uavhengige tilkoblinger til samme database. Dette løser kontekstdeling; samtidig
-godkjenning av samme forslag krever fortsatt egen konkurransekontroll i #23.
+bruker uavhengige tilkoblinger til samme database. Dette løser kontekstdeling. Konkurransekontroll
+for behandling av samme forslag er beskrevet i [ADR-0007](0007-konkurransekontroll-ved-godkjenning.md).

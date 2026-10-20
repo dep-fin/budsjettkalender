@@ -18,6 +18,8 @@ som endres sammen; vurder abstraksjoner ut fra eksisterende behov.
 - Send `CancellationToken` videre i asynkrone I/O-operasjoner.
 - Runtime-tjenester bruker `IDbContextFactory<AppDbContext>` og `await using` per offentlig
   operasjon. Private hjelpere deler operasjonens kontekst; se [ADR-0006](docs/adr/0006-operasjonsavgrenset-dbcontext.md).
+- Forslag bruker et lagringsinternt versjonstoken som AppDbContext fornyer ved alle sporede
+  innsettinger og endringer. Ikke omgå dette med bulkoppdateringer; se [ADR-0007](docs/adr/0007-konkurransekontroll-ved-godkjenning.md).
 - Valider importkontrakter før sletting. Erstatt-alt-operasjoner skal være atomiske.
 - Filtrer synlighet i databasespørringen før projeksjon og retur.
 - Bevar godkjenningskrav, eksplisitt POL-valg og skillet mellom frister og gjøremål.
@@ -25,6 +27,7 @@ som endres sammen; vurder abstraksjoner ut fra eksisterende behov.
 ## Tester og gjennomgang
 
 Test observerbar atferd ved Application-grenser og HTTP. Bruk SQLite for relasjonell
-oppførsel i lokale tester; Azure SQL/Entra krever egne miljøtester.
+oppførsel i lokale tester. Godkjenningskontrakten kjøres også mot ekte SQL Server i CI;
+se [utviklingsoppsettet](docs/development.md). Azure SQL/Entra krever egne miljøtester.
 Forventninger skal være uavhengige av implementasjonen.
 Gjennomgangen vurderer standarder og oppgavens akseptansekriterier i to separate spor.

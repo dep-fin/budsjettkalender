@@ -104,6 +104,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<Forslag>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property<Guid>("Versjon").IsConcurrencyToken();
             e.Property(x => x.Tittel).HasMaxLength(512);
             e.HasIndex(x => x.EndrerFristId);
             e.HasMany(x => x.UttrekksBevis).WithOne(u => u.Forslag)
@@ -209,13 +210,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         OppdaterSorteringsdager();
+        OppdaterForslagsversjoner();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         OppdaterSorteringsdager();
+        OppdaterForslagsversjoner();
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    // Samles her slik at alle endringer, også ny innsending av en avvist rad, får ny versjon.
+    // Skyggefeltet holder lagringsmekanikken utenfor domenemodellen og tjenestekontraktene.
+    private void OppdaterForslagsversjoner()
+    {
+        foreach (var entry in ChangeTracker.Entries<Forslag>())
+        {
+            if (entry.State is EntityState.Added or EntityState.Modified)
+                entry.Property<Guid>("Versjon").CurrentValue = Guid.NewGuid();
+        }
     }
 
     /// <summary>Sørger for at hver frist har et entydig sorteringspunkt før lagring.</summary>

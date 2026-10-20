@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\Testkontrakter\GodkjenningskonkurranseKontrakt.cs" Link="GodkjenningskonkurranseKontrakt.cs" />
   </ItemGroup>
 
   <ItemGroup>
