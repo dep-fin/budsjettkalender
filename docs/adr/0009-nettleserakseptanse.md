@@ -13,7 +13,8 @@ venter på hendelsesbehandlere i stedet for å skrive i prerenderte skjemaer.
 
 Prosjektet ligger utenfor den ordinære løsningen, som SQL Server-testene. Ingen
 nettleseravhengighet legges i produksjonsprosjektene. Egen CI-jobb installerer Chromium
-fra den låste Playwright-versjonen og krever 12 utførte scenarioer uten hopp.
+fra den låste Playwright-versjonen og krever alle scenarioer uten hopp; gjeldende antall
+står i [utviklingsoppsettet](../development.md#obligatorisk-nettleserakseptanse).
 Deploy gjenbruker hele CI og krever dermed alle tre testjobbene.
 
 Tokenfeed testes anonymt etter oppretting i UI. Bearer-URL-er beholdes i minnet;

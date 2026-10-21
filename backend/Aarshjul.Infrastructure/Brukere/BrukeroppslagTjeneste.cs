@@ -28,14 +28,16 @@ public class BrukeroppslagTjeneste(
         var id = HentId(principal) ?? throw new InvalidOperationException("Mangler stabil bruker-id (oid/sub) i token.");
         var navn = HentNavn(principal) ?? id;
 
-        var entraKoder = await UtledEntraGrupperAsync(db, principal, ct);
-        var erAdminGruppe = ErIAdminGruppe(principal);
-        // SBR er i Finansavdelingen; admin-gruppemedlemskap innebærer FIN-tilhørighet.
-        var erFin = erAdminGruppe || entraKoder.Any(k => FinGrupper.Contains(k));
-
         var bruker = await db.Brukere
             .Include(u => u.Grupper)
             .FirstOrDefaultAsync(u => u.Id == id, ct);
+
+        var eksisterendeEntraKoder = bruker?.Grupper
+            .Where(g => g.Kilde == GruppeMedlemskapKilde.Entra).Select(g => g.GruppeKode).ToList() ?? [];
+        var entraKoder = await UtledEntraGrupperAsync(db, principal, eksisterendeEntraKoder, ct);
+        var erAdminGruppe = ErIAdminGruppe(principal);
+        // SBR er i Finansavdelingen; admin-gruppemedlemskap innebærer FIN-tilhørighet.
+        var erFin = erAdminGruppe || entraKoder.Any(k => FinGrupper.Contains(k));
 
         if (bruker is null)
         {
@@ -118,7 +120,8 @@ public class BrukeroppslagTjeneste(
         }
     }
 
-    private async Task<IReadOnlyList<string>> UtledEntraGrupperAsync(AppDbContext db, ClaimsPrincipal principal, CancellationToken ct)
+    private async Task<IReadOnlyList<string>> UtledEntraGrupperAsync(AppDbContext db, ClaimsPrincipal principal,
+        IReadOnlyCollection<string> eksisterendeEntraKoder, CancellationToken ct)
     {
         var koder = principal.FindAll(_opsjoner.KildeClaimType)
             .Select(c => c.Value)
@@ -133,9 +136,10 @@ public class BrukeroppslagTjeneste(
             return koder;
         }
 
-        // Bare aktive, eksisterende grupper kan tildeles (unngår FK-brudd og døde koder).
+        // Deaktivering stanser nye tildelinger. Eksisterende Entra-medlemskap beholdes
+        // så lenge claimet fortsatt gjelder, også for tilgang til tidligere frister.
         var gyldige = await db.Synlighetsgrupper
-            .Where(g => g.Aktiv && koder.Contains(g.Kode))
+            .Where(g => koder.Contains(g.Kode) && (g.Aktiv || eksisterendeEntraKoder.Contains(g.Kode)))
             .Select(g => g.Kode)
             .ToListAsync(ct);
 

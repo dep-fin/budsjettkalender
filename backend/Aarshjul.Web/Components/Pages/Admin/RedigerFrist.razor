@@ -108,6 +108,19 @@ else
                         @gruppe.Navn (@gruppe.Kode)
                     </label>
                 }
+                @if (_inaktive.Count > 0)
+                {
+                    <p>Eksisterende tilordninger til inaktive grupper kan beholdes eller fjernes.</p>
+                    @foreach (var gruppe in _inaktive)
+                    {
+                        <label class="filtervalg @(gruppe.Kode == "POL" ? "pol-valg" : "")">
+                            <input type="checkbox"
+                                   @bind:get="_inndata.Synlighetskoder.Contains(gruppe.Kode)"
+                                   @bind:set="på => VekslGruppe(gruppe.Kode, på)" />
+                            @gruppe.Navn (@gruppe.Kode) – inaktiv, eksisterende tilordning
+                        </label>
+                    }
+                }
             </fieldset>
         }
 
@@ -124,6 +137,7 @@ else
 
     private FristInndata? _inndata;
     private IReadOnlyList<GruppeDto> _grupper = [];
+    private IReadOnlyList<GruppeadministrasjonDto> _inaktive = [];
     private string _kvalifikatorValg = "";
     private string? _feil;
     private bool _lastet;
@@ -144,6 +158,11 @@ else
             var forberedt = await Ko.HentForslagForJusteringAsync(forslagId);
             _inndata = forberedt?.Felter;
             _erEndre = forberedt?.ErEndring ?? false;
+            if (_inndata is not null && !_erEndre)
+            {
+                _inndata.Synlighetskoder = _inndata.Synlighetskoder
+                    .Where(k => _grupper.Any(g => g.Kode == k)).ToList();
+            }
         }
         else if (Id is null)
         {
@@ -152,6 +171,11 @@ else
         else
         {
             _inndata = await Skriving.HentForRedigeringAsync(Id.Value);
+            if (_inndata is not null)
+            {
+                _inaktive = (await Grupper.HentAlleAsync())
+                    .Where(g => !g.Aktiv && _inndata.Synlighetskoder.Contains(g.Kode)).ToList();
+            }
         }
 
         if (_inndata?.Datokvalifikator is { } k)

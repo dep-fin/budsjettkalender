@@ -1,0 +1,132 @@
+@page "/admin/grupper"
+@attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+@inject IGruppetjeneste Gruppetjeneste
+
+<PageTitle>Synlighetsgrupper</PageTitle>
+<h1>Synlighetsgrupper</h1>
+
+<p class="ingress">
+    Opprett grupper og vedlikehold visningsnavn og status. Koden er fast etter oppretting.
+    Inaktive grupper tilbys ikke i nye valg; eksisterende frister beholder synligheten sin.
+</p>
+
+@if (_feil is not null)
+{
+    <div class="feil" role="alert">@_feil</div>
+}
+@if (_melding is not null)
+{
+    <p class="melding" role="status">@_melding</p>
+}
+
+<form class="skjema" aria-label="Ny synlighetsgruppe" @onsubmit="Opprett" @onsubmit:preventDefault="true">
+    <h2>Ny gruppe</h2>
+    <label>Kode
+        <input @bind="_nyKode" maxlength="64" aria-describedby="kodehjelp" disabled="@_arbeider" />
+    </label>
+    <small id="kodehjelp" class="hint">1–64 tegn: A–Z, 0–9 og bindestrek. Begynn med en bokstav. Lagres med store bokstaver.</small>
+    <label>Visningsnavn
+        <input @bind="_nyttNavn" maxlength="256" disabled="@_arbeider" />
+    </label>
+    <button type="submit" class="knapp knapp-primær" disabled="@_arbeider">Opprett gruppe</button>
+</form>
+
+@if (_redigerKode is not null)
+{
+    <form class="skjema" aria-label="Rediger synlighetsgruppe" @onsubmit="Lagre" @onsubmit:preventDefault="true">
+        <h2>Rediger gruppe</h2>
+        <p>Kode: <strong>@_redigerKode</strong> (kan ikke endres)</p>
+        <label>Visningsnavn
+            <input @bind="_redigerNavn" maxlength="256" disabled="@_arbeider" />
+        </label>
+        <label class="filtervalg">
+            <input type="checkbox" @bind="_redigerAktiv" disabled="@_arbeider" /> Aktiv
+        </label>
+        <div class="skjemarad">
+            <button type="submit" class="knapp knapp-primær" disabled="@_arbeider">Lagre endringer</button>
+            <button type="button" class="knapp" @onclick="Avbryt" disabled="@_arbeider">Avbryt</button>
+        </div>
+    </form>
+}
+
+<h2>Alle grupper</h2>
+<table class="tabell">
+    <thead><tr><th>Kode</th><th>Visningsnavn</th><th>Type</th><th>Status</th><th>Handling</th></tr></thead>
+    <tbody>
+        @foreach (var gruppe in _grupper)
+        {
+            <tr @key="gruppe.Kode">
+                <td>@gruppe.Kode</td>
+                <td>@gruppe.Navn</td>
+                <td>@(gruppe.ErStandard ? "Innebygd" : "Egendefinert")</td>
+                <td>@(gruppe.Aktiv ? "Aktiv" : "Inaktiv")</td>
+                <td><button type="button" class="knapp" @onclick="() => Rediger(gruppe)" disabled="@_arbeider">Rediger</button></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private IReadOnlyList<GruppeadministrasjonDto> _grupper = [];
+    private string _nyKode = "";
+    private string _nyttNavn = "";
+    private string? _redigerKode;
+    private string _redigerNavn = "";
+    private bool _redigerAktiv;
+    private bool _arbeider;
+    private string? _feil;
+    private string? _melding;
+
+    protected override async Task OnInitializedAsync() => await Last();
+    private async Task Last() => _grupper = await Gruppetjeneste.HentAlleAsync();
+
+    private void Rediger(GruppeadministrasjonDto gruppe)
+    {
+        _feil = null;
+        _melding = null;
+        _redigerKode = gruppe.Kode;
+        _redigerNavn = gruppe.Navn;
+        _redigerAktiv = gruppe.Aktiv;
+    }
+
+    private void Avbryt()
+    {
+        _redigerKode = null;
+        _feil = null;
+    }
+
+    private async Task Opprett()
+    {
+        if (_arbeider) return;
+        _arbeider = true;
+        _feil = null;
+        _melding = null;
+        try
+        {
+            await Gruppetjeneste.OpprettAsync(_nyKode, _nyttNavn);
+            await Last();
+            _melding = "Gruppen er opprettet.";
+            _nyKode = "";
+            _nyttNavn = "";
+        }
+        catch (Valideringsfeil f) { _feil = f.Message; }
+        finally { _arbeider = false; }
+    }
+
+    private async Task Lagre()
+    {
+        if (_arbeider || _redigerKode is null) return;
+        _arbeider = true;
+        _feil = null;
+        _melding = null;
+        try
+        {
+            await Gruppetjeneste.OppdaterAsync(_redigerKode, _redigerNavn, _redigerAktiv);
+            await Last();
+            _redigerKode = null;
+            _melding = "Endringene er lagret.";
+        }
+        catch (Valideringsfeil f) { _feil = f.Message; }
+        finally { _arbeider = false; }
+    }
+}

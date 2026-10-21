@@ -15,14 +15,59 @@ ikke en liste over dagens urettede kodefeil.
 | [#36](https://github.com/depmartin/Budsjettkalender/issues/36) | 12 utførte nettleserscenarioer, demo-utlogging, manuelle ankre og ansvar i internkalender rettet | [Akseptanserapport og eksterne porter](acceptance/2026-10-20.md) |
 | [#46](https://github.com/depmartin/Budsjettkalender/issues/46) | Deterministiske usikkerhetsflagg med forklaring ved robotforslagenes uttrekksbevis, også for eldre forslag | Livsløp i oppgaven |
 | [#40](https://github.com/depmartin/Budsjettkalender/issues/40) | Key Vault-hemmeligheter lastes før Entra/database, med dokumentert kildeprioritet og trygge oppstartsfeil | Livsløp i oppgaven |
+| [#44](https://github.com/depmartin/Budsjettkalender/issues/44) | Administratorflate for oppretting, navneendring og deaktivering av synlighetsgrupper med stabil kode og bevarte referanser | Lokal kandidat; supplerende bevis i [akseptanserapporten](acceptance/2026-10-20.md#supplerende-akseptanse-for-44) |
 
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. Med #40 passerer 12 reelle Playwright-/Edge-scenarioer og 478 ordinære tester
+eksterne miljøporter. Med #44 passerer 17 reelle Playwright-/Edge-scenarioer og 512 ordinære tester
 passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.
+
+## Forvaltning av synlighetsgrupper
+
+[#44](https://github.com/depmartin/Budsjettkalender/issues/44) gir administrator en egen
+flate på `/admin/grupper` og lenken «Grupper». Egendefinerte grupper opprettes aktive.
+Kode trimmes, lagres med store bokstaver og har 1–64 ASCII-bokstaver, sifre eller bindestrek,
+med bokstav først. Visningsnavn trimmes og har 1–256 tegn. Duplikater avvises også for
+inaktive grupper. Navn og aktiv-status kan endres for eksisterende grupper; kode, ID og
+innebygd identitet endres aldri, og det finnes ingen sletteoperasjon.
+
+IGruppetjeneste bruker én kontekst per operasjon. Nye grupper inngår i de eksisterende
+synlighetsvalgene, og deaktivering fjerner dem fra nye valg og forhåndsvalg ved godkjenning,
+justering, generering og ny innsending av reviderte brukerforslag. Fristers tidligere koder
+og serverfiltrerte leseutvalg beholdes.
+Innhold kan redigeres med eksisterende inaktive tilordninger; skjemaet viser dem med status
+og mulighet for å fjerne dem. Nye inaktive tilordninger og gjeninnføring etter fjerning avvises.
+Eksisterende Entra-medlemskap beholdes ved deaktivering så lenge claimet fortsatt gjelder;
+bortfalt claim fjerner medlemskapet som før. Nye Entra-medlemskap krever aktiv gruppe.
+Det eksplisitte POL-valget og databasefilteret er uendret. Ny medlemskapsadministrasjon er
+fortsatt [#45](https://github.com/depmartin/Budsjettkalender/issues/45).
+Datamodell og migrasjoner er uendret.
+
+26 tjenestetilfeller og åtte HTTP-tilfeller prøver lagret utvalg, gyldige/ugyldige koder,
+navn, deaktivering, reaktivering, innebygd identitet og tilgang. Den første nye tjenesteprøven
+feilet fordi oppretting manglet; neste prøve feilet ved manglende oppdatering. Negative
+prøver fanget lagring av ugyldige verdier og rå databasefeil ved duplikater. HTTP-prøven
+viste først 404 for den manglende siden, og viser nå 401/403/200 for anonym/ikke-admin/admin.
+Direkte POST uten interaktivt skjema avvises med 400 uten endring; den er ikke et skrive-API.
+Nettleserprøven feilet først ved det manglende opprettingsskjemaet og passerer etter
+implementering. Se den supplerende akseptansematrisen for bevis og avgrensning.
+
+To tjenesteregresjoner fra review feilet først fordi samme Entra-principal mistet SKOK
+etter deaktivering og innholdsredigering av en SKOK-frist ble avvist. Etter retting passerer
+ekte brukeroppslag, gjenoppslag, SQLite-persistens og serverfiltrert lesing. Negative prøver
+bekrefter at nye inaktive tildelinger avvises og bortfalt claim fortsatt fjerner medlemskap.
+Nettleseren viste først skjult inaktivt valg ved fristredigering og avvist godkjenning i kø,
+justering, generering og ny innsending, selv etter aktivt FA-valg. Alle fem flyter passerer etter retting.
+Sluttbevis: TestResults/44-review-final2-ordinary.trx og
+BrowserTestResults/44-review-final2-browser.trx. Akseptanserapporten angir de enkelte
+røde/grønne resultatfilene og den målrettede kontraktkjøringen.
+
+P06 er implementert som lokal kandidat. Manuell pilotakseptanse og de eksterne portene
+P13–P15 under [#38](https://github.com/depmartin/Budsjettkalender/issues/38) står fortsatt åpne.
+Ingen produksjonsgodkjenning eller deploy er utført.
 
 ## Usikkerhetsflagg for robotforslag
 
@@ -169,18 +214,20 @@ innføres. Datooperasjoner for feed, lister og internoppgaver er utenfor denne r
 
 ## Verifikasjon
 
-SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **478 ordinære
+SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **512 ordinære
 tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer 447 fra #36, ni nye
-opplastings-/køtilfeller for #46 og 22 nye oppstartstilfeller for #40.
-12 nettleserscenarioer passerer med 0 feil/hopp.
+opplastings-/køtilfeller for #46, 22 nye oppstartstilfeller for #40 og 34 gruppe-/HTTP-/regresjonstilfeller for #44.
+17 nettleserscenarioer passerer med 0 feil/hopp.
 Nettleserprosjektets låste restore og Release-bygg passerer også.
 Den eksisterende CS0649-advarselen i Runde.razor er uendret.
-SQL Server-prosjektets låste restore og Release-bygg passerer. #40 endrer verken EF-modell,
+SQL Server-prosjektets låste restore og Release-bygg passerer. #44 endrer verken EF-modell,
 migrasjoner eller SQL-kontrakttilfeller. Lokale Markdown-lenker og git diff --check passerer.
+Lokal NuGet-kjøring ga NU1900 fordi sårbarhetsmetadata ikke kunne hentes; ingen auditkontroll
+er deaktivert. Kandidatens CI må bekrefte denne eksterne kontrollen.
 
 [CI for PR #35](https://github.com/depmartin/Budsjettkalender/actions/runs/39443717020)
 bekreftet før merge 442 ordinære og **22 SQL Server-tester**, begge med 0 feil og 0 hopp.
-Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #36, #46 eller #40.
+Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #36, #46, #40 eller #44.
 CI krever ekte SQL Server-tester uten hopp, og deploy venter på den jobben.
 Kommandoer og miljøkrav står i [utviklingsveiledningen](development.md).
 

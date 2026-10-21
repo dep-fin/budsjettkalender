@@ -7,14 +7,15 @@ namespace Aarshjul.Infrastructure.Frister;
 
 /// <summary>
 /// Oppretter og oppdaterer frister på vegne av administrator. Håndhever at synlighet er valgt
-/// aktivt (ingen stilltiende standard) og at valgte koder peker på eksisterende, aktive grupper.
+/// aktivt (ingen stilltiende standard). Nye tildelinger krever aktive grupper;
+/// eksisterende inaktive referanser kan beholdes ved redigering.
 /// </summary>
 public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : IFristskriving
 {
     public async Task<Guid> OpprettAsync(FristInndata inndata, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var koder = await ValiderAsync(db, inndata, ct);
+        var koder = await ValiderAsync(db, inndata, [], ct);
 
         var frist = new Frist
         {
@@ -38,12 +39,11 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : 
     public async Task OppdaterAsync(Guid id, FristInndata inndata, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var koder = await ValiderAsync(db, inndata, ct);
-
         var frist = await db.Frister
             .Include(f => f.Synlighet)
             .FirstOrDefaultAsync(f => f.Id == id, ct)
             ?? throw new Valideringsfeil("Fristen finnes ikke.");
+        var koder = await ValiderAsync(db, inndata, frist.Synlighet.Select(s => s.GruppeKode).ToList(), ct);
 
         SettFelter(frist, inndata);
 
@@ -107,7 +107,8 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : 
     }
 
     /// <summary>Validerer skjemaet og returnerer normaliserte, gyldige gruppekoder.</summary>
-    private static async Task<List<string>> ValiderAsync(AppDbContext db, FristInndata inndata, CancellationToken ct)
+    private static async Task<List<string>> ValiderAsync(AppDbContext db, FristInndata inndata,
+        IReadOnlyCollection<string> eksisterendeKoder, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(inndata.Tittel))
         {
@@ -126,7 +127,7 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : 
         }
 
         var gyldige = await db.Synlighetsgrupper
-            .Where(g => g.Aktiv && koder.Contains(g.Kode))
+            .Where(g => koder.Contains(g.Kode) && (g.Aktiv || eksisterendeKoder.Contains(g.Kode)))
             .Select(g => g.Kode)
             .ToListAsync(ct);
 
