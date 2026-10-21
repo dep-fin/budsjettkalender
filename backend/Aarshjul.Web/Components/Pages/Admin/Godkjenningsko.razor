@@ -95,13 +95,24 @@ else
                     @if (e.Bevis.Count > 0)
                     {
                         <table class="bevis">
-                            <thead><tr><th>Felt</th><th>Tolket</th><th>Kildeutdrag</th><th>Konfidens</th></tr></thead>
+                            <thead><tr><th>Felt</th><th>Tolket verdi og usikkerhet</th><th>Kildeutdrag</th><th>Konfidens</th></tr></thead>
                             <tbody>
                                 @foreach (var b in e.Bevis)
                                 {
-                                    <tr class="@(b.Konfidens < 0.5 ? "lav-konfidens" : "")">
+                                    <tr class="@(b.Flagg.Count > 0 ? "usikkert-felt" : "")">
                                         <td>@b.Felt</td>
-                                        <td>@b.TolketVerdi</td>
+                                        <td>
+                                            @b.TolketVerdi
+                                            @if (b.Flagg.Count > 0)
+                                            {
+                                                <ul class="usikkerhetsflagg">
+                                                    @foreach (var flagg in b.Flagg)
+                                                    {
+                                                        <li>@flagg.Forklaring</li>
+                                                    }
+                                                </ul>
+                                            }
+                                        </td>
                                         <td class="utdrag">@b.Kildeutdrag</td>
                                         <td>@b.Konfidens.ToString("0.00")</td>
                                     </tr>

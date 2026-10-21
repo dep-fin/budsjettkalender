@@ -16,7 +16,7 @@ public static class Datogjenkjenning
         @"|\d{4}-\d{1,2}-\d{1,2})\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    private static readonly Regex Aarstall = new(@"\b(19|20)\d{2}\b", RegexOptions.CultureInvariant);
+    private static readonly Regex Aarstall = new(@"\b\d{4}\b", RegexOptions.CultureInvariant);
 
     // Markører som signaliserer en relativ/upresis tidsangivelse (kravdok. 4.4: «ultimo mars»,
     // «innen seks dager etter Stortingets åpning»). Bevisst snevert for å unngå falske positiver.
@@ -37,7 +37,7 @@ public static class Datogjenkjenning
         return RelativeMarkorer.Any(m => t.Contains(m));
     }
 
-    /// <summary>Plukker ut første firesifrede årstall (19xx/20xx) i teksten, ellers null.</summary>
+    /// <summary>Plukker ut første firesifrede årstall i teksten, ellers null.</summary>
     public static int? ProvAarstall(string? tekst)
     {
         if (string.IsNullOrWhiteSpace(tekst))

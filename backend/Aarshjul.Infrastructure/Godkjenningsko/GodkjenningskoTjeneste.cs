@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Aarshjul.Application;
+using Aarshjul.Application.Datouttrekk;
 using Aarshjul.Application.Frister;
 using Aarshjul.Application.Godkjenningsko;
 using Aarshjul.Domain;
@@ -56,8 +57,7 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
             ForeslaattSynlighet = LesSynlighet(f.ForeslaattSynlighet),
             EndrerFristId = f.EndrerFristId,
             DokumentId = f.DokumentId,
-            Bevis = f.UttrekksBevis
-                .Select(b => new KoBevis(b.Felt, b.TolketVerdi, b.Kildeutdrag, b.Konfidens)).ToList(),
+            Bevis = BevisMedFlagg(f),
             Gjeldende = f.EndrerFristId is Guid id && gjeldende.TryGetValue(id, out var g) ? g : null
         });
 
@@ -76,6 +76,25 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
             .OrderBy(e => e.KildeEllerInnsender ?? "")
             .ThenBy(e => e.Tittel)
             .ToList();
+    }
+
+    private static IReadOnlyList<KoBevis> BevisMedFlagg(Forslag forslag)
+    {
+        // Lagrede bevis er vurderingsgrunnlaget også for eldre forslag. Ingen egen flagglagring
+        // eller tilbakefylling er nødvendig; kildeutdrag og tolket verdi beholdes uendret.
+        var resultat = new Uttrekksresultat
+        {
+            Felter = forslag.UttrekksBevis.Select(b => new Uttrekksfelt
+            {
+                Felt = b.Felt, TolketVerdi = b.TolketVerdi,
+                Kildeutdrag = b.Kildeutdrag, Konfidens = b.Konfidens
+            }).ToList()
+        };
+        var vurdering = Usikkerhetsregler.Vurder(resultat, forslag.Budsjettaar);
+        return forslag.UttrekksBevis.Select(b => new KoBevis(b.Felt, b.TolketVerdi, b.Kildeutdrag, b.Konfidens)
+        {
+            Flagg = vurdering.Flagg.Where(f => string.Equals(f.Felt, b.Felt, StringComparison.OrdinalIgnoreCase)).ToList()
+        }).ToList();
     }
 
     public async Task<Guid> GodkjennAsync(GodkjennInndata inndata, CancellationToken ct = default)

@@ -30,6 +30,31 @@ public sealed class DokumentTester
         await Expect(kort).ToHaveCountAsync(1);
         await Expect(kort.Locator("table.bevis")).ToContainTextAsync("2030-11-20");
         await Expect(kort.Locator("table.bevis")).ToContainTextAsync("AK dokument rammefordeling 20. november 2030");
+        await Expect(kort.Locator(".usikkerhetsflagg li")).ToHaveCountAsync(0);
+
+        await n.Gaa("/admin/last-opp");
+        // Datoen står etter det lagrede kildespennet på 600 tegn. Offline-uttrekket gir dermed
+        // en konkret verdi med relativt kildeutdrag uten dato, utenfor budsjettvinduet.
+        var usikkerKilde = "AK usikker rammefordeling ultimo mars <b>kildefelt</b> "
+            + string.Concat(Enumerable.Repeat("kildetekst ", 61)) + "20. november 2040";
+        await n.Side.GetByLabel("Dokument (PDF)").SetInputFilesAsync(new FilePayload
+        {
+            Name = "usikker.pdf", MimeType = "application/pdf", Buffer = Pdf(usikkerKilde)
+        });
+        await n.Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync("2031");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Les inn dokument", Exact = true }).ClickAsync();
+        await Expect(n.Side.Locator("main")).ToContainTextAsync("laget 1 forslag");
+        await n.Gaa("/admin/ko");
+        var usikkertKort = n.Side.Locator("article.kort").Filter(new() { HasText = "AK usikker rammefordeling" });
+        await Expect(usikkertKort).ToHaveCountAsync(1);
+        var datobevis = usikkertKort.Locator("table.bevis tbody tr").Filter(new() { HasText = "2040-11-20" });
+        await Expect(datobevis.Locator(".usikkerhetsflagg li")).ToHaveCountAsync(3);
+        await Expect(datobevis).ToContainTextAsync("Kilden er relativt formulert, men er tolket til en konkret dato");
+        await Expect(datobevis).ToContainTextAsync("Tolket dato har ingen gjenkjennelig dato i kildeutdraget");
+        await Expect(datobevis).ToContainTextAsync("Tolket årstall 2040 er utenfor forventet vindu for budsjettår 2031");
+        await Expect(datobevis).ToContainTextAsync("<b>kildefelt</b>");
+        await Expect(datobevis.Locator("b")).ToHaveCountAsync(0);
+        await n.Side.ScreenshotAsync(new() { Path = Path.Combine(n.Mappe, "usikkerhetsflagg.png"), FullPage = true });
         Assert.Equal(antall, (await n.Frister()).Count);
         n.BekreftIngenKretsfeil();
     });

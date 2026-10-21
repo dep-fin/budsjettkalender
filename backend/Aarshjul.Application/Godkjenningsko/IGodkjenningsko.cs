@@ -1,10 +1,14 @@
 using Aarshjul.Application.Frister;
+using Aarshjul.Application.Datouttrekk;
 using Aarshjul.Domain;
 
 namespace Aarshjul.Application.Godkjenningsko;
 
 /// <summary>Per-felt uttrekksbevis slik det vises i køen (tolket verdi + kildeutdrag + konfidens).</summary>
-public sealed record KoBevis(string Felt, string? TolketVerdi, string? Kildeutdrag, double Konfidens);
+public sealed record KoBevis(string Felt, string? TolketVerdi, string? Kildeutdrag, double Konfidens)
+{
+    public IReadOnlyList<Feltflagg> Flagg { get; init; } = [];
+}
 
 /// <summary>Gjeldende verdier på den publiserte fristen et endringsforslag peker på (før/etter-visning).</summary>
 public sealed record FristGjeldende(

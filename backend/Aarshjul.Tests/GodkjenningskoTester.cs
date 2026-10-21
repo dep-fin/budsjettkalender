@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Aarshjul.Application;
+using Aarshjul.Application.Datouttrekk;
 using Aarshjul.Application.Frister;
 using Aarshjul.Application.Godkjenningsko;
 using Aarshjul.Domain;
@@ -26,6 +27,49 @@ public class GodkjenningskoTester : IDisposable
     }
 
     private GodkjenningskoTjeneste Tjeneste() => new(_t.Factory);
+
+    [Theory]
+    [InlineData("15.12.2026", "15. desember 2026", 0.92)]
+    [InlineData("2027-03-31", "31. mars 2027", 0.10)]
+    [InlineData("2026-01-01", "1. januar 2026", 0.99)]
+    [InlineData("2029-12-31", "31. desember 2029", 0.99)]
+    public async Task Gyldige_eldre_bevis_vises_uten_flagg_ogsaa_med_lav_konfidens(
+        string tolket, string kilde, double konfidens)
+    {
+        var id = LeggForslag(); // Budsjettår 2028; eksisterende vindu er 2026–2029, inklusive.
+        _t.Db.UttrekksBevis.Add(new UttrekksBevis
+        {
+            Id = Guid.NewGuid(), ForslagId = id, Felt = "dato", TolketVerdi = tolket,
+            Kildeutdrag = kilde, Konfidens = konfidens
+        });
+        await _t.Db.SaveChangesAsync();
+        IGodkjenningsko ko = Tjeneste();
+
+        var forslag = Assert.Single(await ko.HentKoAsync());
+        var bevis = Assert.Single(forslag.Bevis);
+        Assert.Empty(bevis.Flagg);
+        Assert.Equal(tolket, bevis.TolketVerdi);
+        Assert.Equal(kilde, bevis.Kildeutdrag);
+        Assert.Equal(konfidens, bevis.Konfidens);
+    }
+
+    [Fact]
+    public async Task Eldre_bevis_med_manglende_kildeutdrag_flagges_uten_ny_opplasting()
+    {
+        var id = LeggForslag();
+        _t.Db.UttrekksBevis.Add(new UttrekksBevis
+        {
+            Id = Guid.NewGuid(), ForslagId = id, Felt = "DATO", TolketVerdi = "15.12.2026",
+            Kildeutdrag = null, Konfidens = 0.99
+        });
+        await _t.Db.SaveChangesAsync();
+        IGodkjenningsko ko = Tjeneste();
+
+        var bevis = Assert.Single(Assert.Single(await ko.HentKoAsync()).Bevis);
+        Assert.Equal(Usikkerhetsgrunn.KildeutdragUtenDato, Assert.Single(bevis.Flagg).Grunn);
+        Assert.Null(bevis.Kildeutdrag);
+        Assert.Equal("15.12.2026", bevis.TolketVerdi);
+    }
 
     private Guid LeggForslag(Opphav opphav = Opphav.Robot, string? kilde = "R-4/2027", string? loep = "rammefordeling",
         DateOnly? dato = null, string synlighetJson = "[\"FA\"]", ForslagType type = ForslagType.NyFrist, Guid? endrerFristId = null)

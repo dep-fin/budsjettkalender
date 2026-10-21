@@ -1,0 +1,6 @@
+.bevis { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.bevis th, .bevis td { text-align: left; vertical-align: top; padding: 0.5rem; overflow-wrap: anywhere; }
+.bevis th:first-child, .bevis th:last-child { width: 12%; }
+.bevis .usikkert-felt { background: #fff3cd; }
+.usikkerhetsflagg { margin: 0.5rem 0 0; padding-left: 1.2rem; }
+.usikkerhetsflagg li + li { margin-top: 0.4rem; }
