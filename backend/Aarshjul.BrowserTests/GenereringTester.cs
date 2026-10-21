@@ -16,7 +16,15 @@ public sealed class GenereringTester
             await n.Side.GetByLabel("Milepæl (eksisterende regel)").SelectOptionAsync("ak-fast");
             await n.Side.GetByLabel("Antall dager", new() { Exact = false }).FillAsync(parametre);
         }
-        else await n.Side.GetByLabel("Regelparametre (JSON)").FillAsync(parametre);
+        else
+        {
+            var felt = n.Side.GetByLabel("Regelparametre (JSON)");
+            // Regeltypevalget må ha vist nye standardparametre før vi erstatter dem.
+            await Expect(felt).ToHaveValueAsync(type == "RelativUkedag"
+                ? "{\"maaned\":3,\"uke\":2,\"ukedag\":\"man\",\"aar_forskyvning\":0}"
+                : "{\"maaned\":1,\"dag\":1,\"aar_forskyvning\":0}");
+            await felt.FillAsync(parametre);
+        }
         if (sensitiv) await n.Side.GetByLabel("Valgårssensitiv", new() { Exact = true }).CheckAsync();
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = tittel })).ToBeVisibleAsync();

@@ -85,9 +85,14 @@ public sealed class ForslagTester
         Assert.Equal("AK original", (string?)(await n.Frister()).Single(f => (string?)f!["id"] == id)!["tittel"]);
         await n.LoggInn("demo-admin");
         await n.Gaa("/admin/ko");
+        var nyFristMerker = n.Side.Locator("article.kort .kort-topp .merke").Filter(new() { HasText = "Ny frist" });
+        await Expect(nyFristMerker.First).ToBeVisibleAsync();
         await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Type", Exact = true }).SelectOptionAsync("Endring");
+        // De gamle kortene må være filtrert bort før vi åpner godkjenningen.
+        await Expect(nyFristMerker).ToHaveCountAsync(0);
         var kort = Kort(n.Side, "AK endret original");
         await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
+        await Expect(kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft godkjenning" })).ToBeVisibleAsync();
         await Expect(kort.Locator("fieldset.synlighet")).ToHaveCountAsync(0);
         await kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft godkjenning" }).ClickAsync();
         await Expect(kort).ToHaveCountAsync(0);
