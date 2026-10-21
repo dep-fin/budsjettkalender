@@ -57,7 +57,7 @@ public static class Usikkerhetsregler
                 flagg.Add(new Feltflagg(Uttrekksfelter.Dato, Usikkerhetsgrunn.KildeutdragUtenDato,
                     "Tolket dato har ingen gjenkjennelig dato i kildeutdraget — kontroller."));
 
-            // Regel 3 — dato utenfor forventet budsjettløpsvindu (~18 mnd: budsjettaar-2 .. budsjettaar+1).
+            // Regel 3 — dato utenfor eksisterende budsjettløpsvindu (hele kalenderår: budsjettaar-2 .. budsjettaar+1).
             if (Datogjenkjenning.ProvAarstall(dato.TolketVerdi) is int aar &&
                 (aar < budsjettaar - 2 || aar > budsjettaar + 1))
                 flagg.Add(new Feltflagg(Uttrekksfelter.Dato, Usikkerhetsgrunn.DatoUtenforForventetVindu,

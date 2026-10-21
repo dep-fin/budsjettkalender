@@ -1,6 +1,6 @@
 # Gjeldende status
 
-Oppdatert 20. oktober 2026. Denne siden beskriver implementert kode, testbevis og
+Oppdatert 21. oktober 2026. Denne siden beskriver implementert kode, testbevis og
 gjenstående grenser. GitHub-lenkene er kilden for oppgavenes og PR-enes livsløp.
 [Gjennomgangen fra 20. oktober](reviews/2026-10-20.md) er et datert utgangspunkt,
 ikke en liste over dagens urettede kodefeil.
@@ -13,14 +13,38 @@ ikke en liste over dagens urettede kodefeil.
 | [#24](https://github.com/depmartin/Budsjettkalender/issues/24) | Felles parameterkontroll for manuell mallagring og JSON-import | [PR #33](https://github.com/depmartin/Budsjettkalender/pull/33) |
 | [#34](https://github.com/depmartin/Budsjettkalender/issues/34) | Kontrollert datooverløp per regel, trygg årsregning og femte ukedag ved øvre datogrense | Livsløp i oppgaven |
 | [#36](https://github.com/depmartin/Budsjettkalender/issues/36) | 12 utførte nettleserscenarioer, demo-utlogging, manuelle ankre og ansvar i internkalender rettet | [Akseptanserapport og eksterne porter](acceptance/2026-10-20.md) |
+| [#46](https://github.com/depmartin/Budsjettkalender/issues/46) | Deterministiske usikkerhetsflagg med forklaring ved robotforslagenes uttrekksbevis, også for eldre forslag | Livsløp i oppgaven |
 
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. 12 reelle Playwright-/Edge-scenarioer og 447 ordinære tester
+eksterne miljøporter. Med #46 passerer 12 reelle Playwright-/Edge-scenarioer og 456 ordinære tester
 passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.
+
+## Usikkerhetsflagg for robotforslag
+
+[#46](https://github.com/depmartin/Budsjettkalender/issues/46) vurderer lagrede uttrekksbevis
+med Usikkerhetsregler når godkjenningskøen leses. Forklaringene vises ved tolket verdi og
+kildeutdrag: relativ formulering tolket til konkret dato, kildeutdrag uten gjenkjennelig
+dato og dato utenfor det eksisterende vinduet fra budsjettår −2 til +1, inklusive hele år.
+Lav konfidens alene gir ingen flagg. Firesifrede år utenfor 1900–2099 kontrolleres også.
+Avledning ved lesing dekker både nye opplastinger og eldre forslag uten migrasjon eller
+tilbakefylling. Kandidatutvalg, forkasting, publisering og aktivt POL-valg er uendret.
+
+Første regresjon gjennom IDokumentopplasting → IGodkjenningsko feilet fordi relativ kilde
+med konfidens 0,99 manglet flagg; samme test er grønn etter retting. En ny vindusregresjon
+fanget at 2100 ikke ble flagget. Det utvidede PDF-scenarioet feilet først med 0 av 3 synlige
+flagg og viser nå alle tre forklaringene. Nettleseren bekrefter også at kildeutdrag med
+HTML-tegn vises som tekst, gyldig forslag er uten flagg og ingen frist publiseres.
+De 12 eksisterende nettleserscenarioene er beholdt; ingen ny scenarioantallsgrense er innført.
+
+Lokal #46-evidens: TestResults/46-01-red.trx, 46-01-green.trx, 46-02-red.trx,
+46-02-green.trx, 46-03-browser-red.trx, 46-03-browser-green.trx,
+46-final-ordinary.trx og 46-final-browser.trx. App-logger, syntetiske demo-databaser og
+skjermbilde er bare lagret lokalt under temp/budsjettkalender-46-browser. Dette er
+SQLite-/Edge-bevis for kandidaten, ikke SQL Server-, Entra-, Azure- eller M365-bevis.
 
 Rapporten har konkrete operatørhandlinger for Entra/Azure SQL, Outlook/M365 og infrastruktur.
 Key Vault-provider, vedvarende Data Protection-oppsett og live-kildeworker er fortsatt
@@ -100,16 +124,17 @@ innføres. Datooperasjoner for feed, lister og internoppgaver er utenfor denne r
 
 ## Verifikasjon
 
-SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **447 ordinære
-tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer 442 fra #34 og fem nye
-HTTP-/Application-regresjoner for #36. 12 nettleserscenarioer passerer med 0 feil/hopp.
+SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **456 ordinære
+tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer 447 fra #36 og ni nye
+opplastings-/køtilfeller for #46. 12 nettleserscenarioer passerer med 0 feil/hopp.
+Nettleserprosjektets låste restore og Release-bygg passerer også.
 Den eksisterende CS0649-advarselen i Runde.razor er uendret.
 SQL Server-prosjektets låste restore og Release-bygg passerer. #36 endrer verken EF-modell,
 migrasjoner eller SQL-kontrakttilfeller. Lokale Markdown-lenker og git diff --check passerer.
 
 [CI for PR #35](https://github.com/depmartin/Budsjettkalender/actions/runs/39443717020)
 bekreftet før merge 442 ordinære og **22 SQL Server-tester**, begge med 0 feil og 0 hopp.
-Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #36.
+Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #36 eller #46.
 CI krever ekte SQL Server-tester uten hopp, og deploy venter på den jobben.
 Kommandoer og miljøkrav står i [utviklingsveiledningen](development.md).
 
