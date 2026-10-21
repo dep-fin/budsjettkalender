@@ -208,9 +208,10 @@ else if (_lastet && _resultat is not null)
 
     private void StartGodkjenn(GenerertForslagDto f, Korttilstand t)
     {
-        // Forhåndsutfyll foreslått synlighet, men aldri POL (settes kun ved aktivt valg).
+        // Forhåndsutfyll aktiv foreslått synlighet, men aldri POL (settes kun ved aktivt valg).
         t.Koder = f.ForeslaattSynlighet
-            .Where(k => !string.Equals(k, Pol, StringComparison.OrdinalIgnoreCase)).ToHashSet();
+            .Where(k => !string.Equals(k, Pol, StringComparison.OrdinalIgnoreCase) && _grupper.Any(g => g.Kode == k))
+            .ToHashSet();
         t.Feil = null;
         t.Modus = Kortmodus.Godkjenn;
     }

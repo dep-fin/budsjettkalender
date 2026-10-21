@@ -4,6 +4,7 @@ using Aarshjul.Application.Synlighet;
 using Aarshjul.Domain;
 using Aarshjul.Infrastructure;
 using Aarshjul.Infrastructure.Frister;
+using Aarshjul.Infrastructure.Grupper;
 using Microsoft.EntityFrameworkCore;
 
 namespace Aarshjul.Tests;
@@ -81,6 +82,47 @@ public class FristskrivingTester : IDisposable
 
         var frist = await _t.Db.Frister.Include(f => f.Synlighet).SingleAsync(f => f.Id == id);
         Assert.Equal(["FA", "POL"], frist.Synlighet.Select(s => s.GruppeKode).OrderBy(k => k));
+    }
+
+    [Fact]
+    public async Task Innholdsredigering_bevarer_eksisterende_inaktiv_synlighet()
+    {
+        var grupper = new Gruppetjeneste(_t.Factory);
+        await grupper.OpprettAsync("SKOK", "Skatteøkonomisk avdeling");
+        IFristskriving skriving = Tjeneste();
+        var id = await skriving.OpprettAsync(GyldigInndata("SKOK"));
+        await grupper.OppdaterAsync("SKOK", "Skatteøkonomisk avdeling", aktiv: false);
+
+        var inndata = (await skriving.HentForRedigeringAsync(id))!;
+        inndata.Tittel = "Endret innhold";
+        await skriving.OppdaterAsync(id, inndata);
+
+        var lagret = (await skriving.HentForRedigeringAsync(id))!;
+        Assert.Equal("Endret innhold", lagret.Tittel);
+        Assert.Equal(["SKOK"], lagret.Synlighetskoder);
+        var lesing = new FristTjeneste(_t.Factory, new FastKlokke(new DateOnly(2026, 1, 1)));
+        Assert.Equal("Endret innhold", (await lesing.HentEnAsync(new Synlighetskontekst(false, ["SKOK"]), id))!.Tittel);
+        Assert.Null(await lesing.HentEnAsync(new Synlighetskontekst(false, ["FA"]), id));
+    }
+
+    [Fact]
+    public async Task Inaktiv_tilordning_kan_fjernes_men_ikke_legges_til_eller_gjeninnfores()
+    {
+        var grupper = new Gruppetjeneste(_t.Factory);
+        await grupper.OpprettAsync("SKOK", "Skatteøkonomisk avdeling");
+        IFristskriving skriving = Tjeneste();
+        var id = await skriving.OpprettAsync(GyldigInndata("SKOK"));
+        var annenId = await skriving.OpprettAsync(GyldigInndata("FA"));
+        await grupper.OppdaterAsync("SKOK", "Skatteøkonomisk avdeling", aktiv: false);
+
+        await Assert.ThrowsAsync<Valideringsfeil>(() => skriving.OpprettAsync(GyldigInndata("SKOK")));
+        await Assert.ThrowsAsync<Valideringsfeil>(() => skriving.OppdaterAsync(annenId, GyldigInndata("FA", "SKOK")));
+        await skriving.OppdaterAsync(id, GyldigInndata("FA", "SKOK"));
+        Assert.Equal(["FA", "SKOK"], (await skriving.HentForRedigeringAsync(id))!.Synlighetskoder.OrderBy(k => k));
+        await skriving.OppdaterAsync(id, GyldigInndata("FA"));
+        await Assert.ThrowsAsync<Valideringsfeil>(() => skriving.OppdaterAsync(id, GyldigInndata("FA", "SKOK")));
+        Assert.Equal(["FA"], (await skriving.HentForRedigeringAsync(id))!.Synlighetskoder);
+        Assert.Equal(["FA"], (await skriving.HentForRedigeringAsync(annenId))!.Synlighetskoder);
     }
 
     [Fact]

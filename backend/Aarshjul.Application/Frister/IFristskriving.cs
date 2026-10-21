@@ -9,7 +9,8 @@ public interface IFristskriving
     /// <summary>Oppretter en publisert frist med valgt synlighet. Kaster <see cref="Valideringsfeil"/> ved tom synlighet.</summary>
     Task<Guid> OpprettAsync(FristInndata inndata, CancellationToken ct = default);
 
-    /// <summary>Oppdaterer en eksisterende frist. Kaster <see cref="Valideringsfeil"/> ved tom synlighet.</summary>
+    /// <summary>Oppdaterer en eksisterende frist. Eksisterende inaktive gruppetilordninger kan
+    /// beholdes eller fjernes; nye krever aktive grupper. Kaster <see cref="Valideringsfeil"/> ved tom synlighet.</summary>
     Task OppdaterAsync(Guid id, FristInndata inndata, CancellationToken ct = default);
 
     /// <summary>Henter en frist som inndata for redigering, eller null om den ikke finnes.</summary>

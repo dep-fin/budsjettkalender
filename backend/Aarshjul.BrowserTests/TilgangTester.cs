@@ -8,7 +8,7 @@ public sealed class TilgangTester
     [Fact]
     public Task Demo_rollegjerder_og_utlogging_er_reelle_navigasjoner() => Nettleser.Kjor(async n =>
     {
-        var stier = new[] { "/", "/kalender", "/aarshjul", "/admin/ko", "/internkalender", "/forslag/mine", "/varsler" };
+        var stier = new[] { "/", "/kalender", "/aarshjul", "/admin/ko", "/admin/grupper", "/internkalender", "/forslag/mine", "/varsler" };
         foreach (var sti in stier)
         {
             await n.Side.GotoAsync(sti);
@@ -30,7 +30,7 @@ public sealed class TilgangTester
             }
             var admin = persona is "demo-admin" or "demo-sbr";
             var bidrag = persona is "demo-fa" or "demo-finfag";
-            foreach (var sti in new[] { "/admin/ko", "/internkalender", "/forslag/mine", "/varsler" })
+            foreach (var sti in new[] { "/admin/ko", "/admin/grupper", "/internkalender", "/forslag/mine", "/varsler" })
             {
                 await n.Side.GotoAsync(sti);
                 var tillatt = sti.StartsWith("/admin") || sti == "/internkalender" ? admin : bidrag;

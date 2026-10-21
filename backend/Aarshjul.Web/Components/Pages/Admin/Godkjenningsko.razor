@@ -222,10 +222,12 @@ else
     private void StartGodkjenn(Koelement e, Korttilstand t)
     {
         // Endringsforslag rører ikke synlighet; for nye/genererte forslag forhåndsutfylles
-        // foreslått synlighet, men ALDRI POL (settes kun ved aktivt valg).
+        // aktiv foreslått synlighet, men ALDRI POL (settes kun ved aktivt valg).
         t.Koder = e.ForslagType == ForslagType.Endring
             ? []
-            : e.ForeslaattSynlighet.Where(k => !string.Equals(k, Pol, StringComparison.OrdinalIgnoreCase)).ToHashSet();
+            : e.ForeslaattSynlighet
+                .Where(k => !string.Equals(k, Pol, StringComparison.OrdinalIgnoreCase) && _grupper.Any(g => g.Kode == k))
+                .ToHashSet();
         t.Feil = null;
         t.Modus = Kortmodus.Godkjenn;
     }

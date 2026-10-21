@@ -8,13 +8,13 @@ public sealed class ForslagTester
     internal static ILocator Kort(IPage side, string tittel)
         => side.Locator("article.kort").Filter(new() { Has = side.GetByRole(AriaRole.Heading, new() { Name = tittel, Exact = true }) });
 
-    internal static async Task Send(Nettleser n, string tittel)
+    internal static async Task Send(Nettleser n, string tittel, string gruppe = "FA")
     {
         await n.Gaa("/forslag/ny");
         await n.Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync(tittel);
         await n.Side.GetByLabel("Dato", new() { Exact = true }).FillAsync("2030-11-20");
         await n.Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync("2031");
-        await n.Side.GetByRole(AriaRole.Checkbox, new() { NameRegex = new("\\(FA\\)$") }).CheckAsync();
+        await n.Side.GetByRole(AriaRole.Checkbox, new() { NameRegex = new($"\\({gruppe}\\)$") }).CheckAsync();
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Send inn", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = tittel })).ToContainTextAsync("Venter");
     }
