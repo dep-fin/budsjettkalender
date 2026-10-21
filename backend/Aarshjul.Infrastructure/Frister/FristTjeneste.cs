@@ -18,7 +18,7 @@ public class FristTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvid
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var idag = Idag();
         var spørring = GrunnSpørring(db, ctx, filter, idag);
-        return await ProjiserAsync(spørring.OrderBy(f => f.Sorteringsdag).ThenBy(f => f.Tittel), ct);
+        return await ProjiserAsync(db, spørring.OrderBy(f => f.Sorteringsdag).ThenBy(f => f.Tittel), ct);
     }
 
     public async Task<IReadOnlyList<FristDto>> HentLandingsutvalgAsync(
@@ -29,7 +29,7 @@ public class FristTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvid
         var spørring = GrunnSpørring(db, ctx, filter, fraOgMed, kunFramover: true)
             .OrderBy(f => f.Sorteringsdag).ThenBy(f => f.Tittel);
 
-        var kommende = await ProjiserAsync(spørring, ct);
+        var kommende = await ProjiserAsync(db, spørring, ct);
 
         // Union av «innen 30 dager» og «minst de fem førstkommende».
         var grense = fraOgMed.AddDays(30);
@@ -47,7 +47,7 @@ public class FristTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvid
             .Where(f => f.Id == fristId && f.Status == FristStatus.Godkjent)
             .FiltrerSynlige(ctx);
 
-        return await Projiser(spørring).FirstOrDefaultAsync(ct);
+        return await Projiser(db, spørring).FirstOrDefaultAsync(ct);
     }
 
     public async Task<IReadOnlyList<int>> HentTilgjengeligeBudsjettaarAsync(
@@ -110,10 +110,10 @@ public class FristTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvid
         return spørring;
     }
 
-    private static Task<List<FristDto>> ProjiserAsync(IQueryable<Frist> spørring, CancellationToken ct)
-        => Projiser(spørring).ToListAsync(ct);
+    private static Task<List<FristDto>> ProjiserAsync(AppDbContext db, IQueryable<Frist> spørring, CancellationToken ct)
+        => Projiser(db, spørring).ToListAsync(ct);
 
-    private static IQueryable<FristDto> Projiser(IQueryable<Frist> spørring)
+    private static IQueryable<FristDto> Projiser(AppDbContext db, IQueryable<Frist> spørring)
         => spørring
             .Select(f => new FristDto(
                 f.Id,
@@ -130,7 +130,24 @@ public class FristTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvid
                 f.Notat,
                 f.Status,
                 f.Synlighet.Select(s => s.GruppeKode).ToList(),
-                f.Klokkeslett));
+                f.Klokkeslett,
+                TillattKildeUrl(db.BehandledeDokumenter.Where(d => d.Id == f.DokumentId).Select(d => d.Url).FirstOrDefault())));
+
+    // Kalles i den siste projeksjonen, etter SQL-filteret for fristens synlighet.
+    // Bare dokumentets lagrede adresse brukes; ingen gjetting fra kilde, filnavn eller opphav.
+    private static string? TillattKildeUrl(string? url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || !uri.IsWellFormedOriginalString()
+            || uri.Scheme != Uri.UriSchemeHttps
+            || uri.Port != 443
+            || uri.GetComponents(UriComponents.UserInfo | UriComponents.KeepDelimiter, UriFormat.UriEscaped).Length != 0
+            || !(uri.Host.Equals("regjeringen.no", StringComparison.OrdinalIgnoreCase)
+                || uri.Host.Equals("www.regjeringen.no", StringComparison.OrdinalIgnoreCase)))
+            return null;
+
+        return uri.AbsoluteUri;
+    }
 
     private DateOnly Idag() => Datohjelp.Idag(klokke);
 }

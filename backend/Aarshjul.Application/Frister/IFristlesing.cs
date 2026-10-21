@@ -5,6 +5,9 @@ namespace Aarshjul.Application.Frister;
 /// <summary>
 /// Leseport for frister. Alle metoder filtrerer på server mot brukerens synlighet før noe
 /// returneres. Implementeres i infrastrukturlaget (mot databasen).
+/// KildeUrl kommer bare fra fristens tilknyttede dokument og valideres før retur:
+/// absolutt HTTPS på regjeringen.no eller www.regjeringen.no, port 443 og uten brukerinfo.
+/// Manglende dokument eller avvist adresse gir null uten å fjerne fristen fra utvalget.
 /// </summary>
 public interface IFristlesing
 {

@@ -129,13 +129,13 @@ jobs:
           ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
           results = root.findall('t:Results/t:UnitTestResult', ns)
           counters = root.find('t:ResultSummary/t:Counters', ns)
-          if len(results) != 17 or counters is None:
-              raise SystemExit('Nettleser: forventet 17 utførte scenarioer')
+          if len(results) != 18 or counters is None:
+              raise SystemExit('Nettleser: forventet 18 utførte scenarioer')
           if any(r.get('outcome') != 'Passed' for r in results):
               raise SystemExit('Nettleser: minst ett scenario feilet eller ble hoppet over')
           if int(counters.get('executed', '0')) != len(results) or int(counters.get('notExecuted', '0')) != 0:
               raise SystemExit('Nettleser: ugyldig antall utførte/hoppede tester')
-          print('Nettleser: 17 scenarioer bestått, ingen hoppet over')
+          print('Nettleser: 18 scenarioer bestått, ingen hoppet over')
           PY
       - name: Last opp nettleserresultater
         if: always()

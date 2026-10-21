@@ -6,6 +6,7 @@ namespace Aarshjul.Application.Frister;
 /// Leseprojeksjon av en frist for visning/API. Inneholder bare det en bruker som ser fristen
 /// har rett til. <see cref="Synlighet"/> (gruppemerkingen) vises i grensesnittet kun for
 /// administrator (BRUKERHISTORIER 4.8), men er fristens egne koder — ikke andre fristers.
+/// KildeUrl er valgfri og kontrollert av IFristlesing; rå dokumentmetadata eksponeres ikke.
 /// </summary>
 public record FristDto(
     Guid Id,
@@ -22,7 +23,8 @@ public record FristDto(
     string? Notat,
     FristStatus Status,
     IReadOnlyList<string> Synlighet,
-    TimeOnly? Klokkeslett = null)
+    TimeOnly? Klokkeslett = null,
+    string? KildeUrl = null)
 {
     /// <summary>Sant når fristen ikke har en fastsatt dag (tentativ) og må merkes som det.</summary>
     public bool ErTentativ => Datopresisjon != Datopresisjon.Dag;
