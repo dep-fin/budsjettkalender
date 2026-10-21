@@ -1,5 +1,16 @@
 # Gjeldende status
 
+## Videre arbeid
+
+Brukeren besluttet 21. oktober 2026 en manuell pilot før automatisk kildehenting.
+[Gjennomføringsplanen](specs/produksjonsplan.md) beskriver 19 arbeidspakker for piloten
+og 7 for etterfølgende automatikk, med avhengigheter og egne akseptanseporter.
+[Kravkartet](acceptance/kravkart-2026-10-21.md) knytter alle brukerhistoriene til kode,
+testbevis, gap og oppfølging. [Hovedoppgave #38](https://github.com/depmartin/Budsjettkalender/issues/38)
+er inngangen til løpende oppgavestatus. Pilotomfang og IT-/driftsvalg er fortsatt åpne.
+
+## Levert kode og testbevis
+
 Oppdatert 20. oktober 2026. Denne siden beskriver implementert kode, testbevis og
 gjenstående grenser. GitHub-lenkene er kilden for oppgavenes og PR-enes livsløp.
 [Gjennomgangen fra 20. oktober](reviews/2026-10-20.md) er et datert utgangspunkt,
