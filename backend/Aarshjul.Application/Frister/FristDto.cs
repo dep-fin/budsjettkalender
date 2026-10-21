@@ -7,6 +7,7 @@ namespace Aarshjul.Application.Frister;
 /// har rett til. <see cref="Synlighet"/> (gruppemerkingen) vises i grensesnittet kun for
 /// administrator (BRUKERHISTORIER 4.8), men er fristens egne koder — ikke andre fristers.
 /// KildeUrl er valgfri og kontrollert av IFristlesing; rå dokumentmetadata eksponeres ikke.
+/// VenterEndring er en avledet administratorindikator; IFristlesing undertrykker den ved gruppelesing.
 /// </summary>
 public record FristDto(
     Guid Id,
@@ -24,7 +25,8 @@ public record FristDto(
     FristStatus Status,
     IReadOnlyList<string> Synlighet,
     TimeOnly? Klokkeslett = null,
-    string? KildeUrl = null)
+    string? KildeUrl = null,
+    bool VenterEndring = false)
 {
     /// <summary>Sant når fristen ikke har en fastsatt dag (tentativ) og må merkes som det.</summary>
     public bool ErTentativ => Datopresisjon != Datopresisjon.Dag;

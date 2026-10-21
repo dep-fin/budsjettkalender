@@ -8,6 +8,8 @@ namespace Aarshjul.Application.Frister;
 /// KildeUrl kommer bare fra fristens tilknyttede dokument og valideres før retur:
 /// absolutt HTTPS på regjeringen.no eller www.regjeringen.no, port 443 og uten brukerinfo.
 /// Manglende dokument eller avvist adresse gir null uten å fjerne fristen fra utvalget.
+/// VenterEndring utledes fra åpne endringsforslag bare for SerAlt-konteksten; gruppelesing,
+/// også administrators «se som gruppe», får alltid false uten forslagmetadata.
 /// </summary>
 public interface IFristlesing
 {
