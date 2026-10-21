@@ -18,6 +18,13 @@
         <div class="fristkort-notat">@Frist.Notat</div>
     }
 
+    @if (Frist.KildeUrl is { } kildeUrl)
+    {
+        <div class="fristkort-handlinger">
+            <a href="@kildeUrl" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Les kildedokument</a>
+        </div>
+    }
+
     @if (VisGrupper && Frist.Synlighet.Count > 0)
     {
         <div class="fristkort-grupper" title="Synlig for disse gruppene">
