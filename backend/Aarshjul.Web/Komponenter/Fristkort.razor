@@ -9,6 +9,12 @@
         }
         <span class="merke merke-aar">Budsjettår @Frist.Budsjettaar</span>
         <span class="merke merke-kategori">@Visningformat.KategoriNavn(Frist.Kategori)</span>
+        <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
+            @if (Frist.VenterEndring)
+            {
+                <span class="merke merke-venter-endring">venter endring</span>
+            }
+        </AuthorizeView>
     </div>
 
     <div class="fristkort-tittel">@Frist.Tittel</div>
