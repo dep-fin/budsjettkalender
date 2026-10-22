@@ -3,12 +3,26 @@
 @inject IGodkjenningsko Ko
 @inject IGruppetjeneste Grupper
 @inject NavigationManager Nav
+@inject Aarshjul.Web.Visning.KoJusteringsretur Justeringsretur
 
 <PageTitle>Godkjenningskø</PageTitle>
 
 <h1>Godkjenningskø</h1>
 
 <div class="filterpanel">
+    <label>Kilde eller innsender
+        <select @bind="_kilde" @bind:after="LastAsync">
+            <option value="">Alle</option>
+            @foreach (var kilde in _kilder)
+            {
+                <option value="@kilde">@kilde</option>
+            }
+            @if (!string.IsNullOrWhiteSpace(_kilde) && !_kilder.Contains(_kilde))
+            {
+                <option value="@_kilde">@_kilde</option>
+            }
+        </select>
+    </label>
     <label>Opphav
         <select @bind="_opphav" @bind:after="LastAsync">
             <option value="">Alle</option>
@@ -186,11 +200,13 @@ else
     private const string Pol = "POL";
 
     private IReadOnlyList<Koelement> _elementer = [];
+    private IReadOnlyList<string> _kilder = [];
     private IReadOnlyList<GruppeDto> _grupper = [];
     private readonly Dictionary<Guid, Korttilstand> _tilstand = new();
     private bool _lastet;
 
     // Filtervalg (tomme strenger = «alle»).
+    private string _kilde = "";
     private string _opphav = "";
     private string _type = "";
     private string _kategori = "";
@@ -198,23 +214,42 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        if (Justeringsretur.Hent() is { } retur)
+        {
+            _kilde = retur.Kilde ?? "";
+            _opphav = retur.Opphav?.ToString() ?? "";
+            _type = retur.ForslagType?.ToString() ?? "";
+            _kategori = retur.Kategori?.ToString() ?? "";
+            _kunUkjent = retur.UkjentType == true;
+        }
         _grupper = await Grupper.HentAktiveAsync();
         await LastAsync();
     }
 
     private async Task LastAsync()
     {
-        var filter = new Kofilter
-        {
-            Opphav = Enum.TryParse<Opphav>(_opphav, out var o) ? o : null,
-            ForslagType = Enum.TryParse<ForslagType>(_type, out var ft) ? ft : null,
-            Kategori = Enum.TryParse<Kategori>(_kategori, out var k) ? k : null,
-            UkjentType = _kunUkjent ? true : null
-        };
-        _elementer = await Ko.HentKoAsync(filter);
+        // Valglisten kommer fra hele den åpne køen, uavhengig av de aktive filtrene.
+        // Behold også aktivt valg når siste treff er behandlet, så tomt utvalg er synlig.
+        _kilder = (await Ko.HentKoAsync())
+            .Select(e => e.KildeEllerInnsender)
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k!)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        _elementer = await Ko.HentKoAsync(LagFilter());
         _tilstand.Clear();
         _lastet = true;
     }
+
+    private Kofilter LagFilter() => new()
+    {
+        Kilde = _kilde,
+        Opphav = Enum.TryParse<Opphav>(_opphav, out var o) ? o : null,
+        ForslagType = Enum.TryParse<ForslagType>(_type, out var ft) ? ft : null,
+        Kategori = Enum.TryParse<Kategori>(_kategori, out var k) ? k : null,
+        UkjentType = _kunUkjent ? true : null
+    };
 
     private Korttilstand Tilstand(Koelement e) =>
         _tilstand.TryGetValue(e.Id, out var t) ? t : _tilstand[e.Id] = new Korttilstand();
@@ -238,7 +273,11 @@ else
         else t.Koder.Remove(kode);
     }
 
-    private void Juster(Koelement e) => Nav.NavigateTo($"/admin/frist/juster/{e.Id}");
+    private void Juster(Koelement e)
+    {
+        Justeringsretur.Bevar(e.Id, LagFilter());
+        Nav.NavigateTo($"/admin/frist/juster/{e.Id}");
+    }
 
     private async Task Godkjenn(Koelement e, Korttilstand t)
     {
