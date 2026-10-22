@@ -1,6 +1,6 @@
 # Gjeldende status
 
-Oppdatert 21. oktober 2026. Denne siden beskriver implementert kode, testbevis og
+Oppdatert 22. oktober 2026. Denne siden beskriver implementert kode, testbevis og
 gjenstående grenser. GitHub-lenkene er kilden for oppgavenes og PR-enes livsløp.
 [Gjennomgangen fra 20. oktober](reviews/2026-10-20.md) er et datert utgangspunkt,
 ikke en liste over dagens urettede kodefeil.
@@ -18,11 +18,12 @@ ikke en liste over dagens urettede kodefeil.
 | [#44](https://github.com/depmartin/Budsjettkalender/issues/44) | Administratorflate for oppretting, navneendring og deaktivering av synlighetsgrupper med stabil kode og bevarte referanser | Lokal kandidat; supplerende bevis i [akseptanserapporten](acceptance/2026-10-20.md#supplerende-akseptanse-for-44) |
 | [#69](https://github.com/depmartin/Budsjettkalender/issues/69) | Valgfri, servervalidert HTTPS-kildelenke fra fristens tilknyttede dokument til kalenderens fristkort | [PR #70](https://github.com/depmartin/Budsjettkalender/pull/70); supplerende bevis i [akseptanserapporten](acceptance/2026-10-20.md#supplerende-akseptanse-for-69) |
 | [#71](https://github.com/depmartin/Budsjettkalender/issues/71) | Avledet «venter endring»-merke på publiserte fristkort bare for administrator, undertrykt ved gruppelesing | Lokal kandidat; supplerende bevis i [akseptanserapporten](acceptance/2026-10-20.md#supplerende-akseptanse-for-71) |
+| [#73](https://github.com/depmartin/Budsjettkalender/issues/73) | Kilde eller innsender i administratorens kø, kombinert med øvrige filtre og bevart gjennom behandling | Lokal kandidat; supplerende bevis i [akseptanserapporten](acceptance/2026-10-20.md#supplerende-akseptanse-for-73) |
 
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. Med #71 passerer 19 reelle Playwright-/Edge-scenarioer og 603 ordinære tester
+eksterne miljøporter. Med #73 passerer 23 reelle Playwright-/Edge-scenarioer og 625 ordinære tester
 passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.
@@ -75,6 +76,30 @@ Se akseptanserapporten for røde/grønne bevis og lokal testgrense.
 P12b er en lokal kandidat. Samlet Standards-/Spec-review, separat sikkerhetsaudit og alle
 tre kandidatjobber i CI gjenstår før mergeavklaring. #50 og #38 forblir åpne; planleggingsgren
 og draft-PR #65 er urørt. Ingen deploy er utført.
+
+## Kildevalg i godkjenningskøen
+
+[#73](https://github.com/depmartin/Budsjettkalender/issues/73) gir administrator valget
+«Kilde eller innsender». «Alle» og distinkte ikke-blanke råverdier hentes fra hele den
+åpne, ikke-genererte køen. Valget sendes som eksisterende Kofilter.Kilde, som sammenlikner
+Forslag.KildeEllerInnsender eksakt. Køetikett/innsender, dokumentleverandør, dokument-ID og
+opphav er fortsatt ulike dimensjoner; tjenestekontrakten og adapteren er uendret.
+
+Kilde og de fire eksisterende filtrene danner et snitt. Kildelisten beholder de andre
+kildene også ved tomt utvalg. Aktivt valg beholdes ved godkjenning, avvisning og retur fra
+justering, også når siste treff forsvinner. Justeringsreturen oppbevarer filteret én gang
+i samme Blazor-krets; vanlig navigasjon forkaster det. Ingen varig filterlagring er innført.
+POL forhåndsvelges fortsatt ikke, og endringsforslag bevarer fristens synlighet.
+
+17 SQLite-tilfeller, fem faktiske HTTP-tilfeller på GET /admin/ko og fire nye
+nettleserscenarioer prøver kilde-/snittsemantikk, tomt utvalg, tilgang, trygg tekst og
+behandling. De første 16 tjenestetilfellene passerte allerede før UI-endringen.
+Nettleseren var rød ved manglende kildevalg og deretter ved tapt valg etter justering;
+begge flytene er grønne. Se akseptanserapporten for resultatfiler og nøyaktig bevisgrense.
+
+P12c er en lokal kandidat. Samlet Standards-/Spec-review, separat sikkerhetsaudit og alle
+tre kandidatjobber i CI gjenstår før mergeavklaring. #50 og #38 forblir åpne;
+planleggingsgren og draft-PR #65 er urørt. Ingen deploy er utført.
 
 ## Forvaltning av synlighetsgrupper
 
@@ -265,21 +290,21 @@ innføres. Datooperasjoner for feed, lister og internoppgaver er utenfor denne r
 
 ## Verifikasjon
 
-SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **603 ordinære
+SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **625 ordinære
 tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer 447 fra #36, ni nye
 opplastings-/køtilfeller for #46, 22 nye oppstartstilfeller for #40, 34 gruppe-/HTTP-/regresjonstilfeller for #44
-og 55 kilde-/HTTP-tilfeller for #69 samt 36 lese-/HTTP-tilfeller for #71.
-19 nettleserscenarioer passerer med 0 feil/hopp.
+og 55 kilde-/HTTP-tilfeller for #69, 36 lese-/HTTP-tilfeller for #71 og 22 kø-/HTTP-tilfeller for #73.
+23 nettleserscenarioer passerer med 0 feil/hopp.
 Nettleserprosjektets låste restore og Release-bygg passerer også.
 Den eksisterende CS0649-advarselen i Runde.razor er uendret.
-SQL Server-prosjektets låste restore og Release-bygg passerer. #71 endrer verken EF-modell,
+SQL Server-prosjektets låste restore og Release-bygg passerer. #73 endrer verken EF-modell,
 migrasjoner eller SQL-kontrakttilfeller. Lokale Markdown-lenker og git diff --check passerer.
 Tidligere lokal NuGet-kjøring ga NU1900 fordi sårbarhetsmetadata ikke kunne hentes;
-#69s og #71s låste sluttkjøringer ga ingen NU1900. Ingen auditkontroll er deaktivert.
+#69s, #71s og #73s låste sluttkjøringer ga ingen NU1900. Ingen auditkontroll er deaktivert.
 
 [CI for PR #35](https://github.com/depmartin/Budsjettkalender/actions/runs/39443717020)
 bekreftet før merge 442 ordinære og **22 SQL Server-tester**, begge med 0 feil og 0 hopp.
-Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #36, #46, #40, #44, #69 eller #71.
+Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #36, #46, #40, #44, #69, #71 eller #73.
 CI krever ekte SQL Server-tester uten hopp, og deploy venter på den jobben.
 Kommandoer og miljøkrav står i [utviklingsveiledningen](development.md).
 
