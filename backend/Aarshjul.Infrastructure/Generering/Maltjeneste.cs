@@ -12,6 +12,23 @@ namespace Aarshjul.Infrastructure.Generering;
 /// </summary>
 public class Maltjeneste(IDbContextFactory<AppDbContext> dbFactory) : IMaltjeneste
 {
+    public async Task<MalForhaandsvisning> ForhaandsvisAlleAsync(int budsjettaar, CancellationToken ct = default)
+    {
+        if (budsjettaar is < 1 or > 9999)
+            throw new Valideringsfeil("Budsjettåret må være mellom 1 og 9999.");
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        // Behold genereringens usorterte innlasting: første regel per løp er anker.
+        var regler = await db.Gjentaksregler.AsNoTracking().ToListAsync(ct);
+        ct.ThrowIfCancellationRequested();
+        var beregninger = Genereringsberegning.Beregn(budsjettaar, regler);
+        return new MalForhaandsvisning(budsjettaar,
+            regler.Select(r => new MalRegelDto(r.Id, r.Loep, r.Tittel, r.Kategori,
+                r.Regeltype, r.Regelparametre, r.Valgaarssensitiv)).ToList(),
+            beregninger.Select(r => new MalRegelForhaandsvisning(budsjettaar,
+                r.Dato, r.Presisjon, r.Tentativ, r.Valgaarsflagg, r.Feil)).ToList());
+    }
+
     public async Task<IReadOnlyList<MalRegelDto>> HentAlleAsync(CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);

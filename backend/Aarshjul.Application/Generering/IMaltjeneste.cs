@@ -42,6 +42,15 @@ public sealed record MalRegelForhaandsvisning(
 }
 
 /// <summary>
+/// Hele malen og dens beregning for ett år, i samme innlastingsrekkefølge som generering.
+/// Regler og beregninger har tilsvarende indeks; duplikate løp beholder hver sin identitet.
+/// </summary>
+public sealed record MalForhaandsvisning(
+    int Budsjettaar,
+    IReadOnlyList<MalRegelDto> Regler,
+    IReadOnlyList<MalRegelForhaandsvisning> Beregninger);
+
+/// <summary>
 /// Forvalter årsmalen (kravdok. 3.3, 5.4): gjentaksreglene «generér neste år» bygger på. Alle
 /// handlinger er administratorhandlinger (policy håndheves i web-laget). Ugyldig regeltype,
 /// manglende parameterfelter og ugyldige parameterverdier gir <see cref="Valideringsfeil"/>
@@ -51,6 +60,13 @@ public interface IMaltjeneste
 {
     Task<IReadOnlyList<MalRegelDto>> HentAlleAsync(CancellationToken ct = default);
     Task<MalRegelInndata?> HentForRedigeringAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Leser og beregner hele malen for et budsjettår (1–9999) uten å lagre noe.
+    /// Ankerrepresentanter velges før eventuell visningssortering eller filtrering.
+    /// Manuelle ankre uten fastsatt dato gir ordinær beregningsfeil per regel.
+    /// </summary>
+    Task<MalForhaandsvisning> ForhaandsvisAlleAsync(int budsjettaar, CancellationToken ct = default);
 
     /// <summary>
     /// Beregner utkastet for fem budsjettår fra <paramref name="foersteBudsjettaar"/> (1–9995)

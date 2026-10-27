@@ -15,6 +15,65 @@ namespace Aarshjul.BrowserTests;
 public sealed class MalregelNavigasjonTester
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task Sent_aarsresultat_eller_gammel_feil_kan_ikke_erstatte_nyere_valgt_aarsberegning(bool feil) => Kjor(async (app, side, mal, a, b) =>
+    {
+        var foer = await mal.HentAlleAsync();
+        var aar = side.GetByLabel("Beregn datoer for budsjettår", new() { Exact = true });
+        await Expect(side.GetByRole(AriaRole.Article)).ToHaveCountAsync(2);
+        var eldre = app.Port.ForsinkListe();
+        var nyere = app.Port.ForsinkListe();
+        try
+        {
+            await aar.FillAsync("2027");
+            await eldre.Startet.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await aar.FillAsync("2028");
+            await nyere.Startet.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            nyere.Fortsett.TrySetResult();
+            await Expect(side.GetByRole(AriaRole.Status).Filter(new() { HasText = "Viser 2 av 2 regler" })).ToContainTextAsync("Budsjettår 2028");
+            await Expect(side.GetByRole(AriaRole.Article).Locator("time").First).ToHaveAttributeAsync("datetime", new System.Text.RegularExpressions.Regex("^2028-"));
+            if (feil) eldre.Fortsett.TrySetException(new InvalidOperationException("Kontrollert foreldet årsfeil"));
+            else eldre.Fortsett.TrySetResult();
+            await eldre.Fullfoert.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await side.GetByLabel("Søk i regler", new() { Exact = true }).FillAsync("Original A");
+            await Expect(side.GetByRole(AriaRole.Article)).ToHaveCountAsync(1);
+            await Expect(aar).ToHaveValueAsync("2028");
+            await Expect(side.GetByRole(AriaRole.Status).Filter(new() { HasText = "Viser 1 av 2 regler" })).ToContainTextAsync("Budsjettår 2028");
+            await Expect(side.GetByRole(AriaRole.Article).Locator("time")).ToHaveAttributeAsync("datetime", new System.Text.RegularExpressions.Regex("^2028-"));
+            await Expect(side.GetByRole(AriaRole.Alert)).ToHaveCountAsync(0);
+            Assert.Equal(foer, await mal.HentAlleAsync());
+        }
+        finally { eldre.Fortsett.TrySetResult(); nyere.Fortsett.TrySetResult(); }
+    });
+
+    [Fact]
+    public Task Teknisk_beregningsfeil_kan_proeves_igjen_med_beholdte_valg_og_uten_lagring() => Kjor(async (app, side, mal, a, b) =>
+    {
+        var foer = await mal.HentAlleAsync();
+        await Expect(side.GetByRole(AriaRole.Article)).ToHaveCountAsync(2);
+        await side.GetByLabel("Søk i regler", new() { Exact = true }).FillAsync("Original A");
+        await side.GetByLabel("Sortering", new() { Exact = true }).SelectOptionAsync("Senest");
+        var vent = app.Port.ForsinkListe();
+        try
+        {
+            await side.GetByLabel("Beregn datoer for budsjettår", new() { Exact = true }).FillAsync("2027");
+            await vent.Startet.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await Expect(side.GetByRole(AriaRole.Status).Filter(new() { HasText = "Laster og beregner" })).ToBeVisibleAsync();
+            vent.Fortsett.TrySetException(new InvalidOperationException("Kontrollert listefeil"));
+            await Expect(side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Kunne ikke laste og beregne");
+            await TaBilder(side, "liste-lastefeil");
+            await side.GetByRole(AriaRole.Button, new() { Name = "Prøv igjen", Exact = true }).ClickAsync();
+            await Expect(side.GetByRole(AriaRole.Status).Filter(new() { HasText = "Viser 1 av 2 regler" })).ToContainTextAsync("Budsjettår 2027");
+            await Expect(side.GetByRole(AriaRole.Alert)).ToHaveCountAsync(0);
+            await Expect(side.GetByLabel("Søk i regler", new() { Exact = true })).ToHaveValueAsync("Original A");
+            await Expect(side.GetByLabel("Sortering", new() { Exact = true })).ToHaveValueAsync("Senest");
+            Assert.Equal(foer, await mal.HentAlleAsync());
+        }
+        finally { vent.Fortsett.TrySetResult(); }
+    });
+
+    [Theory]
     [InlineData(false, false, false)]
     [InlineData(false, false, true)]
     [InlineData(true, false, false)]
@@ -258,6 +317,12 @@ public sealed class MalregelNavigasjonTester
 
     private sealed class ForsinketMal(IMaltjeneste indre, Malport port) : IMaltjeneste
     {
+        public async Task<MalForhaandsvisning> ForhaandsvisAlleAsync(int budsjettaar, CancellationToken ct = default)
+        {
+            var data = await indre.ForhaandsvisAlleAsync(budsjettaar, ct);
+            await port.VentListe();
+            return data;
+        }
         public async Task<IReadOnlyList<MalRegelDto>> HentAlleAsync(CancellationToken ct = default)
         {
             var data = await indre.HentAlleAsync(ct);

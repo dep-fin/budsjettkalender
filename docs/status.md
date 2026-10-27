@@ -1,6 +1,6 @@
 # Gjeldende status
 
-Oppdatert 27. oktober 2026. Denne siden beskriver implementert kode, testbevis og
+Oppdatert 28. oktober 2026. Denne siden beskriver implementert kode, testbevis og
 gjenstående grenser. GitHub-lenkene er kilden for oppgavenes og PR-enes livsløp.
 [Gjennomgangen fra 20. oktober](reviews/2026-10-20.md) er et datert utgangspunkt,
 ikke en liste over dagens urettede kodefeil.
@@ -72,8 +72,9 @@ reelle Edge/Kestrel-scenarioer passerer uten feil eller hopp.
 Standards-/Spec-review, visuell gjennomgang og separat audit hadde ingen funn.
 [CI 40585115379](https://github.com/depmartin/Budsjettkalender/actions/runs/40585115379)
 er grønn med 37 ekte SQL Server-prøver og 65 Chromium-scenarioer.
-Atelier UX09 ([#84](https://github.com/depmartin/Budsjettkalender/issues/84)) har en lokal
-kandidat med separate flater for eksisterende og nye gjentaksregler. Fire kodefrie
+Atelier UX09 ([#84](https://github.com/depmartin/Budsjettkalender/issues/84)) er levert i
+[PR #104](https://github.com/depmartin/Budsjettkalender/pull/104), merget som
+`ec8588b947b249e29be11940d97f086004f23d3a`, med separate flater for eksisterende og nye gjentaksregler. Fire kodefrie
 feltvalg åpner, redigerer og kopierer de samme tre lagrede regeltypene. Lesbar setning
 og sideeffektfri femårsvisning bruker eksisterende beregning, også for skuddår,
 årsforskyvning, valgår og ankerkjeder. Ulagret arbeid, felt-/lagringsfeil og sletting
@@ -83,8 +84,22 @@ desktop-/mobilbilder er visuelt inspisert. [Akseptanse](acceptance/2026-10-27-at
 beskriver rød/grønn og datainvariantene. Standards-/Spec-review og separat audit fant
 samme P2 ved navigasjon under lasting; et utkast kunne ellers bli lagret på en annen regel.
 Rettingen binder lasting, preview og lagring til samme visning og er dekket av 14 nye
-reelle nettlesertilfeller. Etterkontroll og ekte SQL Server-/Chromium-CI er fortsatt
-leveranseporter. #85 og senere er ikke implementert her.
+reelle nettlesertilfeller. Etterkontroll hadde ingen åpne funn; ordinær, ekte SQL Server-
+og Chromium-CI er grønn i [kjøring 40594188807](https://github.com/depmartin/Budsjettkalender/actions/runs/40594188807).
+Atelier UX10 ([#85](https://github.com/depmartin/Budsjettkalender/issues/85)) har en lokal
+kandidat med søk, kategoriunion og sammenhengsfilter over hele gjentaksmalen. Milepæl er
+avledet bare for selvstendige ankerrepresentanter; relative mellomledd forblir Avhengig.
+Et eksplisitt beregningsår fra 1 til 9999 gir full kalenderkronologi, to datoretninger og
+norsk tittelrekkefølge med stabil identitet. Tentative måneder beholder presisjon;
+uberegnbare regler har forklaring og står sist i begge datoretninger. Utvalg, år og
+sortering bevares ved dialog, redigering, avbryt, lagring og browser-back. Skjult lagret
+rad forklares, og riktig handling/overskrift får fokus. Kun faktisk redigering endrer
+målregelen. 716 ordinære og 106 reelle Edge/Kestrel-scenarioer passerer lokalt uten feil
+eller hopp; alle tidligere 705/89 er bevart. 54 navngitte desktop-/mobilbilder er inspisert.
+Samlet review, separat sikkerhetsaudit og ekte SQL Server-/Chromium-CI gjenstår.
+[Akseptanse](acceptance/2026-10-27-atelier-ux10.md) beskriver regresjoner,
+samme duplikatrepresentant som generering og komplette datainvarianter. #86 og senere
+er ikke implementert her.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -108,12 +123,13 @@ leveranseporter. #85 og senere er ikke implementert her.
 | [#81](https://github.com/depmartin/Budsjettkalender/issues/81) | Forslag fra valgt kalenderdato og synlig fristdetalj, gjenbrukt kø/godkjenning, bevart presisjon/synlighet og én publisert frist i Kalender/Tidslinje/Fristliste | Merget i [PR #101](https://github.com/depmartin/Budsjettkalender/pull/101), `1a65626`; [akseptanse](acceptance/2026-10-27-atelier-ux06.md) |
 | [#82](https://github.com/depmartin/Budsjettkalender/issues/82) | Konkret arbeidsår i fire lokale faner, årsavgrenset register/kø, synlige andre års forslag, bevart behandling/filter/synlighet og én frist på tvers av visninger | Merget i [PR #102](https://github.com/depmartin/Budsjettkalender/pull/102), `37d12d7`; [akseptanse](acceptance/2026-10-27-atelier-ux07.md) |
 | [#83](https://github.com/depmartin/Budsjettkalender/issues/83) | Én varig felles fasemal med versjonert atomisk lagring, administratorvern, alle års lesing, feil/konflikt og bevarte fristdata | Merget i [PR #103](https://github.com/depmartin/Budsjettkalender/pull/103), `2990c1b`; [akseptanse](acceptance/2026-10-27-atelier-ux08.md) |
-| [#84](https://github.com/depmartin/Budsjettkalender/issues/84) | Fire kodefrie regelvalg, femårsvisning, bevart parser-/anker-/valgårskontrakt, redigering/kopi/slettekonsekvens og vern av ulagret arbeid | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux09.md) |
+| [#84](https://github.com/depmartin/Budsjettkalender/issues/84) | Fire kodefrie regelvalg, femårsvisning, bevart parser-/anker-/valgårskontrakt, redigering/kopi/slettekonsekvens og vern av ulagret arbeid | Merget i [PR #104](https://github.com/depmartin/Budsjettkalender/pull/104), `ec8588b`; [akseptanse](acceptance/2026-10-27-atelier-ux09.md) |
+| [#85](https://github.com/depmartin/Budsjettkalender/issues/85) | Kategori-/sammenhengs-/søkesnitt, avledet milepæl, målårsberegning, stabil norsk/kronologisk sortering, bevart retur og uendrede data ved visning | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux10.md) |
 
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. Med #84 er testomfanget 89 reelle Playwright-/Edge-scenarioer og 705 ordinære tester som
+eksterne miljøporter. Med #85 er testomfanget 106 reelle Playwright-/Edge-scenarioer og 716 ordinære tester som
 passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.
@@ -380,28 +396,23 @@ innføres. Datooperasjoner for feed, lister og internoppgaver er utenfor denne r
 
 ## Verifikasjon
 
-SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **633 ordinære
-tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer 447 fra #36, ni nye
-opplastings-/køtilfeller for #46, 22 nye oppstartstilfeller for #40, 34 gruppe-/HTTP-/regresjonstilfeller for #44
-og 55 kilde-/HTTP-tilfeller for #69, 36 lese-/HTTP-tilfeller for #71, 22 kø-/HTTP-tilfeller for #73
-og fire nye HTTP-rolleprøver for #76 samt fire lesekontrakttilfeller for #78.
-41 nettleserscenarioer passerer med 0 feil/hopp, inklusive tre Atelier-navigasjonsscenarioer
-fra #76, syv kalender-/detaljscenarioer fra #77, tre filter-/søke-/mobilscenarioer fra #78
-og fem perspektiv-/periode-/rolle-/feilscenarioer fra #79. Eksisterende kalender-, kilde-,
-ventemerke- og HTTP-prøver er tilpasset den tilsiktede overgangen fra kort til
-interaktive detaljer; tilgangs-, publiserings- og metadatahemmelighold er bevart.
-Nettleserprosjektets låste restore og Release-bygg passerer også.
-Den eksisterende CS0649-advarselen i Runde.razor er uendret.
-SQL Server-prosjektets låste restore og Release-bygg passerer. #79 endrer verken EF-modell,
-migrasjoner eller SQL-kontrakttilfeller. Lokale Markdown-lenker og git diff --check passerer.
-Tidligere lokal NuGet-kjøring ga NU1900 fordi sårbarhetsmetadata ikke kunne hentes;
-#69s, #71s, #73s, #77s, #78s og #79s låste sluttkjøringer ga ingen NU1900. Ingen auditkontroll er deaktivert.
+SDK 10.0.402: låst restore og Release-bygg av ordinær løsning, BrowserTests og
+SqlServerTests passerer etter siste endring i UX10. Alle **716 ordinære tester** og
+**106 reelle Edge/Kestrel-scenarioer** passerer med 0 feil og 0 hopp. Sammenlikning mot
+UX09s siste TRX bekrefter at alle 705 ordinære og 89 nettlesertilfeller er bevart; 11
+ordinære og 17 nettlesertilfeller er lagt til. Eksisterende generering, manuelle ankre,
+regenerering, godkjenning, POL og de 14 navigasjonsregresjonene består. Detaljer og
+bevisstier finnes i [UX10-akseptansen](acceptance/2026-10-27-atelier-ux10.md).
 
-[CI for PR #35](https://github.com/depmartin/Budsjettkalender/actions/runs/39443717020)
-bekreftet før merge 442 ordinære og **22 SQL Server-tester**, begge med 0 feil og 0 hopp.
-SQL-testene er ikke kjørt lokalt for #79; de krever en konfigurert SQL Server.
-CI krever ekte SQL Server-tester uten hopp, og deploy venter på den jobben.
-Kommandoer og miljøkrav står i [utviklingsveiledningen](development.md).
+Siste tre bygg hadde ingen feil eller advarsler. Den tidligere CS0649-advarselen i
+Runde.razor kan fortsatt vises ved ny Web-kompilering. Ingen auditkontroll er deaktivert;
+de siste låste restore-kjøringene har ingen NU1900.
+
+UX10 endrer verken EF-modell, migrasjoner eller de 37 SQL Server-kontrakttilfellene.
+De er bygget lokalt, men krever ekte SQL Server i CI. UX09s leverte CI 40594188807 har
+37 beståtte SQL Server-tilfeller og 89 Chromium-scenarioer. UX10-kandidatens ekte SQL
+Server-/Chromium-kjøring og samlet review/audit gjenstår. Deploy venter på alle tre
+CI-jobber. Kommandoer og miljøkrav står i [utviklingsveiledningen](development.md).
 
 ## Gjenstående grenser
 

@@ -128,6 +128,7 @@ public partial class Program
         builder.Services.AddScoped<Visningstilstand>();
         builder.Services.AddScoped<Kalendertilstand>();
         builder.Services.AddScoped<KoJusteringsretur>();
+        builder.Services.AddScoped<Aarshjul.Web.Components.Pages.Admin.Mallistekontekst>();
 
         // --- Autentisering. Produksjon: Entra ID (OIDC). Demo: cookie + dev-innlogging (ingen Entra).
         //     Test: injiseres av testene. ---
