@@ -11,7 +11,7 @@ namespace Aarshjul.BrowserTests;
 // Én disponibel app/database per scenario. Bare demo-identiteten byttes; UI og server er reelle.
 internal sealed class Nettleser
 {
-    private readonly Process _app;
+    private Process _app;
     private readonly IPlaywright _playwright;
     private readonly IBrowser _browser;
     private readonly ConcurrentQueue<string> _feil = new();
@@ -123,6 +123,32 @@ internal sealed class Nettleser
     {
         Side = await NySide(); // Ny cookiebeholder og full lasting ved hvert personabytte.
         await Side.GotoAsync(persona is null ? "/demo" : $"/demo/logg-inn/{persona}");
+    }
+
+    // Starter bare scenarioets egen prosess på nytt. Adresse og SQLite-fil er de samme.
+    public async Task OmstartAsync()
+    {
+        foreach (var kontekst in _kontekster) await kontekst.CloseAsync();
+        _kontekster.Clear();
+        var start = _app.StartInfo;
+        if (!_app.HasExited) _app.Kill(entireProcessTree: true);
+        await _app.WaitForExitAsync();
+        _app.Dispose();
+        _app = Process.Start(start) ?? throw new InvalidOperationException("Kunne ikke starte scenarioets app på nytt.");
+        _app.OutputDataReceived += (_, e) => { if (e.Data is not null) _applogg.Enqueue(e.Data); };
+        _app.ErrorDataReceived += (_, e) => { if (e.Data is not null) _applogg.Enqueue(e.Data); };
+        _app.BeginOutputReadLine();
+        _app.BeginErrorReadLine();
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(1) };
+        using var frist = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+        while (true)
+        {
+            if (_app.HasExited) throw new InvalidOperationException("Scenarioets app avsluttet under omstart.");
+            try { if ((await http.GetAsync(Adresse + "/demo", frist.Token)).IsSuccessStatusCode) return; }
+            catch (HttpRequestException) { }
+            catch (TaskCanceledException) when (!frist.IsCancellationRequested) { }
+            await Task.Delay(100, frist.Token);
+        }
     }
 
     public async Task Gaa(string sti, IPage? side = null)

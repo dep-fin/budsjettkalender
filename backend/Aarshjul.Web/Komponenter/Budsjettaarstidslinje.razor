@@ -60,7 +60,7 @@
                     }
                 </div>
                 <div class="tidslinje-faser" aria-label="Budsjettårets fem faser">
-                    @foreach (var fase in Budsjettaarslinje.Faser)
+                    @foreach (var fase in Linje.Faser)
                     {
                         var plass = Linje.Fase(fase.Fra, fase.Til);
                         @if (plass.Bredde > 0)
@@ -92,7 +92,7 @@
     {
         <section class="tidslinje-utenfor" aria-label="Frister etter tidslinjen">
             <h3>Etter @Kalendervisning.Maaned(Linje.Til) · @Linje.Etter.Count frister</h3>
-            <p>Budsjettløpet fortsetter her, etter tidslinjens standardvindu.</p>
+            <p>Budsjettløpet fortsetter her, etter tidslinjens fasevindu.</p>
             <Budsjettaarsliste Frister="Linje.Etter" AapneFrist="AapneFrist" />
         </section>
     }
@@ -101,6 +101,7 @@
 @code {
     [Parameter] public int Budsjettaar { get; set; }
     [Parameter] public IReadOnlyList<FristDto> Frister { get; set; } = [];
+    [Parameter] public FasemalDto Fasemal { get; set; } = Fasemalstandard.Standard;
     [Parameter] public DateOnly Idag { get; set; }
     [Parameter] public EventCallback<FristDto> AapneFrist { get; set; }
     private static readonly CultureInfo Norsk = CultureInfo.GetCultureInfo("nb-NO");
@@ -109,6 +110,7 @@
     private string? _fokusGruppeId;
     private IReadOnlyList<FristDto>? _forrigeFrister;
     private int? _forrigeAar;
+    private Guid? _forrigeFaseversjon;
     private int Akse => 94 + (Linje.Spor + 1) / 2 * 104;
     private int Grafhoeyde => Akse + 58 + Linje.Spor / 2 * 104;
     private ElementReference _gruppeoverskrift;
@@ -116,10 +118,11 @@
 
     protected override void OnParametersSet()
     {
-        if (ReferenceEquals(_forrigeFrister, Frister) && _forrigeAar == Budsjettaar) return;
+        if (ReferenceEquals(_forrigeFrister, Frister) && _forrigeAar == Budsjettaar && _forrigeFaseversjon == Fasemal.Versjon) return;
         _forrigeFrister = Frister;
         _forrigeAar = Budsjettaar;
-        Linje = new(Budsjettaar, Frister);
+        _forrigeFaseversjon = Fasemal.Versjon;
+        Linje = new(Budsjettaar, Frister, Fasemal);
         _aapneGrupper.Clear();
         _fokusGruppeId = null;
     }
@@ -136,8 +139,8 @@
     private static string Kortstil(Budsjettaarslinje.Stasjon s, int topp) => $"--x:{Tall(s.Posisjon)}%;top:{topp}px";
     private static string Fasegrense(int relativMaaned)
     {
-        var aar = (int)Math.Floor(relativMaaned / 12d);
-        var maaned = relativMaaned - aar * 12 + 1;
+        var aar = (long)Math.Floor(relativMaaned / 12d);
+        var maaned = (int)(relativMaaned - aar * 12 + 1);
         var navn = new DateOnly(2000, maaned, 1).ToString("MMM", Norsk);
         return $"{navn} {(aar == 0 ? "t" : aar < 0 ? $"t−{-aar}" : $"t+{aar}")}";
     }

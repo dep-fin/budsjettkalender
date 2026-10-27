@@ -18,12 +18,15 @@ Demo: åpne `http://localhost:5014/demo`. Profilen bruker Development + Demo=tru
 SQLite-filen `aarshjul-demo.db`. Bare Development eller eksplisitt Demo-miljø kan bruke
 demoinnlogging. Miljøet Demo krever publiserte assets; bruk launch-profilen under utvikling.
 Ved modellendring må demo-databasen flyttes til en sikkerhetskopi eller gjenskapes;
-`EnsureCreated` oppgraderer ikke skjemaet.
+`EnsureCreated` oppgraderer ikke skjemaet. UX08 legger til Fasemaler med én deterministisk
+seedet felles mal. Eksisterende demofiler må derfor sikkerhetskopieres/gjenskapes før
+bruk av denne modellen; bevar andre kjørende demoers filer. Produksjon bruker den additive
+EF-migrasjonen FellesFasemal. Migrate/Startdata overskriver ikke en redigert fasemal.
 
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 60 scenarioer starter Kestrel i Development
+eksisterende app eller database: 64 scenarioer starter Kestrel i Development
 med Demo=true, tilfeldig loopback-port og ny SQLite-fil. Ett ytterligere scenario bruker den
 eksisterende HTTP-testverten i Testing med ekte Kestrel, SQLite i minnet og testautentisering.
 Der styres fullføringen av et gruppeoppslag for å prøve initialisering i en interaktiv
@@ -45,6 +48,8 @@ da trengs ikke browserinstallasjonen. `AARSHJUL_DOTNET` kan angi en absolutt SDK
 ellers brukes `dotnet` fra PATH. `AARSHJUL_BROWSER_EVIDENCE` kan angi en lokal mappe for nye
 undermapper med demo-database, app-logg, representative kalenderskjermbilder og nedlastinger.
 Standard er systemets tempmappe. Testen stopper bare app-prosessen den selv opprettet.
+Fasemalprøven stopper og starter denne samme Kestrel-prosessen med samme SQLite-sti,
+og bekrefter bevart mal/versjon etter ny leserinnlogging. Andre demoer berøres ikke.
 Oppstartsfeil og feil ved lukking utløser opprydding av alle opprettede kontekster,
 nettleseren, Playwright og demoprosessen. Oppryddingsfeil rapporteres samlet og beholder
 en eventuell opprinnelig oppstarts- eller scenariofeil; de gjør ikke et feilet scenario grønt.
@@ -57,7 +62,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 61 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 65 beståtte scenarioer uten hopp.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -66,7 +71,7 @@ og [UX03-prøvene](acceptance/2026-10-27-atelier-ux03.md), samt
 [UX04-prøvene](acceptance/2026-10-27-atelier-ux04.md) og
 [UX05-prøvene](acceptance/2026-10-27-atelier-ux05.md) og
 [UX06-prøvene](acceptance/2026-10-27-atelier-ux06.md) og
-[UX07-prøvene](acceptance/2026-10-27-atelier-ux07.md) for faktisk prøvd scope og eksterne grenser.
+[UX07-prøvene](acceptance/2026-10-27-atelier-ux07.md) og [UX08-prøvene](acceptance/2026-10-27-atelier-ux08.md) for faktisk prøvd scope og eksterne grenser.
 
 ## Obligatorisk SQL Server-kontroll i CI
 
@@ -82,7 +87,9 @@ Seks tilfeller prøver gammel godkjenning, justering og avvisning etter avvisnin
 innsending av samme rad, for både nye frister og endringsforslag. De bekrefter at den nye
 innsendingen forblir åpen, uten feil publisering eller ekstra varsel. En separat SQL-test
 oppgraderer produksjonsskjemaet etter Internkalender med et eksisterende forslag og
-bekrefter at innholdet bevares og kan behandles. SQL-prosjektet har dermed 22 testtilfeller.
+bekrefter at innholdet bevares og kan behandles. Med UX08 kjører prosjektet også 14 delte
+fasemaltilfeller og én reell oppgraderingstest fra siste tidligere migrasjon. SQL-prosjektet
+har dermed 37 testtilfeller.
 
 Prosjektet ligger bevisst utenfor `backend/Aarshjul.slnx`. De ordinære lokale kommandoene
 krever derfor verken SQL Server eller Docker. SQL-testene krever en disponibel testinstans
@@ -105,7 +112,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med minst én utført test og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 37 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

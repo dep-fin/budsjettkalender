@@ -11,5 +11,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <ProjectReference Include="..\Aarshjul.Infrastructure\Aarshjul.Infrastructure.csproj" />
     <Compile Include="..\Testkontrakter\GodkjenningskonkurranseKontrakt.cs" Link="GodkjenningskonkurranseKontrakt.cs" />
+    <Compile Include="..\Testkontrakter\FasemalKontrakt.cs" Link="FasemalKontrakt.cs" />
+    <Compile Include="..\Testkontrakter\FasedataBevis.cs" Link="FasedataBevis.cs" />
   </ItemGroup>
 </Project>

@@ -95,6 +95,34 @@ h3 { font-size: 14px; font-weight: 600; margin: 0 0 9px; }
 .innstillingskort { max-width: 900px; border: 1px solid var(--kant); border-radius: 12px; padding: 24px; background: var(--papir); }
 .innstillingskort h2 { margin-top: 0; }
 .innstillingskort .knapp { display: inline-block; text-decoration: none; }
+.innstillingskort + .innstillingskort { margin-top: 20px; }
+.skjema.faseskjema { max-width: 960px; gap: 0; }
+.faseforklaring { padding-bottom: 20px; }
+.faseforklaring p { color: var(--dempet); max-width: 760px; }
+.faseskjema fieldset { min-width: 0; border: 0; margin: 0; padding: 20px 0; }
+.faseskjema .faserad { border-top: 1px solid var(--kant); display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); column-gap: 26px; }
+.faseskjema legend { font-size: 12px; font-weight: 600; color: var(--primaer); padding: 0 8px 0 0; }
+.faseskjema input, .faseskjema select { width: 100%; }
+.fasegrensefelt { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.fasegrensefelt label, .fasenavn label { margin-bottom: 6px; }
+.faseskjema .faseslutt { background: var(--myk); padding: 20px; border-radius: 8px; margin: 12px 0 24px; }
+.faseslutt legend { padding: 0 6px; margin-bottom: 12px; }
+.fasehandlinger { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fasestatus { max-width: 960px; background: var(--myk); border: 1px solid #c7d9d0; border-radius: 8px; padding: 16px 20px; color: var(--primaer); }
+.fasefeil { max-width: 960px; }
+.fasefeil p { margin-top: 10px; }
+.fasefeil ul { margin: 10px 0 0; padding-left: 20px; }
+.fasefeil a { color: inherit; }
+.fasefeltfeil { display: block; margin-top: 6px; color: #8a1f1f; font-size: 12px; }
+.skjema.faseskjema input[aria-invalid=true], .skjema.faseskjema select[aria-invalid=true] { border-color: #b04141; }
+.fase-snarvei { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; margin: -8px 0 20px; font-size: 12px; }
+.fase-snarvei span { color: var(--dempet); }
+@media (max-width: 650px) {
+    .faseskjema .faserad { grid-template-columns: minmax(0, 1fr); row-gap: 14px; }
+    .fasegrensefelt { gap: 10px; }
+    .fasehandlinger > * { flex: 1 1 100%; text-align: center; }
+    .fase-snarvei { justify-content: flex-start; }
+}
 
 .ingress { color: var(--dempet); margin: 0 0 28px; max-width: 740px; }
 .melding { color: var(--dempet); padding: 12px 0; }

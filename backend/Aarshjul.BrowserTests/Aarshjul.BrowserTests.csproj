@@ -19,5 +19,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Aarshjul.Web\Aarshjul.Web.csproj" />
     <Compile Include="..\Aarshjul.Tests\TestApplikasjon.cs" Link="TestApplikasjon.cs" />
+    <Compile Include="..\Testkontrakter\FasedataBevis.cs" Link="FasedataBevis.cs" />
   </ItemGroup>
 </Project>
