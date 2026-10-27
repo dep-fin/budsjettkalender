@@ -23,11 +23,13 @@ Ved modellendring må demo-databasen flyttes til en sikkerhetskopi eller gjenska
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 59 scenarioer starter Kestrel i Development
-med Demo=true, tilfeldig loopback-port og ny SQLite-fil. Det 60. scenarioet bruker den
+eksisterende app eller database: 60 scenarioer starter Kestrel i Development
+med Demo=true, tilfeldig loopback-port og ny SQLite-fil. Ett ytterligere scenario bruker den
 eksisterende HTTP-testverten i Testing med ekte Kestrel, SQLite i minnet og testautentisering.
 Der styres fullføringen av et gruppeoppslag for å prøve initialisering i en interaktiv
 Blazor-krets; øvrige tjenester og generering er reelle. Ingen eksterne tjenester brukes.
+Dialogregresjonen holder et JS-visningskall igjen mens den faktiske DOM-en er synlig,
+og prøver Escape, retur og fokus for leser og begge bidragsytergrupper uten tidsbasert søvn.
 Bare syntetiske personaer og filer benyttes. Kjør fra repo-roten:
 
 ```sh
@@ -55,7 +57,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 60 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 61 beståtte scenarioer uten hopp.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.

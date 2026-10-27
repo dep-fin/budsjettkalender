@@ -21,20 +21,22 @@ public sealed class ArbeidsaarTester
         await n.Side.GetByRole(AriaRole.Searchbox).FillAsync("UX82 arbeidsår");
         await Expect(KalenderperspektivTester.Utvalg(n)).ToContainTextAsync("Søk: «UX82 arbeidsår»");
         await n.Side.GetByRole(AriaRole.Link, new() { Name = "Administrasjon", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Frister", Level = 1, Exact = true })).ToBeVisibleAsync();
         await Aarsvalg(n).SelectOptionAsync("2031");
         await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "UX82 arbeidsår 2031" })).ToHaveCountAsync(1);
         await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "UX82 arbeidsår 2032" })).ToHaveCountAsync(0);
         await Expect(Aarsvalg(n)).ToHaveValueAsync("2031");
         var nav = n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Områdenavigasjon", Exact = true });
         await Expect(nav.GetByRole(AriaRole.Link)).ToHaveTextAsync(new[] { "Frister", "Forslag", "Dokumenter", "Generer fra årsmal" });
-        foreach (var (fane, sti, felt) in new[]
+        foreach (var (fane, sti, overskrift, felt) in new[]
         {
-            ("Forslag", "/admin/ko", ""), ("Dokumenter", "/admin/last-opp", "Budsjettår"),
-            ("Generer fra årsmal", "/admin/generer", "Målbudsjettår"), ("Frister", "/admin/frister", "")
+            ("Forslag", "/admin/ko", "Godkjenningskø", ""), ("Dokumenter", "/admin/last-opp", "Last opp dokument", "Budsjettår"),
+            ("Generer fra årsmal", "/admin/generer", "Generér budsjettår", "Målbudsjettår"), ("Frister", "/admin/frister", "Frister", "")
         })
         {
             await nav.GetByRole(AriaRole.Link, new() { Name = fane, Exact = true }).ClickAsync();
             await Expect(n.Side).ToHaveURLAsync(n.Adresse + sti + "?aar=2031");
+            await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = overskrift, Level = 1, Exact = true })).ToBeVisibleAsync();
             await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Budsjettår 2031", Exact = true })).ToBeVisibleAsync();
             if (felt != "") await Expect(n.Side.GetByLabel(felt, new() { Exact = true })).ToHaveValueAsync("2031");
         }

@@ -58,7 +58,10 @@ lagres én gang og har samme identitet/verdier i register, Kalender, Tidslinje o
 Fristliste. [Akseptanse](acceptance/2026-10-27-atelier-ux07.md) beskriver årsbytte,
 kompatibilitet, generert kø, roller og rød/grønn. Samlet review og separat audit er utført;
 ett Standards-funn om initialisering av genereringsåret er rettet med en deterministisk
-Edge/Kestrel-regresjon. Etterkontroll og SQL Server-/Chromium-CI gjenstår for kandidaten.
+Edge/Kestrel-regresjon. Første Chromium-CI avdekket en navigasjonsprøve som valgte år
+før riktig side var rendret, og en reell Escape-feil ved forsinket dialog-JS. Begge er
+rettet; en ny deterministisk nettleserregresjon prøver retur, native lukking og fokus
+for leser, FA og FIN-FAG. Oppdatert SQL Server-/Chromium-CI gjenstår for kandidaten.
 #83 og senere er ikke implementert her.
 
 | Oppgave | Implementert atferd | Leveranse |
@@ -86,7 +89,7 @@ Edge/Kestrel-regresjon. Etterkontroll og SQL Server-/Chromium-CI gjenstår for k
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. Med #82 er testomfanget 60 reelle Playwright-/Edge-scenarioer og 651 ordinære tester som
+eksterne miljøporter. Med #82 er testomfanget 61 reelle Playwright-/Edge-scenarioer og 651 ordinære tester som
 passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.
