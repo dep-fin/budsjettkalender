@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @implements IDisposable
 @inject IFristlesing Lesing
+@inject IFasemal Fasemaler
 @inject Synlighetskontekstkilde Kontekstkilde
 @inject Visningstilstand Listeutvalg
 @inject Kalendertilstand Kalenderutvalg
@@ -41,6 +42,12 @@
                 <button aria-pressed="@(VisListe ? "true" : "false")" @onclick="() => ByttVisningAsync(true)">Fristliste</button>
             </nav>
         </div>
+        @if (!VisListe)
+        {
+            <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
+                <p class="fase-snarvei"><a href="/admin/innstillinger/faseinndeling">Rediger faser</a><span>Felles for alle budsjettår</span></p>
+            </AuthorizeView>
+        }
         @if (VisListe)
         {
             <div class="budsjett-kompatibilitet">
@@ -70,7 +77,7 @@
         }
         else if (!VisListe)
         {
-            <Budsjettaarstidslinje Budsjettaar="ValgtAar.Value" Frister="Frister" Idag="Idag" AapneFrist="AapneFristAsync" />
+            <Budsjettaarstidslinje Budsjettaar="ValgtAar.Value" Frister="Frister" Fasemal="Fasemal!" Idag="Idag" AapneFrist="AapneFristAsync" />
             @if (Frister.Count == 0) { <p class="melding" role="status">Ingen frister i dette budsjettåret.</p> }
         }
         else
@@ -95,6 +102,7 @@
     private IReadOnlyList<int> TilgjengeligeAar = [];
     private IReadOnlyList<int> Listeaar = [];
     private IReadOnlyList<FristDto> Frister = [];
+    private FasemalDto? Fasemal;
     private bool Lastet;
     private string? Lastefeil;
     private int _lasting;
@@ -105,7 +113,8 @@
         get
         {
             if (ValgtAar is not { } aar) return "Velg et tilgjengelig budsjettår";
-            var linje = new Budsjettaarslinje(aar, []);
+            if (Fasemal is null) return "Faseinndelingen lastes sammen med fristene";
+            var linje = new Budsjettaarslinje(aar, [], Fasemal);
             return $"{Kalendervisning.Maaned(linje.Fra)} – {Kalendervisning.Maaned(linje.Til)}";
         }
     }
@@ -133,6 +142,7 @@
         Frister = [];
         try
         {
+            var fasemal = await Fasemaler.HentAsync();
             var ctx = await Kontekstkilde.HentAsync();
             var aar = await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, inkluderHistorikk: true);
             if (_avsluttet || lasting != _lasting) return;
@@ -150,6 +160,7 @@
                 ? await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, Listeutvalg.InkluderHistorikk) : aar;
             if (_avsluttet || lasting != _lasting) return;
             Frister = frister;
+            Fasemal = fasemal;
             Listeaar = listeaar;
             Lastefeil = null;
         }

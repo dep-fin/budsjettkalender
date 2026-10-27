@@ -671,6 +671,35 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.ToTable("Varsler");
                 });
 
+            modelBuilder.Entity("Aarshjul.Infrastructure.Faser.FasemalRad", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Innhold")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("Versjon")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Fasemaler", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Fasemaler_EnFellesMal", "[Id] = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Innhold = "{\"Faser\":[{\"Navn\":\"Forberedelser\",\"Startmaaned\":-15},{\"Navn\":\"Utarbeidelse av budsjettforslag\",\"Startmaaned\":-10},{\"Navn\":\"Fremleggelse og vedtak\",\"Startmaaned\":-3},{\"Navn\":\"Gjennomf\\u00F8ring og revidering\",\"Startmaaned\":0},{\"Navn\":\"Regnskap\",\"Startmaaned\":12}],\"SisteMaanedInkludert\":15}",
+                            Versjon = new Guid("2467c0d7-5575-45ba-b658-79293feff364")
+                        });
+                });
+
             modelBuilder.Entity("Aarshjul.Domain.BrukerGruppe", b =>
                 {
                     b.HasOne("Aarshjul.Domain.Bruker", "Bruker")

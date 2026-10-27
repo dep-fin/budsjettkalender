@@ -1,20 +1,12 @@
 using Aarshjul.Application.Frister;
+using Aarshjul.Application.Faser;
 
 namespace Aarshjul.Web.Visning;
 
 /// <summary>Presentasjonsvindu og kollisjonsfrie månedsgrupper. Avgrenser aldri leseutvalget.</summary>
 public sealed class Budsjettaarslinje
 {
-    // Relative måneder fra januar t. Fasekonfigurasjon/lagring følger i UX08.
-    public static readonly (string Navn, int Fra, int Til)[] Faser =
-    [
-        ("Forberedelser", -15, -10),
-        ("Utarbeidelse av budsjettforslag", -10, -3),
-        ("Fremleggelse og vedtak", -3, 0),
-        ("Gjennomføring og revidering", 0, 12),
-        ("Regnskap", 12, 16)
-    ];
-
+    public IReadOnlyList<(string Navn, int Fra, int Til)> Faser { get; }
     public DateOnly Fra { get; }
     public DateOnly Til { get; }
     public IReadOnlyList<FristDto> Foer { get; }
@@ -25,12 +17,15 @@ public sealed class Budsjettaarslinje
     private readonly long _slutt;
     private readonly long _budsjettstart;
 
-    public Budsjettaarslinje(int budsjettaar, IReadOnlyList<FristDto> frister)
+    public Budsjettaarslinje(int budsjettaar, IReadOnlyList<FristDto> frister, FasemalDto? fasemal = null)
     {
+        fasemal ??= Fasemalstandard.Standard;
+        Faser = fasemal.Faser.Select((fase, i) => (fase.Navn, fase.Startmaaned,
+            i + 1 < fasemal.Faser.Count ? fasemal.Faser[i + 1].Startmaaned : checked(fasemal.SisteMaanedInkludert + 1))).ToArray();
         _budsjettstart = ((long)budsjettaar - 1) * 12;
         // Eksisterende årstall har ingen DateOnly-kontrakt. Regn med long og klipp bare grafikken.
-        _start = Math.Clamp(_budsjettstart - 15, 0, 9999L * 12 - 1);
-        _slutt = Math.Clamp(_budsjettstart + 16, _start + 1, 9999L * 12);
+        _start = Math.Clamp(_budsjettstart + Faser[0].Fra, 0, 9999L * 12 - 1);
+        _slutt = Math.Clamp(_budsjettstart + Faser[^1].Til, _start + 1, 9999L * 12);
         Fra = FraMaaned(_start);
         Til = Kalendervisning.SisteDag(FraMaaned(_slutt - 1));
         Foer = frister.Where(f => f.Dato < Fra).ToArray();

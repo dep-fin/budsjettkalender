@@ -1,0 +1,250 @@
+@page "/admin/innstillinger/faseinndeling"
+@attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+@implements IDisposable
+@using System.Globalization
+@inject IFasemal Fasemaler
+@inject FasemalKommando Kommando
+@inject ILogger<Faseinndeling> Logg
+
+<PageTitle>Faseinndeling</PageTitle>
+
+<p class="menyoverskrift">Administrator-innstillinger</p>
+<h1>Faseinndeling</h1>
+<p class="ingress">Én felles fasemal for alle budsjettår og alle lesere. Endringer i fasene flytter ingen frister.</p>
+
+@if (_feilmelding is not null)
+{
+    <div class="feil fasefeil" role="alert" tabindex="-1" @ref="_feilfelt">
+        <strong>@_feilmelding</strong>
+        @if (_feil.Count > 0)
+        {
+            <ul>@foreach (var feil in _feil) { <li><a href="@($"#{FeltId(feil.Key)}")">@feil.Value</a></li> }</ul>
+        }
+        @if (_konflikt)
+        {
+            <p>Dine verdier er beholdt. Last inn den nyeste felles malen før du gjør og lagrer endringene på nytt. Innlasting erstatter feltene nedenfor.</p>
+            <button type="button" class="knapp" @onclick="LastNyesteAsync" disabled="@Arbeider">Last inn nyeste fasemal</button>
+        }
+        else if (!_harMal)
+        {
+            <button type="button" class="knapp" @onclick="LastNyesteAsync" disabled="@Arbeider">Prøv igjen</button>
+        }
+    </div>
+}
+@if (_melding is not null)
+{
+    <p class="fasestatus" role="status" tabindex="-1" @ref="_statusfelt">@_melding</p>
+}
+@if (_laster)
+{
+    <p class="melding" role="status">Laster felles fasemal …</p>
+}
+@if (_harMal)
+{
+    <form class="skjema faseskjema" aria-label="Felles fasemal" @onsubmit="LagreAsync" @onsubmit:preventDefault="true" novalidate>
+        <div class="faseforklaring">
+            <h2>Fem faser, ett budsjettløp</h2>
+            <p>Hver fase starter den første i valgt måned og varer frem til neste fase starter. Den siste fasen varer til og med sluttmåneden.</p>
+            <p id="relativt-aar-hjelp"><strong>År regnes fra budsjettåret t:</strong> −2 er to år før, −1 er året før, 0 er budsjettåret og 1 er året etter.</p>
+        </div>
+        @for (var i = 0; i < _rader.Count; i++)
+        {
+            var indeks = i;
+            var rad = _rader[indeks];
+            var navn = $"Faser[{indeks}].Navn";
+            var start = $"Faser[{indeks}].Startmaaned";
+            var aar = $"Faser[{indeks}].Aar";
+            <fieldset class="faserad" disabled="@Arbeider">
+                <legend>Fase @(indeks + 1)</legend>
+                <div class="fasenavn">
+                    <label for="@FeltId(navn)">Fase @(indeks + 1) navn</label>
+                    <input id="@FeltId(navn)" @bind="rad.Navn" @bind:event="oninput" aria-invalid="@Ugyldig(navn)" aria-describedby="@Feilreferanse(navn)" />
+                    @if (_feil.TryGetValue(navn, out var navnfeil)) { <small class="fasefeltfeil" id="@FeilId(navn)">@navnfeil</small> }
+                </div>
+                <div class="fasegrense">
+                    <div class="fasegrensefelt">
+                        <div><label for="@FeltId(start)">Fase @(indeks + 1) startmåned</label>
+                            <select id="@FeltId(start)" @bind="rad.Maaned" aria-invalid="@Ugyldig(start)" aria-describedby="@Feilreferanse(start)">
+                                @for (var m = 1; m <= 12; m++) { <option value="@m">@Maanedsnavn[m - 1]</option> }
+                            </select>
+                        </div>
+                        <div><label for="@FeltId(aar)">Fase @(indeks + 1) relativt år</label>
+                            <input id="@FeltId(aar)" type="text" inputmode="numeric" @bind="rad.Aar" @bind:event="oninput" aria-invalid="@Ugyldig(aar, start)" aria-describedby="@($"relativt-aar-hjelp {Feilreferanse(aar, start)}")" />
+                        </div>
+                    </div>
+                    <small class="hint">Starter 1. i måneden.</small>
+                    @if (_feil.TryGetValue(start, out var startfeil)) { <small class="fasefeltfeil" id="@FeilId(start)">@startfeil</small> }
+                    @if (_feil.TryGetValue(aar, out var aarfeil)) { <small class="fasefeltfeil" id="@FeilId(aar)">@aarfeil</small> }
+                </div>
+            </fieldset>
+        }
+        <fieldset class="faseslutt" disabled="@Arbeider">
+            <legend>Hele løpet varer til og med</legend>
+            <div class="fasegrensefelt">
+                <div><label for="fase-sluttmaaned">Siste inkluderte måned</label>
+                    <select id="fase-sluttmaaned" @bind="_slutt.Maaned" aria-invalid="@Ugyldig("SisteMaanedInkludert")" aria-describedby="@($"sluttmaaned-hjelp {Feilreferanse("SisteMaanedInkludert")}")">
+                        @for (var m = 1; m <= 12; m++) { <option value="@m">@Maanedsnavn[m - 1]</option> }
+                    </select>
+                </div>
+                <div><label for="fase-sluttaar">Slutt relativt år</label>
+                    <input id="fase-sluttaar" type="text" inputmode="numeric" @bind="_slutt.Aar" @bind:event="oninput" aria-invalid="@Ugyldig("Sluttaar", "SisteMaanedInkludert")" aria-describedby="@($"relativt-aar-hjelp {Feilreferanse("Sluttaar", "SisteMaanedInkludert")}")" />
+                </div>
+            </div>
+            <small class="hint" id="sluttmaaned-hjelp">Hele denne måneden er inkludert. Siste fase kan vare én måned.</small>
+            @if (_feil.TryGetValue("SisteMaanedInkludert", out var sluttfeil)) { <small class="fasefeltfeil" id="@FeilId("SisteMaanedInkludert")">@sluttfeil</small> }
+            @if (_feil.TryGetValue("Sluttaar", out var sluttaarfeil)) { <small class="fasefeltfeil" id="@FeilId("Sluttaar")">@sluttaarfeil</small> }
+        </fieldset>
+        <div class="fasehandlinger">
+            <button type="submit" class="knapp knapp-primær" disabled="@(Arbeider || _konflikt)">@(_lagrer ? "Lagrer fasemal …" : "Lagre fasemal")</button>
+            <a class="knapp" href="/budsjettaar">Vis i Budsjettår</a>
+        </div>
+        <p class="hint">Lagring endrer bare faseinndelingen. Fristenes datoer, innhold og synlighet beholdes.</p>
+    </form>
+}
+
+@code {
+    private sealed class Maanedsfelt
+    {
+        public string Navn { get; set; } = "";
+        public string Maaned { get; set; } = "1";
+        public string Aar { get; set; } = "0";
+        public static Maanedsfelt Fra(int offset, string navn = "") => new()
+        {
+            Navn = navn,
+            Maaned = (((long)offset % 12 + 12) % 12 + 1).ToString(CultureInfo.InvariantCulture),
+            Aar = Math.Floor(offset / 12d).ToString(CultureInfo.InvariantCulture)
+        };
+    }
+
+    private static readonly string[] Maanedsnavn = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
+    private readonly CancellationTokenSource _levetid = new();
+    private List<Maanedsfelt> _rader = [];
+    private Maanedsfelt _slutt = new();
+    private Guid _forventetVersjon;
+    private Dictionary<string, string> _feil = [];
+    private string? _feilmelding;
+    private string? _melding;
+    private bool _harMal, _laster, _lagrer, _konflikt, _fokuserFeil, _fokuserStatus;
+    private bool Arbeider => _laster || _lagrer;
+    private ElementReference _feilfelt, _statusfelt;
+
+    protected override Task OnInitializedAsync() => LastAsync(false);
+    private Task LastNyesteAsync() => LastAsync(true);
+    private async Task LastAsync(bool varsle)
+    {
+        if (Arbeider) return;
+        _laster = true;
+        try
+        {
+            var mal = await Fasemaler.HentAsync(_levetid.Token);
+            Bruk(mal);
+            _feil.Clear();
+            _feilmelding = null;
+            _konflikt = false;
+            _melding = varsle ? "Nyeste fasemal er lastet inn. Du kan nå redigere og lagre på nytt." : null;
+            _fokuserStatus = varsle;
+        }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (Exception feil)
+        {
+            Logg.LogError(feil, "Kunne ikke laste felles fasemal.");
+            _feilmelding = "Kunne ikke laste fasemalen akkurat nå. Prøv igjen.";
+            _fokuserFeil = true;
+        }
+        finally { _laster = false; }
+    }
+
+    private async Task LagreAsync()
+    {
+        if (Arbeider || !_harMal || _konflikt) return;
+        _feil.Clear();
+        _melding = null;
+        _feilmelding = null;
+        var faser = new List<FaseDto>();
+        for (var i = 0; i < _rader.Count; i++)
+        {
+            if (LesMaaned(_rader[i], $"Faser[{i}].Startmaaned", $"Faser[{i}].Aar", out var start))
+                faser.Add(new(_rader[i].Navn, start));
+        }
+        LesMaaned(_slutt, "SisteMaanedInkludert", "Sluttaar", out var slutt);
+        if (_feil.Count > 0) { VisValideringsfeil(); return; }
+
+        _lagrer = true;
+        try
+        {
+            var lagret = await Kommando.OppdaterAsync(_forventetVersjon, faser, slutt, _levetid.Token);
+            Bruk(lagret);
+            _melding = "Fasemalen er lagret for alle budsjettår. Ingen frister er endret.";
+            _fokuserStatus = true;
+        }
+        catch (FasemalValideringsunntak feil)
+        {
+            _feil = new(feil.Feil);
+            VisValideringsfeil();
+        }
+        catch (FasemalKonfliktunntak feil)
+        {
+            _konflikt = true;
+            _feilmelding = feil.Message;
+            _fokuserFeil = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _feilmelding = "Du har ikke lenger administratortilgang. Fasemalen ble ikke lagret.";
+            _fokuserFeil = true;
+        }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (Exception feil)
+        {
+            Logg.LogError(feil, "Kunne ikke lagre felles fasemal.");
+            _feilmelding = "Kunne ikke lagre fasemalen akkurat nå. Dine verdier er beholdt. Prøv igjen.";
+            _fokuserFeil = true;
+        }
+        finally { _lagrer = false; }
+    }
+
+    private void Bruk(FasemalDto mal)
+    {
+        _rader = mal.Faser.Select(f => Maanedsfelt.Fra(f.Startmaaned, f.Navn)).ToList();
+        _slutt = Maanedsfelt.Fra(mal.SisteMaanedInkludert);
+        _forventetVersjon = mal.Versjon;
+        _harMal = true;
+    }
+
+    private bool LesMaaned(Maanedsfelt felt, string maanedsnoekkel, string aarsnoekkel, out int offset)
+    {
+        offset = 0;
+        if (!int.TryParse(felt.Maaned, NumberStyles.None, CultureInfo.InvariantCulture, out var maaned) || maaned < 1 || maaned > 12)
+            _feil[maanedsnoekkel] = "Velg en gyldig måned.";
+        if (!int.TryParse(felt.Aar, NumberStyles.Integer, CultureInfo.InvariantCulture, out var aar))
+            _feil[aarsnoekkel] = "Relativt år må være et heltall, for eksempel −1, 0 eller 1.";
+        if (_feil.ContainsKey(maanedsnoekkel) || _feil.ContainsKey(aarsnoekkel)) return false;
+        var relativ = (long)aar * 12 + maaned - 1;
+        if (relativ < int.MinValue || relativ > int.MaxValue)
+        {
+            _feil[aarsnoekkel] = "Det relative året er for stort eller for lite. Velg et gyldig år.";
+            return false;
+        }
+        offset = (int)relativ;
+        return true;
+    }
+
+    private void VisValideringsfeil() { _feilmelding = "Fasemalen ble ikke lagret. Rett feilene nedenfor."; _fokuserFeil = true; }
+    private string Ugyldig(params string[] felt) => felt.Any(_feil.ContainsKey) ? "true" : "false";
+    private string? Feilreferanse(params string[] felt) => felt.Any(_feil.ContainsKey) ? string.Join(" ", felt.Where(_feil.ContainsKey).Select(FeilId)) : null;
+    private static string FeilId(string felt) => $"feil-{FeltId(felt)}";
+    private static string FeltId(string felt) => felt switch
+    {
+        "SisteMaanedInkludert" => "fase-sluttmaaned",
+        "Sluttaar" => "fase-sluttaar",
+        _ => "fase-" + felt.Replace("Faser[", "", StringComparison.Ordinal).Replace("].", "-", StringComparison.Ordinal).ToLowerInvariant()
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_fokuserFeil) { _fokuserFeil = false; await _feilfelt.FocusAsync(); }
+        if (_fokuserStatus) { _fokuserStatus = false; await _statusfelt.FocusAsync(); }
+    }
+
+    public void Dispose() { _levetid.Cancel(); _levetid.Dispose(); }
+}

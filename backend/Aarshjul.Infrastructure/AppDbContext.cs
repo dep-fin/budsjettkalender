@@ -1,12 +1,12 @@
 using Aarshjul.Domain;
+using Aarshjul.Application.Faser;
+using Aarshjul.Infrastructure.Faser;
 using Microsoft.EntityFrameworkCore;
 
 namespace Aarshjul.Infrastructure;
 
 /// <summary>
-/// EF Core-konteksten for hele løsningen. Datamodellen settes opp komplett allerede i Fase 1
-/// (også tabeller som først tas i bruk i Fase 2/3), slik at senere arbeid ikke krever
-/// skjemaendringer.
+/// EF Core-konteksten for hele løsningen. Skjemaendringer leveres med migrasjon og snapshot.
 /// </summary>
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
@@ -22,6 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Varsel> Varsler => Set<Varsel>();
     public DbSet<InnhentingsStatus> InnhentingsStatuser => Set<InnhentingsStatus>();
     public DbSet<Kalenderabonnement> Kalenderabonnementer => Set<Kalenderabonnement>();
+    internal DbSet<FasemalRad> Fasemaler => Set<FasemalRad>();
 
     // --- Internkalender for SBR (SBR-intern arbeidsliste) ---
     public DbSet<InternRunde> InternRunder => Set<InternRunde>();
@@ -33,6 +34,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<FasemalRad>(e =>
+        {
+            e.ToTable("Fasemaler", t => t.HasCheckConstraint("CK_Fasemaler_EnFellesMal", "[Id] = 1"));
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Innhold).IsRequired();
+            e.Property(x => x.Versjon).IsConcurrencyToken();
+            e.HasData(new FasemalRad
+            {
+                Id = 1,
+                Innhold = Fasemalinnhold.StandardJson,
+                Versjon = Fasemalstandard.Standard.Versjon
+            });
+        });
+
         // --- Synlighetsgruppe: Kode er stabil, unik nøkkel det refereres til fra synlig_for ---
         b.Entity<Synlighetsgruppe>(e =>
         {

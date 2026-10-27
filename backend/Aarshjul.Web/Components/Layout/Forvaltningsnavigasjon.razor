@@ -61,8 +61,8 @@ else
             [new("Internrunder", "/internkalender"), new("Mine gjøremål", "/internkalender/mine"), new("Gjøremålsregler", "/internkalender/regler")],
             Stier: [], Stiprefiks: "internkalender", Policy: Autorisasjon.ErSbr),
         new("Administrator-innstillinger", "/admin/innstillinger",
-            [new("Innstillinger", "/admin/innstillinger")],
-            Stier: ["admin/innstillinger"])
+            [new("Innstillinger", "/admin/innstillinger"), new("Faseinndeling", "/admin/innstillinger/faseinndeling")],
+            Stier: [], Stiprefiks: "admin/innstillinger")
     ];
 
     private Omraade AktivtOmraade => Omraader.FirstOrDefault(omraade => omraade.Gjelder(Sti)) ?? Fristomraade;
