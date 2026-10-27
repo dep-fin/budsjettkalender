@@ -1,0 +1,61 @@
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService Autorisasjonstjeneste
+@inject AuthenticationStateProvider Innlogging
+@inject Synlighetskontekstkilde Kontekstkilde
+@inject IFristlesing Lesing
+@inject IGodkjenningsko Ko
+@inject TimeProvider Klokke
+
+@if (_autorisert)
+{
+    <section class="arbeidsaarkontekst" aria-label="Valgt arbeidsår">
+        <div class="arbeidsaaroverskrift">
+            <div>
+                <p class="overlinje">Budsjettår og frister</p>
+                <h2>@(Aar is { } aar ? $"Budsjettår {aar}" : "Alle budsjettår")</h2>
+                <p>Frister, forslag, dokumenter og generering følger samme arbeidsår.</p>
+            </div>
+            <label>Arbeidsår
+                <select value="@(Aar?.ToString() ?? "alle")" @onchange="Velg">
+                    @foreach (var a in TilgjengeligeAar)
+                    {
+                        <option value="@a">@a</option>
+                    }
+                    <option value="alle">Alle år</option>
+                </select>
+            </label>
+        </div>
+        <form class="aapne-arbeidsaar" @onsubmit="Aapne" @onsubmit:preventDefault="true">
+            <label>Åpne annet arbeidsår
+                <input type="number" min="1" max="9999" @bind="_annetAar" />
+            </label>
+            <button type="submit" class="knapp">Åpne år</button>
+        </form>
+    </section>
+}
+
+@code {
+    [Parameter] public int? Aar { get; set; }
+    [Parameter] public EventCallback<int?> AarChanged { get; set; }
+    private bool _autorisert;
+    private int _annetAar;
+    private IReadOnlyList<int> _kjenteAar = [];
+    private IEnumerable<int> TilgjengeligeAar => _kjenteAar.Append(Arbeidsaarkontekst.Standardaar(Klokke))
+        .Concat(Aar is { } aar ? [aar] : Array.Empty<int>()).Distinct().OrderDescending();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Komponenter er ikke selvstendige policygrenser. Kontroller før metadata hentes.
+        var bruker = (await Innlogging.GetAuthenticationStateAsync()).User;
+        _autorisert = (await Autorisasjonstjeneste.AuthorizeAsync(bruker, Autorisasjon.ErAdministrator)).Succeeded;
+        if (!_autorisert) return;
+        var ctx = await Kontekstkilde.HentAsync();
+        var fristaar = await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, inkluderHistorikk: true);
+        var ko = await Ko.HentKoAsync();
+        _kjenteAar = fristaar.Concat(ko.Select(f => f.Budsjettaar)).Distinct().ToList();
+    }
+
+    protected override void OnParametersSet() => _annetAar = Aar ?? Arbeidsaarkontekst.Standardaar(Klokke);
+    private Task Velg(ChangeEventArgs e) => AarChanged.InvokeAsync(Arbeidsaarkontekst.Les(e.Value?.ToString(), Klokke));
+    private Task Aapne() => _annetAar is >= 1 and <= 9999 ? AarChanged.InvokeAsync(_annetAar) : Task.CompletedTask;
+}

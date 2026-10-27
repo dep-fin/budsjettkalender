@@ -8,16 +8,18 @@ public sealed class KoKildefilterTester
 {
     private const string A = "<script data-kilde73>R-A & rå</script>";
     private const string B = "R-B";
+    private const string C = "bare-andre-aars-kilde82";
 
     [Fact]
     public Task Kildevalg_kombineres_som_snitt_og_kan_byttes_eller_oppheves_i_tomt_utvalg() => Nettleser.Kjor(async n =>
     {
         await n.LoggInn("demo-admin");
         await Oppsett(n);
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=2031");
         var kilde = Kilde(n);
         await Expect(kilde).ToBeVisibleAsync();
-        await Expect(kilde.Locator("option")).ToHaveTextAsync(new[] { "Alle", A, B, "bruker-73", "opplastet73.pdf" });
+        await Expect(kilde.Locator("option")).ToHaveTextAsync(new[] { "Alle", A, B, C, "bruker-73", "opplastet73.pdf" });
+        await Expect(n.Side.GetByRole(AriaRole.Link, new() { Name = "2032: 3 åpne forslag", Exact = true })).ToBeVisibleAsync();
         await Expect(n.Side.Locator("script[data-kilde73]")).ToHaveCountAsync(0);
         Assert.Contains("&lt;script", await kilde.EvaluateAsync<string>("el => el.outerHTML"));
         await Kort(n, 10);
@@ -33,7 +35,7 @@ public sealed class KoKildefilterTester
         await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Kun «ukjent type»" }).CheckAsync();
         await Kort(n, 1);
         await Expect(ForslagTester.Kort(n.Side, "KF73 a-ukjent")).ToBeVisibleAsync();
-        await Expect(kilde.Locator("option")).ToHaveTextAsync(new[] { "Alle", A, B, "bruker-73", "opplastet73.pdf" });
+        await Expect(kilde.Locator("option")).ToHaveTextAsync(new[] { "Alle", A, B, C, "bruker-73", "opplastet73.pdf" });
         await kilde.SelectOptionAsync(B);
         await Expect(ForslagTester.Kort(n.Side, "KF73 b-ukjent")).ToBeVisibleAsync();
         await Kort(n, 1);
@@ -42,20 +44,29 @@ public sealed class KoKildefilterTester
         await Kort(n, 0);
         await Expect(n.Side.GetByText("Ingen forslag til behandling.", new() { Exact = true })).ToBeVisibleAsync();
         await Expect(kilde).ToHaveValueAsync("opplastet73.pdf");
+        await Expect(n.Side.GetByRole(AriaRole.Link, new() { Name = "2032: 3 åpne forslag", Exact = true })).ToBeVisibleAsync();
         await kilde.SelectOptionAsync("");
         await Kort(n, 2); // «Alle» beholder alle fire andre filtre.
         await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Kun «ukjent type»" }).UncheckAsync();
         await Kort(n, 5); // Også forslagene med null/blank kilde beholdes under «Alle».
+        await n.Side.GetByRole(AriaRole.Link, new() { Name = "2032: 3 åpne forslag", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Arbeidsår", Exact = true })).ToHaveValueAsync("2032");
+        await Kort(n, 3);
+        await Expect(n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Områdenavigasjon", Exact = true })
+            .GetByRole(AriaRole.Link, new() { Name = "Frister", Exact = true })).ToHaveAttributeAsync("href", "/admin/frister?aar=2032");
+        await Expect(kilde).ToHaveValueAsync("");
+        await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Type", Exact = true })).ToHaveValueAsync("");
+        await Expect(n.Side.GetByRole(AriaRole.Link, new() { Name = "2031: 10 åpne forslag", Exact = true })).ToBeVisibleAsync();
 
         // Administratorgjerde og kilde-/bevismetadata prøves også i reell nettleser.
-        foreach (var persona in new[] { "demo-fa", "demo-fag", "demo-pol" })
+        foreach (var persona in new[] { "demo-fa", "demo-finfag", "demo-fag", "demo-pol" })
         {
             await n.LoggInn(persona);
-            await n.Side.GotoAsync("/admin/ko");
+            await n.Side.GotoAsync("/admin/ko?aar=2032");
             await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Velg hvem du vil være" })).ToBeVisibleAsync();
             await Expect(Kilde(n)).ToHaveCountAsync(0);
             var dom = await n.Side.ContentAsync();
-            foreach (var markor in new[] { "KF73", "data-kilde73", B, "opplastet73.pdf", "bruker-73", "bevis73" })
+            foreach (var markor in new[] { "KF73", "data-kilde73", B, C, "opplastet73.pdf", "bruker-73", "bevis73", "Budsjettår 2032", "åpne forslag" })
                 Assert.DoesNotContain(markor, dom);
         }
         n.BekreftIngenKretsfeil();
@@ -85,7 +96,7 @@ public sealed class KoKildefilterTester
             cmd.Parameters.AddWithValue("$id", id.ToUpperInvariant());
             await cmd.ExecuteNonQueryAsync();
         }
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=2031");
 
         if (handling == "Godkjenn")
         {
@@ -126,6 +137,7 @@ public sealed class KoKildefilterTester
             await kort.GetByRole(AriaRole.Button, new() { Name = "Vurder", Exact = true }).ClickAsync();
             await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Juster forslag" })).ToBeVisibleAsync();
             await n.Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync("KF73 justert endring");
+            await n.Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync("2032");
             await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
             await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Godkjenningskø" })).ToBeVisibleAsync();
         }
@@ -137,14 +149,18 @@ public sealed class KoKildefilterTester
             await bekreft.ClickAsync();
         }
         await Expect(Kilde(n)).ToHaveValueAsync(B);
+        await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Arbeidsår", Exact = true })).ToHaveValueAsync("2031");
         await Kort(n, 0);
         await Expect(n.Side.GetByText("Ingen forslag til behandling.", new() { Exact = true })).ToBeVisibleAsync();
         await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Opphav", Exact = true })).ToHaveValueAsync("Robot");
         await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Type", Exact = true })).ToHaveValueAsync("Endring");
         await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Kategori", Exact = true })).ToHaveValueAsync("Budsjett");
         await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Kun «ukjent type»" })).ToBeCheckedAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Link, new() { Name = "2032: 3 åpne forslag", Exact = true })).ToBeVisibleAsync();
+        await Expect(Kilde(n).Locator("option").Filter(new() { HasText = C })).ToHaveCountAsync(1);
         var etter = (await n.Frister()).Single(f => (string?)f!["id"] == id)!;
         Assert.Equal(synlighet, etter["synlighet"]!.ToJsonString());
+        Assert.Equal(handling == "Juster" ? 2032 : 2031, (int)etter["budsjettaar"]!);
         Assert.Equal(handling switch { "Godkjenn" => "KF73 b-ukjent", "Juster" => "KF73 justert endring", _ => "KF73 original" }, (string?)etter["tittel"]);
 
         await Kilde(n).SelectOptionAsync(A);
@@ -159,7 +175,7 @@ public sealed class KoKildefilterTester
         await n.Side.GetByRole(AriaRole.Link, new() { Name = "Kalender", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Kalender", Exact = true })).ToBeVisibleAsync();
         await n.Side.GetByRole(AriaRole.Link, new() { Name = "Administrasjon", Exact = true }).ClickAsync();
-        await n.Side.GetByRole(AriaRole.Link, new() { Name = "Kø", Exact = true }).ClickAsync();
+        await n.Side.GetByRole(AriaRole.Link, new() { Name = "Forslag", Exact = true }).ClickAsync();
         await Expect(Kilde(n)).ToHaveValueAsync("");
         await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Type", Exact = true })).ToHaveValueAsync("");
         n.BekreftIngenKretsfeil();
@@ -193,16 +209,19 @@ public sealed class KoKildefilterTester
         await Legg(db, "godkjent", "bare-godkjent73", status: 1);
         await Legg(db, "avvist", "bare-avvist73", status: 3);
         await Legg(db, "generert", "bare-generert73", type: 2);
+        await Legg(db, "annet-aar-endring", A, type: 1, loep: null, budsjettaar: 2032);
+        await Legg(db, "annet-aar-kjent", A, budsjettaar: 2032);
+        await Legg(db, "annet-aar-kilde", C, budsjettaar: 2032);
     }
 
     private static async Task Legg(SqliteConnection db, string navn, string? kilde,
-        int opphav = 0, int kategori = 0, int type = 0, string? loep = "rammefordeling", int status = 0)
+        int opphav = 0, int kategori = 0, int type = 0, string? loep = "rammefordeling", int status = 0, int budsjettaar = 2031)
     {
         using var cmd = db.CreateCommand();
         cmd.CommandText = """
             INSERT INTO Forslag (Id, Versjon, ForslagType, Opphav, KildeEllerInnsender, Tittel,
                 Dato, Datopresisjon, Budsjettaar, Kategori, Loep, ForeslaattSynlighet, Status)
-            VALUES ($id, $versjon, $type, $opphav, $kilde, $tittel, '2030-11-20', 0, 2031, $kategori, $loep, '["FA","POL"]', $status);
+            VALUES ($id, $versjon, $type, $opphav, $kilde, $tittel, '2030-11-20', 0, $aar, $kategori, $loep, '["FA","POL"]', $status);
             INSERT INTO UttrekksBevis (Id, ForslagId, Felt, TolketVerdi, Kildeutdrag, Konfidens)
             VALUES ($bevis, $id, 'dato', '20.11.2030', 'bevis73 20. november 2030', 0.99);
             """;
@@ -216,6 +235,7 @@ public sealed class KoKildefilterTester
         cmd.Parameters.AddWithValue("$kategori", kategori);
         cmd.Parameters.AddWithValue("$loep", (object?)loep ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$status", status);
+        cmd.Parameters.AddWithValue("$aar", budsjettaar);
         await cmd.ExecuteNonQueryAsync();
     }
 }

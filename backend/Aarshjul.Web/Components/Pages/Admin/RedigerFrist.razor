@@ -6,10 +6,12 @@
 @inject IGodkjenningsko Ko
 @inject IGruppetjeneste Grupper
 @inject NavigationManager Nav
+@inject TimeProvider Klokke
 
 <PageTitle>@Tittel</PageTitle>
 
 <h1>@Tittel</h1>
+<p class="melding">Arbeidsår: @(_arbeidsaar?.ToString() ?? "Alle år"). Budsjettår og kalenderdato kan være forskjellige.</p>
 
 @if (ErJuster)
 {
@@ -34,7 +36,7 @@ else
 {
     @if (_feil is not null)
     {
-        <div class="feil">@_feil</div>
+        <div class="feil" role="alert" tabindex="-1" @ref="_feilfelt">@_feil</div>
     }
 
     <form class="skjema" @onsubmit="Lagre" @onsubmit:preventDefault="true">
@@ -125,8 +127,8 @@ else
         }
 
         <div class="skjemarad">
-            <button type="submit" class="knapp knapp-primær">Lagre</button>
-            <button type="button" class="knapp" @onclick='() => Nav.NavigateTo(ErJuster ? "/admin/ko" : "/admin/frister")'>Avbryt</button>
+            <button type="submit" class="knapp knapp-primær" disabled="@(_lagrer || _lagret)">@(_lagrer ? "Lagrer …" : "Lagre")</button>
+            <button type="button" class="knapp" disabled="@_lagrer" @onclick="() => Nav.NavigateTo(Retur)">Avbryt</button>
         </div>
     </form>
 }
@@ -134,6 +136,8 @@ else
 @code {
     [Parameter] public Guid? Id { get; set; }
     [Parameter] public Guid? ForslagId { get; set; }
+    [SupplyParameterFromQuery(Name = "aar")] public string? AarQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "fra")] public string? Fra { get; set; }
 
     private FristInndata? _inndata;
     private IReadOnlyList<GruppeDto> _grupper = [];
@@ -142,6 +146,13 @@ else
     private string? _feil;
     private bool _lastet;
     private bool _erEndre;
+    private bool _lagrer;
+    private bool _lagret;
+    private bool _fokuserFeil;
+    private ElementReference _feilfelt;
+    private int? _arbeidsaar;
+    private string Retur => Arbeidsaarkontekst.Lenke(ErJuster
+        ? Fra == "generering" ? "/admin/generer" : "/admin/ko" : "/admin/frister", _arbeidsaar);
 
     private bool ErJuster => ForslagId is not null;
 
@@ -149,8 +160,14 @@ else
         ? "Juster forslag"
         : Id is null ? "Ny frist" : "Rediger frist";
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        _arbeidsaar = Arbeidsaarkontekst.Les(AarQuery, Klokke);
+        _kvalifikatorValg = "";
+        _feil = null;
+        _lagret = false;
+        _erEndre = false;
+        _inaktive = [];
         _grupper = await Grupper.HentAktiveAsync();
 
         if (ForslagId is { } forslagId)
@@ -166,7 +183,11 @@ else
         }
         else if (Id is null)
         {
-            _inndata = new FristInndata();
+            _inndata = new FristInndata
+            {
+                Budsjettaar = _arbeidsaar ?? Arbeidsaarkontekst.Standardaar(Klokke),
+                Dato = Datohjelp.Idag(Klokke)
+            };
         }
         else
         {
@@ -203,6 +224,8 @@ else
 
     private async Task Lagre()
     {
+        if (_lagrer || _lagret || _inndata is null) return;
+        _lagrer = true;
         _feil = null;
         _inndata!.Datokvalifikator =
             _inndata.Datopresisjon == Datopresisjon.Maaned && !string.IsNullOrEmpty(_kvalifikatorValg)
@@ -214,22 +237,32 @@ else
             if (ForslagId is { } forslagId)
             {
                 await Ko.JusterOgGodkjennAsync(forslagId, _inndata);
-                Nav.NavigateTo("/admin/ko");
             }
             else if (Id is null)
             {
                 await Skriving.OpprettAsync(_inndata);
-                Nav.NavigateTo("/admin/frister");
             }
             else
             {
                 await Skriving.OppdaterAsync(Id.Value, _inndata);
-                Nav.NavigateTo("/admin/frister");
             }
+            _lagret = true;
+            Nav.NavigateTo($"{Retur}&lagretAar={_inndata.Budsjettaar}");
         }
         catch (Valideringsfeil f)
         {
             _feil = f.Message;
+            _fokuserFeil = true;
+        }
+        finally { _lagrer = false; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_fokuserFeil)
+        {
+            _fokuserFeil = false;
+            await _feilfelt.FocusAsync();
         }
     }
 }

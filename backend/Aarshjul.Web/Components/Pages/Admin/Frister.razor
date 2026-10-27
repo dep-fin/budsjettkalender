@@ -3,13 +3,26 @@
 @inject Synlighetskontekstkilde Kontekstkilde
 @inject IFristlesing Lesing
 @inject NavigationManager Nav
+@inject TimeProvider Klokke
 
 <PageTitle>Administrer frister</PageTitle>
 
+<Arbeidsaarvelger Aar="_arbeidsaar" AarChanged="ByttAar" />
+
 <div class="admintopp">
     <h1>Frister</h1>
-    <button class="knapp knapp-primær" @onclick='() => Nav.NavigateTo("/admin/frist/ny")'>Ny frist</button>
+    <button class="knapp knapp-primær" @onclick='() => Nav.NavigateTo(Lenke("/admin/frist/ny"))'>Ny frist</button>
 </div>
+
+@if (LagretAar is { } lagret)
+{
+    <p class="melding" role="status">Fristen er lagret i budsjettår @lagret.
+        @if (_arbeidsaar is { } arbeidsaar && arbeidsaar != lagret)
+        {
+            <a href="@Arbeidsaarkontekst.Lenke("/admin/frister", lagret)">Åpne budsjettår @lagret</a>
+        }
+    </p>
+}
 
 @if (!_lastet)
 {
@@ -17,11 +30,11 @@
 }
 else if (_frister.Count == 0)
 {
-    <p class="melding">Ingen frister registrert ennå.</p>
+    <p class="melding">@(_arbeidsaar is { } aar ? $"Ingen frister registrert for budsjettår {aar}." : "Ingen frister registrert ennå.")</p>
 }
 else
 {
-    <table class="tabell">
+    <table class="tabell fristregister">
         <thead>
             <tr><th>Dato</th><th>Tittel</th><th>Kategori</th><th>Budsjettår</th><th>Synlig for</th><th></th></tr>
         </thead>
@@ -29,12 +42,12 @@ else
             @foreach (var frist in _frister)
             {
                 <tr>
-                    <td>@Visningformat.FormatDato(frist)</td>
-                    <td>@frist.Tittel</td>
-                    <td>@Visningformat.KategoriNavn(frist.Kategori)</td>
-                    <td>@frist.Budsjettaar</td>
-                    <td>@string.Join(", ", frist.Synlighet)</td>
-                    <td><a href="@($"/admin/frist/{frist.Id}")">Rediger</a></td>
+                    <td data-label="Dato">@Visningformat.FormatDato(frist)</td>
+                    <td data-label="Tittel">@frist.Tittel</td>
+                    <td data-label="Kategori">@Visningformat.KategoriNavn(frist.Kategori)</td>
+                    <td data-label="Budsjettår">@frist.Budsjettaar</td>
+                    <td data-label="Synlig for">@string.Join(", ", frist.Synlighet)</td>
+                    <td><a href="@Lenke($"/admin/frist/{frist.Id}")">Rediger</a></td>
                 </tr>
             }
         </tbody>
@@ -42,13 +55,30 @@ else
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "aar")] public string? AarQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "lagretAar")] public int? LagretAar { get; set; }
     private IReadOnlyList<FristDto> _frister = [];
     private bool _lastet;
+    private int? _arbeidsaar;
+    private int _versjon;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        _arbeidsaar = Arbeidsaarkontekst.Les(AarQuery, Klokke);
+        var versjon = ++_versjon;
+        _lastet = false;
+        _frister = [];
         var ctx = await Kontekstkilde.HentAsync(); // administrator ser alt
-        _frister = await Lesing.HentSynligeAsync(ctx, new FristFilter { InkluderHistorikk = true });
+        var frister = await Lesing.HentSynligeAsync(ctx, new FristFilter
+        {
+            InkluderHistorikk = true,
+            Budsjettaar = _arbeidsaar is { } aar ? [aar] : null
+        });
+        if (versjon != _versjon) return;
+        _frister = frister;
         _lastet = true;
     }
+
+    private string Lenke(string sti) => Arbeidsaarkontekst.Lenke(sti, _arbeidsaar);
+    private void ByttAar(int? aar) => Nav.NavigateTo(Arbeidsaarkontekst.Lenke("/admin/frister", aar));
 }

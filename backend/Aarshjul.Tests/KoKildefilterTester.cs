@@ -88,6 +88,43 @@ public sealed class KoKildefilterTester : IDisposable
         await Forvent(alle with { ForslagType = ForslagType.Generert });
     }
 
+    [Fact]
+    public async Task Arbeidsaar_bruker_budsjettaar_og_beholder_null_aarskontrakten()
+    {
+        Legg("neste-aar", "R-A", null, budsjettaar: 2032);
+        Legg("uten-dato", "R-A", null, budsjettaar: 2032, utenDato: true);
+        Legg("neste-generert", "R-A", null, type: ForslagType.Generert, budsjettaar: 2032);
+        Legg("neste-godkjent", "R-A", null, status: FristStatus.Godkjent, budsjettaar: 2032);
+        _t.Db.SaveChanges();
+
+        await Forvent(new() { Budsjettaar = 2032 }, "neste-aar", "uten-dato");
+        await Forvent(new() { Budsjettaar = 2030 }); // kalenderdatoens år er ikke budsjettåret
+        await Forvent(new() { Budsjettaar = 2045 });
+        await Forvent(new() { Budsjettaar = null, Kilde = "R-A" },
+            "a-ny", "a-endring", "a-ukjent", "a-gul", "a-bruker", "neste-aar", "uten-dato");
+    }
+
+    [Fact]
+    public async Task Arbeidsaar_type_eksakt_kilde_og_oevrige_filtre_danner_snitt()
+    {
+        Legg("neste-ukjent", "R-A", null, loep: null, budsjettaar: 2032);
+        Legg("neste-endring", "R-A", null, type: ForslagType.Endring, loep: null, budsjettaar: 2032);
+        _t.Db.SaveChanges();
+        var filter = new Kofilter
+        {
+            Budsjettaar = 2031, Kilde = "R-A", Opphav = Opphav.Robot,
+            Kategori = Kategori.Budsjett, ForslagType = ForslagType.NyFrist, UkjentType = true
+        };
+        await Forvent(filter, "a-ukjent");
+        await Forvent(filter with { Budsjettaar = 2032 }, "neste-ukjent");
+        await Forvent(filter with { Budsjettaar = 2032, ForslagType = ForslagType.Endring }, "neste-endring");
+        await Forvent(filter with { Budsjettaar = 2032, Kilde = " R-A " });
+        await Forvent(filter with { Budsjettaar = 2032, Kilde = "ukjent" });
+        await Forvent(filter with { Budsjettaar = 2032, Kilde = " " }, "neste-ukjent");
+        await Forvent(filter with { Budsjettaar = 2032, Opphav = Opphav.Bruker });
+        await Forvent(filter with { Budsjettaar = 2032, Kategori = Kategori.Gulbok });
+    }
+
     private async Task Forvent(Kofilter filter, params string[] navne)
     {
         IGodkjenningsko ko = new GodkjenningskoTjeneste(_t.Factory);
@@ -97,7 +134,7 @@ public sealed class KoKildefilterTester : IDisposable
     private void Legg(string navn, string? kilde, Guid? dokument,
         Opphav opphav = Opphav.Robot, ForslagType type = ForslagType.NyFrist,
         Kategori kategori = Kategori.Budsjett, string? loep = "rammefordeling",
-        FristStatus status = FristStatus.Forslag)
+        FristStatus status = FristStatus.Forslag, int budsjettaar = 2031, bool utenDato = false)
     {
         var id = Guid.NewGuid();
         _ider.Add(navn, id);
@@ -105,7 +142,7 @@ public sealed class KoKildefilterTester : IDisposable
         {
             Id = id, Tittel = navn, KildeEllerInnsender = kilde, DokumentId = dokument,
             Opphav = opphav, ForslagType = type, Kategori = kategori, Loep = loep,
-            Status = status, Dato = new DateOnly(2030, 11, 20), Budsjettaar = 2031
+            Status = status, Dato = utenDato ? null : new DateOnly(2030, 11, 20), Budsjettaar = budsjettaar
         });
     }
 

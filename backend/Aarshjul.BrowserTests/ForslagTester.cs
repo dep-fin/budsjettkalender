@@ -45,7 +45,7 @@ public sealed class ForslagTester
         await n.Gaa("/forslag/mine", mine);
         await Expect(mine.GetByRole(AriaRole.Row).Filter(new() { HasText = tittel })).ToHaveCountAsync(0);
         await n.LoggInn("demo-admin");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         await Expect(Kort(n.Side, tittel)).ToHaveCountAsync(0);
         Assert.DoesNotContain(await n.Frister(), f => (string?)f!["tittel"] == tittel);
         var admin = n.Side;
@@ -58,7 +58,7 @@ public sealed class ForslagTester
         await Expect(rad).ToContainTextAsync("2032");
         await Expect(rad).ToContainTextAsync("Venter");
         n.Side = admin;
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var kort = Kort(n.Side, tittel);
         await Expect(kort).ToHaveCountAsync(1);
         await Expect(kort).ToContainTextAsync(notat);
@@ -97,7 +97,7 @@ public sealed class ForslagTester
         Assert.DoesNotContain(await n.Frister(), f => (string?)f!["tittel"] == "AK brukerforslag");
         var bidrag = n.Side;
         await n.LoggInn("demo-admin");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var kort = Kort(n.Side, "AK brukerforslag");
         await kort.GetByRole(AriaRole.Button, new() { Name = "Avvis", Exact = true }).ClickAsync();
         await kort.GetByLabel("Begrunnelse (valgfri)").FillAsync("AK legg til forklaring");
@@ -122,7 +122,7 @@ public sealed class ForslagTester
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Send inn", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "AK revidert forslag" })).ToContainTextAsync("Venter");
         await n.LoggInn("demo-admin");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         kort = Kort(n.Side, "AK revidert forslag");
         await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
         await Expect(kort.GetByRole(AriaRole.Checkbox, new() { NameRegex = new("\\(POL\\)$") })).Not.ToBeCheckedAsync();
@@ -154,7 +154,7 @@ public sealed class ForslagTester
         await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "AK endret original" })).ToContainTextAsync("Venter");
         Assert.Equal("AK original", (string?)(await n.Frister()).Single(f => (string?)f!["id"] == id)!["tittel"]);
         await n.LoggInn("demo-admin");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var nyFristMerker = n.Side.Locator("article.kort .kort-topp .merke").Filter(new() { HasText = "Ny frist" });
         await Expect(nyFristMerker.First).ToBeVisibleAsync();
         await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Type", Exact = true }).SelectOptionAsync("Endring");
@@ -178,7 +178,7 @@ public sealed class ForslagTester
         await n.LoggInn("demo-fa");
         await Send(n, "AK juster");
         await n.LoggInn("demo-admin");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Opphav", Exact = true }).SelectOptionAsync("Robot");
         await Expect(Kort(n.Side, "AK juster")).ToHaveCountAsync(0);
         await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Opphav", Exact = true }).SelectOptionAsync("Bruker");
@@ -189,7 +189,7 @@ public sealed class ForslagTester
         await kort.GetByRole(AriaRole.Button, new() { Name = "Avbryt", Exact = true }).ClickAsync();
         Assert.DoesNotContain(await n.Frister(), f => (string?)f!["tittel"] == "AK juster");
         var gammel = await n.Side.Context.NewPageAsync();
-        await n.Gaa("/admin/ko", gammel);
+        await n.Gaa("/admin/ko?aar=alle", gammel);
         var gammelKort = Kort(gammel, "AK juster");
         await gammelKort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
         await kort.GetByRole(AriaRole.Button, new() { Name = "Juster", Exact = true }).ClickAsync();

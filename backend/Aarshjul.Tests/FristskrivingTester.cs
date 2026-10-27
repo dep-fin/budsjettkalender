@@ -145,6 +145,47 @@ public class FristskrivingTester : IDisposable
     }
 
     [Fact]
+    public async Task Opprett_og_flytt_budsjettaar_bevarer_en_identitet_og_verdier_i_alle_leseutvalg()
+    {
+        IFristskriving skriving = Tjeneste();
+        var inndata = MedAar(2031, "FA", "POL");
+        inndata.Tittel = "Arbeidsår før redigering";
+        inndata.Dato = new DateOnly(2030, 11, 20);
+        var id = await skriving.OpprettAsync(inndata);
+        var lesing = new FristTjeneste(_t.Factory, new FastKlokke(new DateOnly(2030, 1, 1)));
+        var admin = new Synlighetskontekst(true, []);
+        Assert.Equal(id, Assert.Single(await lesing.HentSynligeAsync(admin,
+            new FristFilter { Budsjettaar = [2031], InkluderHistorikk = true })).Id);
+
+        var endret = (await skriving.HentForRedigeringAsync(id))!;
+        endret.Tittel = "Samme frist etter flytting";
+        endret.Budsjettaar = 2032;
+        endret.Datopresisjon = Datopresisjon.Maaned;
+        endret.Datokvalifikator = Datokvalifikator.Ultimo;
+        endret.Notat = "Bevart mellom register, kalender og budsjettår";
+        await skriving.OppdaterAsync(id, endret);
+
+        Assert.Empty(await lesing.HentSynligeAsync(admin, new FristFilter { Budsjettaar = [2031], InkluderHistorikk = true }));
+        foreach (var filter in new[]
+        {
+            new FristFilter { Budsjettaar = [2032], InkluderHistorikk = true },
+            new FristFilter { FraDato = new DateOnly(2030, 11, 1), TilDato = new DateOnly(2030, 11, 30), InkluderHistorikk = true },
+            new FristFilter { InkluderHistorikk = true }
+        })
+        {
+            var frist = Assert.Single(await lesing.HentSynligeAsync(admin, filter));
+            Assert.Equal(id, frist.Id);
+            Assert.Equal("Samme frist etter flytting", frist.Tittel);
+            Assert.Equal(2032, frist.Budsjettaar);
+            Assert.Equal(new DateOnly(2030, 11, 20), frist.Dato);
+            Assert.Equal(Datopresisjon.Maaned, frist.Datopresisjon);
+            Assert.Equal(Datokvalifikator.Ultimo, frist.Datokvalifikator);
+            Assert.Equal(endret.Notat, frist.Notat);
+            Assert.Equal(["FA", "POL"], frist.Synlighet.Order());
+        }
+    }
+
+    [Fact]
     public async Task Oppdatering_erstatter_synlighet_og_beregner_sorteringsdag()
     {
         var id = await Tjeneste().OpprettAsync(GyldigInndata("FA", "POL"));

@@ -54,7 +54,7 @@ public sealed class TilgangTester
         await Expect(meny.GetByRole(AriaRole.Link)).ToHaveTextAsync(omraader);
         foreach (var (omraade, overskrift, lenker) in new[]
         {
-            (omraader[0], "Frister", new[] { ("Fristregister", "Frister"), ("Ny frist", "Ny frist"), ("Kø", "Godkjenningskø"), ("Last opp", "Last opp dokument"), ("Generér", "Generér budsjettår") }),
+            (omraader[0], "Frister", new[] { ("Frister", "Frister"), ("Forslag", "Godkjenningskø"), ("Dokumenter", "Last opp dokument"), ("Generer fra årsmal", "Generér budsjettår") }),
             (omraader[1], "Årsmal (gjentaksregler)", new[] { ("Gjentaksregler", "Årsmal (gjentaksregler)"), ("Ny gjentaksregel", "Ny malregel") }),
             (omraader[2], "Synlighetsgrupper", new[] { ("Grupper", "Synlighetsgrupper"), ("Innsyn", "Innsyn") }),
             (omraader[3], "Eksporter frister", new[] { ("Eksporter", "Eksporter frister"), ("Del kalender", "Del kalender (abonnement)"), ("Data", "Eksporter / importer data") }),

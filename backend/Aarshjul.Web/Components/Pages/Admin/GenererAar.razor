@@ -5,10 +5,20 @@
 @inject IGodkjenningsko Ko
 @inject IGruppetjeneste Grupper
 @inject NavigationManager Nav
+@inject TimeProvider Klokke
 
 <PageTitle>Generér budsjettår</PageTitle>
 
+<Arbeidsaarvelger Aar="_arbeidsaar" AarChanged="ByttAar" />
+
 <h1>Generér budsjettår</h1>
+
+@if (LagretAar is { } lagret)
+{
+    <p class="melding" role="status">Fristen er lagret i budsjettår @lagret.
+        <a href="@Arbeidsaarkontekst.Lenke("/admin/frister", lagret)">Åpne fristregisteret for @lagret</a>
+    </p>
+}
 
 <p class="melding">
     Beregn fristene for et kommende budsjettår fra årsmalen. Forslagene legges her til gjennomgang —
@@ -18,10 +28,15 @@
 
 <div class="filterpanel">
     <label>Målbudsjettår
-        <input type="number" @bind="_maalaar" />
+        <input type="number" min="1" max="9999" @bind="_maalaar" @bind:after="ByttMaalaar" disabled="@(_arbeider || !_lastet)" />
     </label>
-    <button class="knapp knapp-primær" @onclick="Generer">Generér</button>
+    <button class="knapp knapp-primær" disabled="@(_arbeider || !_lastet)" @onclick="Generer">@(_arbeider ? "Beregner …" : "Generér")</button>
 </div>
+
+@if (_feil is not null)
+{
+    <div class="feil" role="alert">@_feil</div>
+}
 
 @if (_resultat is { } r)
 {
@@ -65,7 +80,7 @@
                     </label>
                 </div>
             }
-            <button class="knapp" @onclick="BeregnPaaNytt">Beregn på nytt med satte ankre</button>
+            <button class="knapp" disabled="@_arbeider" @onclick="BeregnPaaNytt">Beregn på nytt med satte ankre</button>
         </section>
     }
 
@@ -76,7 +91,7 @@
             @foreach (var f in gruppe)
             {
                 var t = Tilstand(f);
-                var godkjennBlokkert = f.Tentativ && !t.TentativBekreftet;
+                var godkjennBlokkert = t.Arbeider || (f.Tentativ && !t.TentativBekreftet);
                 <article class="kort">
                     <header class="kort-topp">
                         <span class="merke">Generert</span>
@@ -129,7 +144,7 @@
                             <button class="knapp knapp-primær"
                                     disabled="@godkjennBlokkert"
                                     @onclick="() => Godkjenn(f, t)">Bekreft godkjenning</button>
-                            <button class="knapp" @onclick="() => t.Modus = Kortmodus.Ingen">Avbryt</button>
+                            <button class="knapp" disabled="@t.Arbeider" @onclick="() => t.Modus = Kortmodus.Ingen">Avbryt</button>
                         </div>
                     }
                     else if (t.Modus == Kortmodus.Avvis)
@@ -138,15 +153,15 @@
                             <textarea @bind="t.Begrunnelse" rows="2"></textarea>
                         </label>
                         <div class="kort-handlinger">
-                            <button class="knapp knapp-primær" @onclick="() => Avvis(f, t)">Bekreft avvisning</button>
-                            <button class="knapp" @onclick="() => t.Modus = Kortmodus.Ingen">Avbryt</button>
+                            <button class="knapp knapp-primær" disabled="@t.Arbeider" @onclick="() => Avvis(f, t)">Bekreft avvisning</button>
+                            <button class="knapp" disabled="@t.Arbeider" @onclick="() => t.Modus = Kortmodus.Ingen">Avbryt</button>
                         </div>
                     }
                     else
                     {
                         <div class="kort-handlinger">
                             <button class="knapp knapp-primær" @onclick="() => StartGodkjenn(f, t)">Godkjenn</button>
-                            <button class="knapp" @onclick='() => Nav.NavigateTo($"/admin/frist/juster/{f.ForslagId}")'>Juster</button>
+                            <button class="knapp" @onclick='() => Nav.NavigateTo($"{Arbeidsaarkontekst.Lenke($"/admin/frist/juster/{f.ForslagId}", _maalaar)}&fra=generering")'>Juster</button>
                             <button class="knapp" @onclick="() => t.Modus = Kortmodus.Avvis">Avvis</button>
                         </div>
                     }
@@ -155,32 +170,58 @@
         </section>
     }
 }
-else if (_lastet && _resultat is not null)
+else if (_lastet)
 {
     <p class="melding">Ingen genererte forslag til gjennomgang for @_maalaar.</p>
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "aar")] public string? AarQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "lagretAar")] public int? LagretAar { get; set; }
     private const string Pol = "POL";
 
-    private int _maalaar = DateTime.Today.Year + 1;
+    private int _maalaar;
+    private int? _arbeidsaar;
+    private int _versjon;
+    private bool _arbeider;
+    private string? _feil;
     private GenereringsResultat? _resultat;
     private IReadOnlyList<GenerertForslagDto> _forslag = [];
     private IReadOnlyList<GruppeDto> _grupper = [];
     private readonly Dictionary<Guid, Korttilstand> _tilstand = new();
     private readonly Dictionary<string, DateOnly?> _ankre = new(StringComparer.OrdinalIgnoreCase);
     private bool _lastet;
+    private bool _grupperLastet;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        _grupper = await Grupper.HentAktiveAsync();
+        _arbeidsaar = Arbeidsaarkontekst.Les(AarQuery, Klokke);
+        _maalaar = _arbeidsaar ?? Arbeidsaarkontekst.Standardaar(Klokke);
+        var versjon = ++_versjon;
+        _resultat = null;
+        _feil = null;
+        _forslag = [];
+        _ankre.Clear();
+        _tilstand.Clear();
+        _lastet = false;
+        _arbeider = false;
+        if (!_grupperLastet)
+        {
+            _grupper = await Grupper.HentAktiveAsync();
+            _grupperLastet = true;
+        }
+        if (versjon != _versjon) return;
+        await LastForslag(versjon);
     }
+
+    private void ByttAar(int? aar) => Nav.NavigateTo(Arbeidsaarkontekst.Lenke("/admin/generer", aar));
+    private void ByttMaalaar() { if (_maalaar is >= 1 and <= 9999) ByttAar(_maalaar); }
 
     private async Task Generer()
     {
+        if (_arbeider || !_lastet) return;
         _ankre.Clear();
-        _resultat = await Generering.GenererAsync(new GenereringsForespoersel(_maalaar));
-        await LastForslag();
+        await Beregn(new GenereringsForespoersel(_maalaar));
     }
 
     private async Task BeregnPaaNytt()
@@ -188,13 +229,35 @@ else if (_lastet && _resultat is not null)
         var satte = _ankre
             .Where(kv => kv.Value is not null)
             .ToDictionary(kv => kv.Key, kv => kv.Value!.Value, StringComparer.OrdinalIgnoreCase);
-        _resultat = await Generering.GenererAsync(new GenereringsForespoersel(_maalaar, satte));
-        await LastForslag();
+        await Beregn(new GenereringsForespoersel(_maalaar, satte));
     }
 
-    private async Task LastForslag()
+    private async Task Beregn(GenereringsForespoersel forespoersel)
     {
-        _forslag = await Generering.HentGenererteAsync(_maalaar);
+        if (_arbeider || !_lastet) return;
+        _arbeider = true;
+        _feil = null;
+        var versjon = _versjon;
+        try
+        {
+            var resultat = await Generering.GenererAsync(forespoersel);
+            if (versjon != _versjon) return;
+            _resultat = resultat;
+            await LastForslag(versjon);
+        }
+        catch (Valideringsfeil feil)
+        {
+            if (versjon == _versjon) _feil = feil.Message;
+        }
+        finally { if (versjon == _versjon) _arbeider = false; }
+    }
+
+    private async Task LastForslag(int? forventetVersjon = null)
+    {
+        var versjon = forventetVersjon ?? _versjon;
+        var forslag = await Generering.HentGenererteAsync(_maalaar);
+        if (versjon != _versjon) return;
+        _forslag = forslag;
         foreach (var f in _forslag.Where(f => f.Tentativ && f.Loep is not null))
         {
             _ankre.TryAdd(f.Loep!, null);
@@ -224,6 +287,8 @@ else if (_lastet && _resultat is not null)
 
     private async Task Godkjenn(GenerertForslagDto f, Korttilstand t)
     {
+        if (t.Arbeider) return;
+        t.Arbeider = true;
         t.Feil = null;
         try
         {
@@ -239,10 +304,13 @@ else if (_lastet && _resultat is not null)
         {
             t.Feil = e.Message;
         }
+        finally { t.Arbeider = false; }
     }
 
     private async Task Avvis(GenerertForslagDto f, Korttilstand t)
     {
+        if (t.Arbeider) return;
+        t.Arbeider = true;
         t.Feil = null;
         try
         {
@@ -253,6 +321,7 @@ else if (_lastet && _resultat is not null)
         {
             t.Feil = e.Message;
         }
+        finally { t.Arbeider = false; }
     }
 
     private static string FormatDato(GenerertForslagDto f)
@@ -277,5 +346,6 @@ else if (_lastet && _resultat is not null)
         public bool TentativBekreftet { get; set; }
         public string? Begrunnelse { get; set; }
         public string? Feil { get; set; }
+        public bool Arbeider { get; set; }
     }
 }

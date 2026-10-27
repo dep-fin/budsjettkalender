@@ -3,25 +3,28 @@
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
 @inject IDokumentopplasting Opplasting
 @inject NavigationManager Nav
+@inject TimeProvider Klokke
 
 <PageTitle>Last opp dokument</PageTitle>
+
+<Arbeidsaarvelger Aar="_arbeidsaar" AarChanged="ByttAar" />
 
 <h1>Last opp dokument</h1>
 
 <p class="melding">
     Last opp et dokument (PDF), så leser løsningen gjennom det og finner mulige frister — med
     samme uttrekk og klassifisering som den automatiske innhentingen fra regjeringen.no.
-    Det som finnes, legges som forslag i <a href="/admin/ko">godkjenningskøen</a> for gjennomgang.
+    Det som finnes, legges som forslag i <a href="@Kolenke">godkjenningskøen</a> for gjennomgang.
     Ingenting publiseres før du godkjenner det.
 </p>
 
 <div class="skjema">
     <label>Budsjettår
-        <input type="number" @bind="_budsjettaar" />
+        <input type="number" min="1" max="9999" @bind="_budsjettaar" @bind:after="ByttInnlesingsaar" disabled="@_arbeider" />
     </label>
 
     <label>Dokument (PDF)
-        <InputFile OnChange="VelgFil" accept=".pdf" />
+        <InputFile @key="_filvalg" OnChange="VelgFil" accept=".pdf" disabled="@_arbeider" />
     </label>
 
     @if (_valgtNavn is not null)
@@ -31,12 +34,12 @@
 
     @if (_feil is not null)
     {
-        <div class="feil">@_feil</div>
+        <div class="feil" role="alert">@_feil</div>
     }
 
     @if (_resultat is { } r)
     {
-        <div class="melding">
+        <div class="melding" role="status">
             @if (r.AlleredeBehandlet)
             {
                 <text>Dokumentet er allerede lest inn tidligere — ingen nye forslag laget.</text>
@@ -44,7 +47,7 @@
             else if (r.AntallForslag > 0)
             {
                 <text>Leste inn dokumentet og laget <strong>@r.AntallForslag</strong> forslag.
-                Gå til <a href="/admin/ko">godkjenningskøen</a> for å gjennomgå dem.</text>
+                Gå til <a href="@Kolenke">godkjenningskøen</a> for å gjennomgå dem.</text>
             }
             else
             {
@@ -61,15 +64,35 @@
 </div>
 
 @code {
+    [SupplyParameterFromQuery(Name = "aar")] public string? AarQuery { get; set; }
     private const long MaksStorrelse = 15 * 1024 * 1024; // 15 MB
 
-    private int _budsjettaar = DateTime.Today.Year + 1;
+    private int _budsjettaar;
+    private int? _arbeidsaar;
+    private int _versjon;
+    private Guid _filvalg = Guid.NewGuid();
+    private string Kolenke => Arbeidsaarkontekst.Lenke("/admin/ko", _budsjettaar);
     private IBrowserFile? _fil;
     private string? _valgtNavn;
     private string? _valgtStr;
     private OpplastingsResultat? _resultat;
     private string? _feil;
     private bool _arbeider;
+
+    protected override void OnParametersSet()
+    {
+        _arbeidsaar = Arbeidsaarkontekst.Les(AarQuery, Klokke);
+        _budsjettaar = _arbeidsaar ?? Arbeidsaarkontekst.Standardaar(Klokke);
+        _versjon++;
+        _filvalg = Guid.NewGuid();
+        _fil = null;
+        _valgtNavn = _valgtStr = _feil = null;
+        _resultat = null;
+        _arbeider = false;
+    }
+
+    private void ByttAar(int? aar) => Nav.NavigateTo(Arbeidsaarkontekst.Lenke("/admin/last-opp", aar));
+    private void ByttInnlesingsaar() { if (_budsjettaar is >= 1 and <= 9999) ByttAar(_budsjettaar); }
 
     private void VelgFil(InputFileChangeEventArgs e)
     {
@@ -93,7 +116,7 @@
 
     private async Task LesInn()
     {
-        if (_fil is null)
+        if (_fil is null || _arbeider)
         {
             return;
         }
@@ -101,21 +124,25 @@
         _arbeider = true;
         _feil = null;
         _resultat = null;
+        var fil = _fil;
+        var aar = _budsjettaar;
+        var versjon = _versjon;
         try
         {
             using var ms = new MemoryStream();
-            await _fil.OpenReadStream(MaksStorrelse).CopyToAsync(ms);
-            var dokument = new OpplastetDokument(_fil.Name, ms.ToArray());
-            _resultat = await Opplasting.LesOgLagForslagAsync(dokument, _budsjettaar);
+            await fil.OpenReadStream(MaksStorrelse).CopyToAsync(ms);
+            var dokument = new OpplastetDokument(fil.Name, ms.ToArray());
+            var resultat = await Opplasting.LesOgLagForslagAsync(dokument, aar);
+            if (versjon == _versjon) _resultat = resultat;
         }
         catch (Exception ex)
         {
             // Ulesbar/korrupt PDF e.l. — vis en tydelig melding framfor å feile stille.
-            _feil = $"Klarte ikke lese dokumentet: {ex.Message}";
+            if (versjon == _versjon) _feil = $"Klarte ikke lese dokumentet: {ex.Message}";
         }
         finally
         {
-            _arbeider = false;
+            if (versjon == _versjon) _arbeider = false;
         }
     }
 }

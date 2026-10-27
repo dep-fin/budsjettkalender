@@ -14,25 +14,24 @@ public sealed class DokumentTester
     {
         await n.LoggInn("demo-admin");
         var antall = (await n.Frister()).Count;
-        await n.Gaa("/admin/last-opp");
+        await n.Gaa("/admin/last-opp?aar=2031");
         var fil = n.Side.GetByLabel("Dokument (PDF)");
         await fil.SetInputFilesAsync(new FilePayload { Name = "avvist.txt", MimeType = "text/plain", Buffer = Encoding.UTF8.GetBytes("ufarlig") });
         await Expect(n.Side.Locator(".feil")).ToContainTextAsync("Kun PDF");
         await Expect(n.Side.GetByRole(AriaRole.Button, new() { Name = "Les inn dokument", Exact = true })).ToBeDisabledAsync();
         await fil.SetInputFilesAsync(new FilePayload { Name = "akseptanse.pdf", MimeType = "application/pdf", Buffer = Pdf("AK dokument rammefordeling 20. november 2030") });
-        await n.Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync("2031");
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Les inn dokument", Exact = true }).ClickAsync();
         await Expect(n.Side.Locator("main")).ToContainTextAsync("laget 1 forslag");
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Les inn dokument", Exact = true }).ClickAsync();
         await Expect(n.Side.Locator("main")).ToContainTextAsync("allerede lest inn tidligere");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var kort = n.Side.Locator("article.kort").Filter(new() { HasText = "AK dokument rammefordeling" });
         await Expect(kort).ToHaveCountAsync(1);
         await Expect(kort.Locator("table.bevis")).ToContainTextAsync("2030-11-20");
         await Expect(kort.Locator("table.bevis")).ToContainTextAsync("AK dokument rammefordeling 20. november 2030");
         await Expect(kort.Locator(".usikkerhetsflagg li")).ToHaveCountAsync(0);
 
-        await n.Gaa("/admin/last-opp");
+        await n.Gaa("/admin/last-opp?aar=2031");
         // Datoen står etter det lagrede kildespennet på 600 tegn. Offline-uttrekket gir dermed
         // en konkret verdi med relativt kildeutdrag uten dato, utenfor budsjettvinduet.
         var usikkerKilde = "AK usikker rammefordeling ultimo mars <b>kildefelt</b> "
@@ -41,10 +40,9 @@ public sealed class DokumentTester
         {
             Name = "usikker.pdf", MimeType = "application/pdf", Buffer = Pdf(usikkerKilde)
         });
-        await n.Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync("2031");
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Les inn dokument", Exact = true }).ClickAsync();
         await Expect(n.Side.Locator("main")).ToContainTextAsync("laget 1 forslag");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var usikkertKort = n.Side.Locator("article.kort").Filter(new() { HasText = "AK usikker rammefordeling" });
         await Expect(usikkertKort).ToHaveCountAsync(1);
         var datobevis = usikkertKort.Locator("table.bevis tbody tr").Filter(new() { HasText = "2040-11-20" });

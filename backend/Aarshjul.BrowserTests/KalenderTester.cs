@@ -307,7 +307,7 @@ public sealed class KalenderTester
         Assert.Null(heldag["klokkeslett"]);
         Assert.Equal("13:45:00", (string?)timed["klokkeslett"]);
         Assert.Equal(new[] { "POL" }, frister.Single(f => (string?)f!["tittel"] == "AK tentativ")!["synlighet"]!.AsArray().Select(x => (string)x!).ToArray());
-        await n.Gaa($"/admin/frist/{heldag["id"]}");
+        await n.Gaa($"/admin/frist/{heldag["id"]}?aar=alle");
         await n.Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync("AK heldag redigert");
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "AK heldag redigert" })).ToBeVisibleAsync();

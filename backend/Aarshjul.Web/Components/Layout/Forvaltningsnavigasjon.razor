@@ -6,12 +6,12 @@
             @if (omraade.Policy is { } policy)
             {
                 <AuthorizeView Policy="@policy">
-                    <a href="@omraade.Sti" class="@(AktivtOmraade == omraade ? "active" : null)" aria-current="@(AktivtOmraade == omraade ? "location" : null)">@omraade.Navn</a>
+                    <a href="@Lenke(omraade.Sti)" class="@(AktivtOmraade == omraade ? "active" : null)" aria-current="@(AktivtOmraade == omraade ? "location" : null)">@omraade.Navn</a>
                 </AuthorizeView>
             }
             else
             {
-                <a href="@omraade.Sti" class="@(AktivtOmraade == omraade ? "active" : null)" aria-current="@(AktivtOmraade == omraade ? "location" : null)">@omraade.Navn</a>
+                <a href="@Lenke(omraade.Sti)" class="@(AktivtOmraade == omraade ? "active" : null)" aria-current="@(AktivtOmraade == omraade ? "location" : null)">@omraade.Navn</a>
             }
         }
     </nav>
@@ -21,7 +21,7 @@ else
     <nav class="undernav" aria-label="Områdenavigasjon">
         @foreach (var inngang in AktivtOmraade.Underinnganger)
         {
-            <a href="@inngang.Sti" class="@(ErAktiv(inngang.Sti) ? "active" : null)" aria-current="@(ErAktiv(inngang.Sti) ? "page" : null)">@inngang.Navn</a>
+            <a href="@Lenke(inngang.Sti)" class="@(ErAktiv(inngang.Sti) ? "active" : null)" aria-current="@(ErAktiv(inngang.Sti) ? "page" : null)">@inngang.Navn</a>
         }
     </nav>
 }
@@ -29,6 +29,7 @@ else
 @code {
     [Parameter, EditorRequired] public string Sti { get; set; } = "";
     [Parameter] public bool VisOmraader { get; set; }
+    [Parameter] public int? Arbeidsaar { get; set; }
 
     private sealed record Inngang(string Navn, string Sti);
 
@@ -40,7 +41,7 @@ else
     }
 
     private static readonly Omraade Fristomraade = new("Budsjettår og frister", "/admin/frister",
-        [new("Fristregister", "/admin/frister"), new("Ny frist", "/admin/frist/ny"), new("Kø", "/admin/ko"), new("Last opp", "/admin/last-opp"), new("Generér", "/admin/generer")],
+        [new("Frister", "/admin/frister"), new("Forslag", "/admin/ko"), new("Dokumenter", "/admin/last-opp"), new("Generer fra årsmal", "/admin/generer")],
         Stier: ["admin/frister"]);
 
     private static readonly Omraade[] Omraader =
@@ -65,6 +66,9 @@ else
     ];
 
     private Omraade AktivtOmraade => Omraader.FirstOrDefault(omraade => omraade.Gjelder(Sti)) ?? Fristomraade;
+
+    private string Lenke(string sti) => sti is "/admin/frister" or "/admin/ko" or "/admin/last-opp" or "/admin/generer"
+        ? Arbeidsaarkontekst.Lenke(sti, Arbeidsaar) : sti;
 
     private bool ErAktiv(string sti) => sti switch
     {
