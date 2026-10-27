@@ -1,0 +1,73 @@
+<div class="maanedsrutenett">
+    <table class="kalendertabell" aria-label="@Kalendervisning.Maaned(ValgtDato)">
+        <thead>
+            <tr><th scope="col">Uke</th>@foreach (var dag in Ukedager) { <th scope="col">@dag</th> }</tr>
+        </thead>
+        <tbody>
+            @foreach (var uke in Kalendervisning.Uker(ValgtDato))
+            {
+                var iso = Kalendervisning.Isouke(uke);
+                <tr>
+                    <th scope="row" aria-label="@($"Uke {iso.Nummer}, {iso.Aar}")" title="@($"Uke {iso.Nummer}, {iso.Aar}")">@iso.Nummer</th>
+                    @foreach (var dato in uke)
+                    {
+                        <td class="@(dato?.Month != ValgtDato.Month ? "annen-maaned" : null) @(dato == ValgtDato ? "valgt-dag" : null)">
+                            @if (dato is { } dag && dag.Month == ValgtDato.Month)
+                            {
+                                var frister = Kalendervisning.Dagsfrister(Frister, dag);
+                                <button class="kalenderdato @(dag == Idag ? "idag" : null)" aria-label="@($"Åpne dagsagenda for {Kalendervisning.Dato(dag)}")"
+                                        aria-current="@(dag == Idag ? "date" : null)" aria-pressed="@(dag == ValgtDato ? "true" : "false")" @onclick="() => AapneDag.InvokeAsync(dag)">@dag.Day</button>
+                                <div class="dagshendelser">
+                                    @foreach (var frist in frister.Take(3))
+                                    {
+                                        <button class="kalenderhendelse @Visningformat.FargeklasseForAar(frist.Budsjettaar)" aria-label="@frist.Tittel" title="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
+                                            <span class="hendelsestittel">@if (frist.Klokkeslett is { } tid) { <span>@tid.ToString("HH:mm") · </span> }@frist.Tittel</span>
+                                            <small>Budsjettår @frist.Budsjettaar</small>
+                                        </button>
+                                    }
+                                    @if (frister.Count > 3)
+                                    {
+                                        <button class="kalender-overflyt" aria-label="@($"Vis alle {frister.Count} frister for {Kalendervisning.Dato(dag)}")" @onclick="() => AapneDag.InvokeAsync(dag)">+ @(frister.Count - 3) til</button>
+                                    }
+                                </div>
+                            }
+                            else if (dato is { } utenfor)
+                            {
+                                <span class="kalenderdato-utenfor">@utenfor.Day</span>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<div class="mobilagenda">
+    <button class="knapp valgt-dato-agenda" @onclick="() => AapneDag.InvokeAsync(ValgtDato)">Åpne dagsagenda for @Kalendervisning.Dato(ValgtDato)</button>
+    @foreach (var dag in Frister.Where(f => !f.ErTentativ).Select(f => f.Dato).Distinct().Order())
+    {
+        <section class="mobilagenda-dag">
+            <h3><button class="knapp-lenke" @onclick="() => AapneDag.InvokeAsync(dag)">@Kalendervisning.Dato(dag)</button></h3>
+            @foreach (var frist in Kalendervisning.Dagsfrister(Frister, dag))
+            {
+                <button class="agenda-frist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
+                    <strong>@frist.Tittel</strong>
+                    <span>@(frist.Klokkeslett is { } tid ? $"Kl. {tid:HH:mm}" : "Heldag") · Budsjettår @frist.Budsjettaar</span>
+                </button>
+            }
+        </section>
+    }
+    @if (!Frister.Any(f => !f.ErTentativ))
+    {
+        <p class="melding">Ingen frister med fast dag i denne måneden. Velg en dato i minikalenderen for å åpne dagsagendaen.</p>
+    }
+</div>
+
+@code {
+    private static readonly string[] Ukedager = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
+    [Parameter] public DateOnly ValgtDato { get; set; }
+    [Parameter] public DateOnly Idag { get; set; }
+    [Parameter] public IReadOnlyList<FristDto> Frister { get; set; } = [];
+    [Parameter] public EventCallback<DateOnly> AapneDag { get; set; }
+    [Parameter] public EventCallback<FristDto> AapneFrist { get; set; }
+}

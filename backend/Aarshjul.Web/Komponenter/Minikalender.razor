@@ -1,0 +1,50 @@
+<nav class="minikalender" aria-label="Minikalender">
+    <div class="minikalender-topp">
+        <h2>@Kalendervisning.Maaned(ValgtDato)</h2>
+        <div class="periodepiler">
+            <button class="knapp" aria-label="Forrige måned" disabled="@(!Kalendervisning.KanFlytte(ValgtDato, -1))" @onclick="() => Flytt(-1)">‹</button>
+            <button class="knapp" aria-label="Neste måned" disabled="@(!Kalendervisning.KanFlytte(ValgtDato, 1))" @onclick="() => Flytt(1)">›</button>
+        </div>
+    </div>
+    <table aria-label="@Kalendervisning.Maaned(ValgtDato)">
+        <thead><tr>@foreach (var dag in Ukedager) { <th scope="col">@dag</th> }</tr></thead>
+        <tbody>
+            @foreach (var uke in Kalendervisning.Uker(ValgtDato))
+            {
+                <tr>
+                    @foreach (var dato in uke)
+                    {
+                        <td>
+                            @if (dato is { } dag && dag.Month == ValgtDato.Month)
+                            {
+                                var antall = Frister.Count(f => !f.ErTentativ && f.Dato == dag);
+                                <button class="minidag @(dag == Idag ? "idag" : null) @(dag == ValgtDato ? "valgt" : null)"
+                                        aria-label="@($"Velg {Kalendervisning.Dato(dag)}{(antall > 0 ? $", {antall} {(antall == 1 ? "frist" : "frister")}" : "")}")"
+                                        aria-current="@(dag == Idag ? "date" : null)" aria-pressed="@(dag == ValgtDato ? "true" : "false")"
+                                        @onclick="() => DatoValgt.InvokeAsync(dag)">
+                                    @dag.Day
+                                    @if (antall > 0) { <span class="minimarkoer" aria-hidden="true"></span> }
+                                </button>
+                            }
+                            else if (dato is { } utenfor)
+                            {
+                                <span class="minidag-utenfor">@utenfor.Day</span>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button class="knapp minikalender-idag" @onclick="() => DatoValgt.InvokeAsync(Idag)">I dag</button>
+</nav>
+
+@code {
+    private static readonly string[] Ukedager = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
+    [Parameter] public DateOnly ValgtDato { get; set; }
+    [Parameter] public DateOnly Idag { get; set; }
+    [Parameter] public IReadOnlyList<FristDto> Frister { get; set; } = [];
+    [Parameter] public EventCallback<DateOnly> DatoValgt { get; set; }
+
+    private Task Flytt(int steg) => DatoValgt.InvokeAsync(Kalendervisning.FoersteDag(ValgtDato).AddMonths(steg));
+}

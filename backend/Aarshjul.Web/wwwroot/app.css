@@ -201,6 +201,114 @@ a.knapp { display: inline-block; }
 .knapp-primær:hover { background: #204c46; }
 .knapp:disabled { cursor: default; opacity: 0.6; }
 
+/* Månedskalender: samme rolige Atelier-flater som leseskallet. */
+.minikalender { padding-bottom: 22px; border-bottom: 1px solid var(--kant); margin-bottom: 22px; }
+.minikalender-topp { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 12px; }
+.minikalender-topp h2 { font-size: 14px; text-transform: capitalize; margin: 0; }
+.periodepiler { display: inline-flex; gap: 6px; }
+.periodepiler .knapp { min-width: 36px; padding: 5px 10px; font-size: 20px; }
+.minikalender .periodepiler .knapp { min-width: 26px; min-height: 30px; border: 0; background: transparent; padding: 2px 6px; font-size: 18px; }
+.minikalender table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+.minikalender th { color: var(--dempet); font-size: 9px; font-weight: 400; padding: 6px 0; }
+.minikalender td { padding: 1px 0; text-align: center; }
+.minidag { position: relative; border: 1px solid transparent; background: transparent; min-width: 25px; height: 28px; border-radius: 50%; padding: 0; font-size: 11px; cursor: pointer; }
+.minidag:hover { background: var(--myk); }
+.minidag.valgt { border-color: var(--primaer); box-shadow: 0 0 0 1px var(--primaer); }
+.minidag.idag, .kalenderdato.idag { background: var(--primaer); color: white; }
+.minimarkoer { position: absolute; width: 4px; height: 4px; bottom: 1px; left: calc(50% - 2px); border-radius: 50%; background: var(--primaer); }
+.idag .minimarkoer { background: white; }
+.minidag-utenfor { color: #a5aea9; font-size: 11px; }
+.minikalender-idag { margin-top: 12px; min-height: 30px; padding: 3px 10px; font-size: 11px; }
+.kalenderforklaring { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--kant); font-size: 12px; }
+.kalenderforklaring p { margin-top: 8px; color: var(--dempet); line-height: 1.8; }
+.maanedsnavigasjon { display: flex; align-items: center; gap: 10px; margin: 36px 0 18px; flex-wrap: wrap; }
+.maanedsnavigasjon h2 { font-size: 19px; margin: 0 0 0 6px; text-transform: capitalize; }
+.maanedsvalg { margin-left: auto; display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--dempet); }
+.aarsforklaring { display: flex; flex-wrap: wrap; gap: 18px; margin: 0 0 14px; font-size: 11px; color: var(--dempet); }
+.aarsprikk { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--aarfarge); margin-right: 7px; }
+.tentative-maanedsfrister { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border: 1px dashed #b8c9bf; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; background: var(--skall); }
+.tentative-maanedsfrister h3 { font-size: 12px; margin: 0 4px 0 0; }
+.tentativ-hendelse { display: flex; flex-direction: column; gap: 3px; text-align: left; border: 1px solid var(--kant); border-left: 3px solid var(--aarfarge); border-radius: 7px; background: white; padding: 7px 11px; cursor: pointer; max-width: 100%; }
+.tentativ-hendelse strong { font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+.tentativ-hendelse span { font-size: 10px; color: var(--dempet); }
+.kalenderflate { border: 1px solid var(--kant); border-radius: 14px; background: white; overflow: hidden; }
+.maanedsrutenett { overflow-x: auto; }
+.kalendertabell { border-collapse: separate; border-spacing: 0; table-layout: fixed; width: 100%; }
+.kalendertabell thead th { font-size: 11px; color: var(--dempet); font-weight: 400; height: 40px; padding: 10px 12px; text-align: left; }
+.kalendertabell thead th:first-child { width: 34px; padding: 8px; }
+.kalendertabell tbody th { padding: 9px 7px; font-size: 10px; color: var(--dempet); font-weight: 400; vertical-align: top; border-top: 1px solid var(--kant); }
+.kalendertabell td { border-top: 1px solid var(--kant); border-left: 1px solid var(--kant); height: 136px; padding: 6px; vertical-align: top; }
+.kalendertabell .annen-maaned, .kalendertabell td:nth-last-child(-n+2) { background: #f9fbf9; }
+.kalendertabell .valgt-dag { box-shadow: inset 0 0 0 1px #91b2a5; background: #f4f8f5; }
+.kalenderdato { border: 0; border-radius: 50%; background: transparent; min-width: 28px; min-height: 28px; font-size: 11px; padding: 2px; cursor: pointer; margin-bottom: 5px; }
+.kalenderdato:hover { background: var(--myk); color: var(--primaer); }
+.kalenderdato-utenfor { display: block; color: #a5aea9; font-size: 11px; margin: 6px; }
+.dagshendelser { display: flex; flex-direction: column; gap: 5px; }
+.kalenderhendelse { display: block; text-align: left; width: 100%; min-width: 0; border: 0; border-left: 3px solid var(--aarfarge); border-radius: 4px; background: #f0f4f1; padding: 5px 6px; cursor: pointer; line-height: 1.4; }
+.kalenderhendelse:hover, .tentativ-hendelse:hover, .agenda-frist:hover { background: var(--myk); }
+.hendelsestittel { display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: 11px; }
+.kalenderhendelse small { font-size: 9px; color: var(--dempet); }
+.kalender-overflyt { align-self: start; border: 0; background: transparent; color: var(--primaer); font-size: 11px; cursor: pointer; padding: 3px 4px; text-decoration: underline; }
+.kalenderstatus { padding: 12px 18px; border-top: 1px solid var(--kant); color: var(--dempet); font-size: 11px; margin: 0; }
+.kalenderhint { margin-top: 16px; font-size: 11px; color: var(--dempet); }
+.mobilagenda { display: none; }
+.fristdialog { border: 1px solid var(--kant); border-radius: 16px; padding: 0; width: min(640px, calc(100% - 32px)); max-height: calc(100dvh - 48px); color: var(--tekst); background: white; box-shadow: 0 20px 80px #26353138; }
+.fristdialog::backdrop { background: #26353166; }
+.dialogtopp { display: flex; gap: 10px; padding: 16px 24px; border-bottom: 1px solid var(--kant); background: var(--skall); }
+.dialoglukk { margin-left: auto; }
+.dialoginnhold { padding: 26px 30px 30px; overflow-wrap: anywhere; }
+.dialoginnhold h2 { font-size: 25px; line-height: 1.3; letter-spacing: -0.4px; }
+.dialoginnhold h2:focus { outline: none; }
+.fristdetaljer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 22px 0; }
+.fristdetaljer > div:first-child { grid-column: 1 / -1; }
+.fristdetaljer dt { color: var(--dempet); font-size: 11px; margin-bottom: 4px; }
+.fristdetaljer dd { font-size: 14px; margin: 0; }
+.dialogkilde { margin: 22px 0; background: var(--myk); border-radius: 8px; padding: 16px 18px; }
+.dialogkilde a { font-size: 13px; }
+.dialogkilde a span { font-size: 11px; }
+.dialognotat { margin-top: 24px; }
+.dialognotat p { white-space: pre-wrap; font-size: 14px; color: var(--dempet); }
+.dialoghandlinger { border-top: 1px solid var(--kant); padding-top: 18px; margin-top: 24px; }
+.agenda-frister { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+.agenda-frist { width: 100%; display: flex; flex-direction: column; gap: 5px; text-align: left; border: 1px solid var(--kant); border-left: 3px solid var(--aarfarge); background: white; border-radius: 8px; padding: 14px 16px; cursor: pointer; overflow-wrap: anywhere; }
+.agenda-frist strong { font-size: 14px; font-weight: 600; }
+.agenda-frist span { font-size: 12px; color: var(--dempet); }
+
+@media (min-width: 701px) and (max-width: 1150px) {
+    .kalendertabell { min-width: 760px; }
+}
+
+@media (max-width: 900px) {
+    .kalenderskall .leserfilter { display: grid; grid-template-columns: minmax(170px, 220px) minmax(0, 1fr); gap: 12px 24px; }
+    .kalenderskall .leserfilter > .menyoverskrift { grid-column: 1 / -1; margin-bottom: 0; }
+    .kalenderskall .minikalender { grid-row: span 3; margin: 0; padding: 0; border: 0; }
+    .kalenderskall .leserfilter > h2 { display: none; }
+    .kalenderskall .filterpanel { align-content: start; }
+    .kalenderskall .kalenderforklaring { display: none; }
+    .maanedsnavigasjon { margin-top: 24px; }
+}
+
+@media (max-width: 700px) {
+    .kalenderskall .leserfilter { display: block; }
+    .kalenderskall .minikalender { max-width: 300px; margin: 0 auto 20px; }
+    .kalenderskall .minidag { min-width: 36px; height: 36px; font-size: 12px; }
+    .kalenderskall .filterpanel { border-top: 1px solid var(--kant); padding-top: 14px; }
+    .maanedsnavigasjon { gap: 8px; }
+    .maanedsnavigasjon h2 { font-size: 17px; }
+    .maanedsvalg { flex-basis: 100%; margin: 6px 0 0; justify-content: space-between; }
+    .maanedsrutenett { display: none; }
+    .mobilagenda { display: block; padding: 16px; }
+    .valgt-dato-agenda { width: 100%; text-align: left; font-size: 12px; }
+    .mobilagenda-dag { margin-top: 24px; }
+    .mobilagenda-dag h3 .knapp-lenke { margin: 0; font-weight: 600; font-size: 13px; }
+    .mobilagenda-dag .agenda-frist { margin-top: 8px; }
+    .tentative-maanedsfrister { align-items: stretch; flex-direction: column; }
+    .dialogtopp { padding: 12px 16px; }
+    .dialogtopp .knapp { font-size: 12px; padding: 8px 10px; }
+    .dialoginnhold { padding: 22px 20px; }
+    .dialoginnhold h2 { font-size: 22px; }
+}
+
 @media (max-width: 900px) {
     .topplinje { gap: 12px; padding: 16px; }
     .menyknapp { display: inline-block; margin-left: auto; }

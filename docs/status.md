@@ -5,12 +5,18 @@ gjenstående grenser. GitHub-lenkene er kilden for oppgavenes og PR-enes livslø
 [Gjennomgangen fra 20. oktober](reviews/2026-10-20.md) er et datert utgangspunkt,
 ikke en liste over dagens urettede kodefeil.
 
-Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) har en
-lokal kandidat med felles skall, rollebasert hovedmeny, seks virksomme
+Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) er levert i
+[PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), merget som
+`c1f250ea4e6ddbf05075059e0d1fc47f582d805b`, med felles skall, rollebasert hovedmeny, seks virksomme
 administrasjonsområder og Budsjettår → Fristliste. `/aarshjul` og tidligere direkte
 innganger består. [Akseptanse og prøvekommandoer](acceptance/2026-10-27-atelier-ux01.md)
 beskriver rød/grønn, mobil/tastatur, 629 ordinære tester og 26 nettleserscenarioer.
-Senere Atelier-tickets er ikke implementert her; SQL Server/Chromium kontrolleres i CI.
+Atelier UX02 ([#77](https://github.com/depmartin/Budsjettkalender/issues/77)) har en lokal
+kandidat med månedskalender, minikalender, dagsagenda og fullstendige fristdetaljer.
+Hele valgt måned vises, mens Fristlistens historikkvalg bevares separat. Tentative
+månedsfrister ligger utenfor dagsrutene. [Akseptanse](acceptance/2026-10-27-atelier-ux02.md)
+beskriver kalender-, kilde-, synlighets-, rolle- og tastaturprøvene. #78 og senere
+Atelier-tickets er ikke implementert her; SQL Server/Chromium kontrolleres i CI.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -26,11 +32,13 @@ Senere Atelier-tickets er ikke implementert her; SQL Server/Chromium kontrollere
 | [#69](https://github.com/depmartin/Budsjettkalender/issues/69) | Valgfri, servervalidert HTTPS-kildelenke fra fristens tilknyttede dokument til kalenderens fristkort | [PR #70](https://github.com/depmartin/Budsjettkalender/pull/70); supplerende bevis i [akseptanserapporten](acceptance/2026-10-20.md#supplerende-akseptanse-for-69) |
 | [#71](https://github.com/depmartin/Budsjettkalender/issues/71) | Avledet «venter endring»-merke på publiserte fristkort bare for administrator, undertrykt ved gruppelesing | Lokal kandidat; supplerende bevis i [akseptanserapporten](acceptance/2026-10-20.md#supplerende-akseptanse-for-71) |
 | [#73](https://github.com/depmartin/Budsjettkalender/issues/73) | Kilde eller innsender i administratorens kø, kombinert med øvrige filtre og bevart gjennom behandling | Lokal kandidat; supplerende bevis i [akseptanserapporten](acceptance/2026-10-20.md#supplerende-akseptanse-for-73) |
+| [#76](https://github.com/depmartin/Budsjettkalender/issues/76) | Atelier-skall, rollebasert navigasjon og bevarte innganger | Merget i [PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), `c1f250e` |
+| [#77](https://github.com/depmartin/Budsjettkalender/issues/77) | Månedskalender, minikalender, dagsagenda og fristdetaljer med gyldig kilde og bevart tilgang | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux02.md) |
 
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. Med #73 passerer 23 reelle Playwright-/Edge-scenarioer og 625 ordinære tester
+eksterne miljøporter. Med #77 passerer 33 reelle Playwright-/Edge-scenarioer og 629 ordinære tester
 passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.
@@ -302,17 +310,20 @@ tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer 447 fra #36, ni n
 opplastings-/køtilfeller for #46, 22 nye oppstartstilfeller for #40, 34 gruppe-/HTTP-/regresjonstilfeller for #44
 og 55 kilde-/HTTP-tilfeller for #69, 36 lese-/HTTP-tilfeller for #71, 22 kø-/HTTP-tilfeller for #73
 og fire nye HTTP-rolleprøver for #76.
-26 nettleserscenarioer passerer med 0 feil/hopp, inklusive tre nye Atelier-navigasjonsscenarioer.
+33 nettleserscenarioer passerer med 0 feil/hopp, inklusive tre Atelier-navigasjonsscenarioer
+fra #76 og syv kalender-/detaljscenarioer fra #77. Eksisterende kalender-, kilde-,
+ventemerke- og HTTP-prøver er tilpasset den tilsiktede overgangen fra kort til
+interaktive detaljer; tilgangs-, publiserings- og metadatahemmelighold er bevart.
 Nettleserprosjektets låste restore og Release-bygg passerer også.
 Den eksisterende CS0649-advarselen i Runde.razor er uendret.
-SQL Server-prosjektets låste restore og Release-bygg passerer. #73 endrer verken EF-modell,
+SQL Server-prosjektets låste restore og Release-bygg passerer. #77 endrer verken EF-modell,
 migrasjoner eller SQL-kontrakttilfeller. Lokale Markdown-lenker og git diff --check passerer.
 Tidligere lokal NuGet-kjøring ga NU1900 fordi sårbarhetsmetadata ikke kunne hentes;
-#69s, #71s og #73s låste sluttkjøringer ga ingen NU1900. Ingen auditkontroll er deaktivert.
+#69s, #71s, #73s og #77s låste sluttkjøringer ga ingen NU1900. Ingen auditkontroll er deaktivert.
 
 [CI for PR #35](https://github.com/depmartin/Budsjettkalender/actions/runs/39443717020)
 bekreftet før merge 442 ordinære og **22 SQL Server-tester**, begge med 0 feil og 0 hopp.
-Denne arbeidsstasjonen har ingen brukbar SQL Server; SQL-testene er ikke kjørt lokalt for #36, #46, #40, #44, #69, #71 eller #73.
+SQL-testene er ikke kjørt lokalt for #77; de krever en konfigurert SQL Server.
 CI krever ekte SQL Server-tester uten hopp, og deploy venter på den jobben.
 Kommandoer og miljøkrav står i [utviklingsveiledningen](development.md).
 

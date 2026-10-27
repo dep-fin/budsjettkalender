@@ -32,12 +32,15 @@
         </fieldset>
     }
 
-    <label class="filtervalg">
-        <input type="checkbox"
-               @bind:get="Tilstand.InkluderHistorikk"
-               @bind:set="Tilstand.SettHistorikk" />
-        Vis historikk
-    </label>
+    @if (VisHistorikk)
+    {
+        <label class="filtervalg">
+            <input type="checkbox"
+                   @bind:get="Tilstand.InkluderHistorikk"
+                   @bind:set="Tilstand.SettHistorikk" />
+            Vis historikk
+        </label>
+    }
 </div>
 
 @code {
@@ -45,4 +48,6 @@
 
     /// <summary>Budsjettår som finnes i synlige data (for avhuking).</summary>
     [Parameter] public IReadOnlyList<int>? TilgjengeligeAar { get; set; }
+
+    [Parameter] public bool VisHistorikk { get; set; } = true;
 }
