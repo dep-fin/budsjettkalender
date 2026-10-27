@@ -39,25 +39,71 @@ h1:focus {
 
 /* === Årshjul-app === */
 :root {
-    --kant: #d8dce3;
-    --tekst: #1b1f24;
-    --dempet: #5b6470;
-    --primaer: #14507d;
-    --flate: #f6f7f9;
+    --kant: #dde0e7;
+    --tekst: #242738;
+    --dempet: #626778;
+    --primaer: #181c62;
+    --aksent: #4156a6;
+    --myk: #eef0f8;
+    --flate: #f6f6f4;
 }
 
-body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--tekst); background: var(--flate); }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, "Segoe UI", sans-serif; color: var(--tekst); background: var(--flate); line-height: 1.5; }
 a { color: var(--primaer); }
 
-.side { max-width: 1000px; margin: 0 auto; padding: 0 1rem 3rem; }
-.topplinje { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--kant); flex-wrap: wrap; }
-.merkenavn { font-weight: 700; text-decoration: none; color: var(--tekst); }
-.hovednav { display: flex; gap: 0.75rem; flex: 1; }
-.hovednav a { text-decoration: none; padding: 0.25rem 0.5rem; border-radius: 4px; }
-.hovednav a.active { background: var(--primaer); color: #fff; }
+:focus-visible { outline: 3px solid var(--aksent); outline-offset: 3px; }
+.hopp-til-innhold { position: fixed; left: 1rem; top: -5rem; z-index: 100; background: white; padding: 0.75rem 1rem; border: 1px solid var(--primaer); }
+.hopp-til-innhold:focus { top: 0.5rem; }
+.side { max-width: 1600px; margin: 0 auto; min-height: 100vh; background: #fff; }
+.topplinje { display: flex; align-items: center; gap: 2rem; padding: 0 2rem; min-height: 80px; border-bottom: 1px solid var(--kant); flex-wrap: wrap; }
+.merkenavn { font-size: 1.2rem; font-weight: 700; text-decoration: none; color: var(--primaer); letter-spacing: -0.03em; }
+.hovednav { display: flex; gap: 1.25rem; flex: 1; align-self: stretch; flex-wrap: wrap; }
+.hovednav a { display: flex; align-items: center; text-decoration: none; padding: 0.75rem 0; border-bottom: 3px solid transparent; font-size: 0.9rem; color: var(--dempet); }
+.hovednav a.active { border-bottom-color: var(--aksent); color: var(--primaer); font-weight: 650; }
+.hovednav a:hover { color: var(--primaer); }
+.menyknapp { display: none; }
 .bruker { display: flex; gap: 0.75rem; align-items: center; font-size: 0.9rem; }
-.brukernavn { color: var(--dempet); }
-.innhold { padding-top: 1.25rem; }
+.brukernavn { color: var(--dempet); max-width: 16rem; overflow-wrap: anywhere; font-size: 0.8rem; }
+.innhold { padding: 2rem 2.5rem 4rem; min-width: 0; overflow-x: auto; }
+h1 { color: var(--primaer); font-size: 2rem; line-height: 1.2; letter-spacing: -0.035em; margin: 0 0 0.75rem; font-weight: 650; }
+.undernav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; padding: 0.25rem 0; }
+.undernav a { text-decoration: none; border-bottom: 2px solid transparent; padding: 0.5rem 0.75rem; color: var(--dempet); }
+.undernav a.active { border-bottom-color: var(--aksent); color: var(--primaer); background: var(--myk); font-weight: 600; }
+.arbeidsflate { min-height: calc(100vh - 80px); }
+.arbeidsflate.med-forvaltning { display: grid; grid-template-columns: 245px minmax(0, 1fr); }
+.forvaltningsmeny { background: #f8f8f6; border-right: 1px solid var(--kant); padding: 2rem 1.25rem; }
+.menyoverskrift { color: var(--dempet); font-size: 0.75rem; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 1rem; }
+.omraadenav { display: flex; flex-direction: column; gap: 0.3rem; }
+.omraadenav a { display: block; border-left: 3px solid transparent; border-radius: 4px; padding: 0.65rem 0.75rem; font-size: 0.9rem; text-decoration: none; color: var(--dempet); overflow-wrap: anywhere; }
+.omraadenav a.active { border-left-color: var(--aksent); background: var(--myk); color: var(--primaer); font-weight: 650; }
+.omraadenav a:hover { background: var(--myk); color: var(--primaer); }
+.innstillingskort { max-width: 50rem; border: 1px solid var(--kant); border-radius: 10px; padding: 1.5rem; background: #fff; }
+.innstillingskort h2 { margin-top: 0; color: var(--primaer); font-size: 1.2rem; }
+.innstillingskort .knapp { display: inline-block; text-decoration: none; }
+
+@media (max-width: 900px) {
+    .topplinje { gap: 1rem; padding: 1rem; }
+    .menyknapp { display: inline-block; margin-left: auto; }
+    .hovednav { display: none; order: 4; flex-basis: 100%; gap: 0.5rem; }
+    .hovednav.aapen { display: flex; }
+    .hovednav a { padding: 0.6rem; }
+    .bruker { margin-left: auto; }
+    .innhold { padding: 1.5rem 1rem 3rem; }
+    .arbeidsflate.med-forvaltning { display: block; }
+    .forvaltningsmeny { border-right: 0; border-bottom: 1px solid var(--kant); padding: 1rem; }
+    .omraadenav { flex-direction: row; flex-wrap: wrap; }
+    .omraadenav a { padding: 0.5rem; }
+}
+
+@media (max-width: 600px) {
+    .topplinje { gap: 0.75rem; }
+    .bruker { order: 3; width: 100%; justify-content: space-between; }
+    .brukernavn { max-width: none; }
+    .admintopp { flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+    .hjul-spor li { flex-wrap: wrap; }
+    .hjul-tittel { flex-basis: 100%; }
+}
 
 .ingress { color: var(--dempet); margin-top: 0; }
 .melding { color: var(--dempet); padding: 1rem 0; }

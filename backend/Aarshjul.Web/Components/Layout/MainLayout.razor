@@ -1,37 +1,38 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject IWebHostEnvironment Env
 @inject IConfiguration Konfigurasjon
+@inject NavigationManager Nav
 
+<a class="hopp-til-innhold" href="#hovedinnhold">Hopp til innhold</a>
 <div class="side">
     @if (ErDemo)
     {
         <div class="demobanner">Demo-modus — lokal kjøring uten Entra/Azure SQL. <a href="/demo">Bytt persona</a></div>
     }
-    <header class="topplinje">
-        <a class="merkenavn" href="/">Årshjul for budsjettfrister</a>
-        <nav class="hovednav">
-            <NavLink href="/kalender" Match="NavLinkMatch.All">Kalender</NavLink>
-            <NavLink href="/aarshjul">Årshjul</NavLink>
+    <header class="topplinje" @onkeydown="VedTastetrykk">
+        <a class="merkenavn" href="/">Budsjettkalender</a>
+        <button type="button" class="menyknapp knapp" @ref="_menyknapp" aria-controls="hovedmeny"
+                aria-expanded="@(_menyAapen ? "true" : "false")" @onclick="() => _menyAapen = !_menyAapen">Meny</button>
+        <nav class="hovednav @(_menyAapen ? "aapen" : null)" id="hovedmeny" aria-label="Hovedmeny">
+            <a href="/kalender" class="@(ErKalender ? "active" : null)" aria-current="@(ErKalender ? "page" : null)">Kalender</a>
+            <a href="/budsjettaar" class="@(ErBudsjettaar ? "active" : null)" aria-current="@(ErBudsjettaar ? "page" : null)">Budsjettår</a>
             @* Forslag/varsler er bidragsyterens; administrator redigerer direkte (endring #1). *@
             <AuthorizeView Policy="@Autorisasjon.ErBidragsyter">
                 <NavLink href="/forslag/mine">Mine forslag</NavLink>
                 <VarselTeller />
+                <NavLink href="/forslag/ny">Nytt forslag</NavLink>
             </AuthorizeView>
             <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
-                <NavLink href="/admin/ko">Kø</NavLink>
-                <NavLink href="/admin/last-opp">Last opp</NavLink>
-                <NavLink href="/admin/frister">Frister</NavLink>
-                <NavLink href="/admin/generer">Generér</NavLink>
-                <NavLink href="/admin/mal">Årsmal</NavLink>
-                <NavLink href="/admin/innsyn">Innsyn</NavLink>
-                <NavLink href="/admin/grupper">Grupper</NavLink>
-                <NavLink href="/admin/eksport">Eksporter</NavLink>
-                <NavLink href="/admin/abonnement">Del kalender</NavLink>
-                <NavLink href="/admin/data">Data</NavLink>
+                <a href="/admin/frister" class="@(ErForvaltning ? "active" : null)" aria-current="@(ErForvaltning ? "page" : null)">Administrasjon</a>
             </AuthorizeView>
             @* Internkalender: SBR-intern arbeidsliste, kun for SBR (= administrator i v1). *@
-            <AuthorizeView Policy="@Autorisasjon.ErSbr">
-                <NavLink href="/internkalender">Internkalender</NavLink>
+            <AuthorizeView Policy="@Autorisasjon.ErSbr" Context="sbr">
+                <AuthorizeView Policy="@Autorisasjon.ErAdministrator" Context="admin">
+                    <NotAuthorized>
+                        <NavLink href="/internkalender">Internkalender</NavLink>
+                    </NotAuthorized>
+                </AuthorizeView>
             </AuthorizeView>
         </nav>
         <div class="bruker">
@@ -47,15 +48,84 @@
         </div>
     </header>
 
-    <main class="innhold">
-        @Body
-    </main>
+    <div class="arbeidsflate @(ErForvaltning ? "med-forvaltning" : null)">
+        @if (ErForvaltning)
+        {
+            <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
+                <aside class="forvaltningsmeny">
+                    <p class="menyoverskrift">Administrasjon</p>
+                    <Forvaltningsnavigasjon Sti="@_sti" VisOmraader="true" />
+                </aside>
+            </AuthorizeView>
+        }
+        <main class="innhold" id="hovedinnhold" tabindex="-1">
+            @if (ErForvaltning)
+            {
+                @if (_sti.StartsWith("internkalender", StringComparison.OrdinalIgnoreCase))
+                {
+                    <AuthorizeView Policy="@Autorisasjon.ErSbr">
+                        <Forvaltningsnavigasjon Sti="@_sti" />
+                    </AuthorizeView>
+                }
+                else
+                {
+                    <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
+                        <Forvaltningsnavigasjon Sti="@_sti" />
+                    </AuthorizeView>
+                }
+            }
+            @Body
+        </main>
+    </div>
 </div>
 
 @code {
+    private string _sti = "";
+    private bool _menyAapen;
+    private bool _fokuserMeny;
+    private ElementReference _menyknapp;
+    private bool ErKalender => _sti is "" or "kalender";
+    private bool ErBudsjettaar => _sti is "budsjettaar" or "aarshjul";
+    private bool ErForvaltning => _sti.StartsWith("admin/", StringComparison.OrdinalIgnoreCase)
+        || _sti.StartsWith("internkalender", StringComparison.OrdinalIgnoreCase);
     private bool ErDemo => Env.IsEnvironment("Demo") || Konfigurasjon.GetValue<bool>("Demo");
     private string LoggInnUrl => ErDemo ? "/demo" : "MicrosoftIdentity/Account/SignIn";
     private string LoggUtUrl => ErDemo ? "/demo/logg-ut" : "MicrosoftIdentity/Account/SignOut";
+
+    protected override void OnInitialized()
+    {
+        OppdaterSti();
+        Nav.LocationChanged += VedNavigasjon;
+    }
+
+    private void OppdaterSti() => _sti = Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].Trim('/').ToLowerInvariant();
+
+    private void VedNavigasjon(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        OppdaterSti();
+        _menyAapen = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void VedTastetrykk(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && _menyAapen)
+        {
+            _menyAapen = false;
+            _fokuserMeny = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_fokuserMeny)
+        {
+            _fokuserMeny = false;
+            await _menyknapp.FocusAsync();
+        }
+    }
+
+    public void Dispose() => Nav.LocationChanged -= VedNavigasjon;
 }
 
 <div id="blazor-error-ui" data-nosnippet>
