@@ -5,50 +5,58 @@
 
 <PageTitle>Budsjettår – Fristliste</PageTitle>
 
-<h1>Budsjettår</h1>
-<p class="ingress">Ett budsjettløp i sin helhet, kronologisk gjennom syklusen.</p>
+<div class="leseskall">
+    <aside class="leserfilter" aria-label="Fristutvalg">
+        <p class="menyoverskrift">Hele budsjettløpet</p>
+        <h2>Velg utvalg</h2>
+        <Filterpanel TilgjengeligeAar="TilgjengeligeAar" />
+    </aside>
+    <div class="leseinnhold">
+        <h1>Budsjettår</h1>
+        <p class="ingress">Ett budsjettløp i sin helhet, kronologisk gjennom syklusen.</p>
 
-<nav class="undernav" aria-label="Budsjettårvisning">
-    <a href="/budsjettaar" class="active" aria-current="page">Fristliste</a>
-</nav>
+        <nav class="undernav" aria-label="Budsjettårvisning">
+            <a href="/budsjettaar" class="active" aria-current="page">Fristliste</a>
+        </nav>
 
-<Filterpanel TilgjengeligeAar="TilgjengeligeAar" />
-
-@if (!Lastet)
-{
-    <p class="melding">Laster …</p>
-}
-else if (Lastefeil is not null)
-{
-    <div class="feil">@Lastefeil</div>
-}
-else if (Frister.Count == 0)
-{
-    <p class="melding">Ingen frister i utvalget ditt.</p>
-}
-else
-{
-    @foreach (var løp in Frister.GroupBy(f => f.Budsjettaar).OrderBy(g => g.Key))
-    {
-        <section class="hjul @Visningformat.FargeklasseForAar(løp.Key)">
-            <h2>Budsjettår @løp.Key</h2>
-            <ol class="hjul-spor">
-                @foreach (var frist in løp.OrderBy(f => f.Sorteringsdag))
-                {
-                    <li>
-                        <span class="hjul-dato">@Visningformat.FormatDato(frist)</span>
-                        <span class="hjul-tittel">@frist.Tittel</span>
-                        <span class="merke merke-kategori">@Visningformat.KategoriNavn(frist.Kategori)</span>
-                        @if (frist.ErTentativ)
+        @if (!Lastet)
+        {
+            <p class="melding">Laster …</p>
+        }
+        else if (Lastefeil is not null)
+        {
+            <div class="feil">@Lastefeil</div>
+        }
+        else if (Frister.Count == 0)
+        {
+            <p class="melding">Ingen frister i utvalget ditt.</p>
+        }
+        else
+        {
+            @foreach (var løp in Frister.GroupBy(f => f.Budsjettaar).OrderBy(g => g.Key))
+            {
+                <section class="hjul @Visningformat.FargeklasseForAar(løp.Key)">
+                    <h2>Budsjettår @løp.Key</h2>
+                    <ol class="hjul-spor">
+                        @foreach (var frist in løp.OrderBy(f => f.Sorteringsdag))
                         {
-                            <span class="merke merke-tentativ">tentativ</span>
+                            <li>
+                                <span class="hjul-dato">@Visningformat.FormatDato(frist)</span>
+                                <span class="hjul-tittel">@frist.Tittel</span>
+                                <span class="merke merke-kategori">@Visningformat.KategoriNavn(frist.Kategori)</span>
+                                @if (frist.ErTentativ)
+                                {
+                                    <span class="merke merke-tentativ">tentativ</span>
+                                }
+                            </li>
                         }
-                    </li>
-                }
-            </ol>
-        </section>
-    }
-}
+                    </ol>
+                </section>
+            }
+        }
+
+    </div>
+</div>
 
 @code {
     protected override Task<IReadOnlyList<FristDto>> HentAsync(ISynlighetskontekst ctx)

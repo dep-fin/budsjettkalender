@@ -11,7 +11,10 @@
         <div class="demobanner">Demo-modus — lokal kjøring uten Entra/Azure SQL. <a href="/demo">Bytt persona</a></div>
     }
     <header class="topplinje" @onkeydown="VedTastetrykk">
-        <a class="merkenavn" href="/">Budsjettkalender</a>
+        <a class="merkenavn" href="/">
+            <span class="merkeikon" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            Budsjettkalender
+        </a>
         <button type="button" class="menyknapp knapp" @ref="_menyknapp" aria-controls="hovedmeny"
                 aria-expanded="@(_menyAapen ? "true" : "false")" @onclick="() => _menyAapen = !_menyAapen">Meny</button>
         <nav class="hovednav @(_menyAapen ? "aapen" : null)" id="hovedmeny" aria-label="Hovedmeny">
@@ -58,7 +61,7 @@
                 </aside>
             </AuthorizeView>
         }
-        <main class="innhold" id="hovedinnhold" tabindex="-1">
+        <main class="innhold @(ErKalender || ErBudsjettaar ? "med-leserfilter" : null)" id="hovedinnhold" tabindex="-1">
             @if (ErForvaltning)
             {
                 @if (_sti.StartsWith("internkalender", StringComparison.OrdinalIgnoreCase))
