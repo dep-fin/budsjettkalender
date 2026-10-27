@@ -229,9 +229,12 @@ public sealed class KalenderTester
         await Expect(Minikalender(n).GetByRole(AriaRole.Button, new() { Name = "Velg 15. november 2030, 1 frist", Exact = true })).ToBeVisibleAsync();
         await Expect(Maanedskalender(n).GetByRole(AriaRole.Button, new() { Name = "UX77 synlig Gul bok", Exact = true })).ToHaveCountAsync(0);
         // Kalenderen har nå eksplisitt alle år valgt som standard. Velg ett år aktivt.
-        await n.Side.GetByRole(AriaRole.Group, new() { Name = "Budsjettår", Exact = true })
-            .GetByRole(AriaRole.Button, new() { Name = "Fjern alle", Exact = true }).ClickAsync();
+        var aarvalg = n.Side.GetByRole(AriaRole.Group, new() { Name = "Budsjettår", Exact = true });
+        await aarvalg.GetByRole(AriaRole.Button, new() { Name = "Fjern alle", Exact = true }).ClickAsync();
+        await Expect(aarvalg.Locator("input[type=checkbox]:checked")).ToHaveCountAsync(0);
         await n.Side.GetByLabel("2032", new() { Exact = true }).CheckAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Region, new() { Name = "Aktivt kalenderutvalg", Exact = true })
+            .GetByText("Budsjettår: 2032", new() { Exact = true })).ToBeVisibleAsync();
         await Expect(Minikalender(n).GetByRole(AriaRole.Button, new() { Name = "Velg 15. november 2030", Exact = true })).ToBeVisibleAsync();
         await n.Side.GetByLabel("Gul bok", new() { Exact = true }).CheckAsync();
         await Expect(Minikalender(n).GetByRole(AriaRole.Button, new() { Name = "Velg 15. november 2030, 1 frist", Exact = true })).ToBeVisibleAsync();

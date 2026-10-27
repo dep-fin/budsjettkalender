@@ -50,10 +50,13 @@ public sealed class KalenderfilterTester
         await soek.FillAsync("  årsOPPGJØR  ");
         await Expect(Maanedskalender(n)).ToContainTextAsync("2 frister i måneden");
         await Expect(Maanedskalender(n).GetByRole(AriaRole.Button, new() { Name = "UX78 Årsoppgjør neste måned", Exact = true })).ToHaveCountAsync(0);
-        await n.Side.GetByRole(AriaRole.Group, new() { Name = "Budsjettår", Exact = true })
-            .GetByRole(AriaRole.Button, new() { Name = "Fjern alle", Exact = true }).ClickAsync();
+        var aarvalg = n.Side.GetByRole(AriaRole.Group, new() { Name = "Budsjettår", Exact = true });
+        await aarvalg.GetByRole(AriaRole.Button, new() { Name = "Fjern alle", Exact = true }).ClickAsync();
+        await Expect(aarvalg.Locator("input[type=checkbox]:checked")).ToHaveCountAsync(0);
         await n.Side.GetByLabel("2026", new() { Exact = true }).CheckAsync();
         await n.Side.GetByLabel("2028", new() { Exact = true }).CheckAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Region, new() { Name = "Aktivt kalenderutvalg", Exact = true })
+            .GetByText("Budsjettår: 2026, 2028", new() { Exact = true })).ToBeVisibleAsync();
         await n.Side.GetByLabel("Budsjett", new() { Exact = true }).UncheckAsync();
         await Expect(Maanedskalender(n)).ToContainTextAsync("1 frist i måneden");
         await Dag(n, "15. november 2030").PressAsync("Enter");
