@@ -5,6 +5,76 @@ namespace Aarshjul.BrowserTests;
 
 public sealed class ForslagTester
 {
+    [Fact]
+    public Task Tom_maaned_avvises_med_bevarte_felter_og_kan_rettes_foer_innsending() => Nettleser.Kjor(async n =>
+    {
+        const string tittel = "UX81 tømt måned";
+        const string notat = "Behold utfyllingen når måneden mangler.";
+        await n.LoggInn("demo-fa");
+        await n.Side.SetViewportSizeAsync(1440, 1000);
+        await n.Gaa("/forslag/ny");
+        await n.Side.GetByLabel("Dato", new() { Exact = true }).FillAsync("2030-11-20");
+        await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Presisjon", Exact = true }).SelectOptionAsync("Maaned");
+        var maaned = n.Side.GetByLabel("Måned", new() { Exact = true });
+        await Expect(maaned).ToHaveValueAsync("2030-11");
+        await maaned.FillAsync("");
+        await n.Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync(tittel);
+        await n.Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync("2032");
+        await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Kategori", Exact = true }).SelectOptionAsync("Gulbok");
+        await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Kvalifikator", Exact = true }).SelectOptionAsync("Medio");
+        await n.Side.GetByLabel("Notat", new() { Exact = true }).FillAsync(notat);
+        var fa = n.Side.GetByRole(AriaRole.Checkbox, new() { NameRegex = new("\\(FA\\)$") });
+        await fa.CheckAsync();
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Send inn", Exact = true }).ClickAsync();
+        var feil = n.Side.GetByRole(AriaRole.Alert);
+        await Expect(feil).ToHaveTextAsync("Velg en gyldig måned før du sender inn forslaget.");
+        await Expect(feil).ToBeFocusedAsync();
+        await Expect(maaned).ToHaveValueAsync("");
+        await Expect(n.Side.GetByLabel("Tittel", new() { Exact = true })).ToHaveValueAsync(tittel);
+        await Expect(n.Side.GetByLabel("Budsjettår", new() { Exact = true })).ToHaveValueAsync("2032");
+        await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Kategori", Exact = true })).ToHaveValueAsync("Gulbok");
+        await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Kvalifikator", Exact = true })).ToHaveValueAsync("Medio");
+        await Expect(n.Side.GetByLabel("Notat", new() { Exact = true })).ToHaveValueAsync(notat);
+        await Expect(fa).ToBeCheckedAsync();
+        await n.Side.ScreenshotAsync(new() { Path = Path.Combine(n.Mappe, "ux81-empty-month-desktop.png"), FullPage = true });
+        await n.Side.SetViewportSizeAsync(390, 844);
+        await n.Side.ScreenshotAsync(new() { Path = Path.Combine(n.Mappe, "ux81-empty-month-mobile.png"), FullPage = true });
+        await n.Side.SetViewportSizeAsync(1440, 1000);
+        var utfylling = n.Side;
+        var mine = await n.Side.Context.NewPageAsync();
+        await n.Gaa("/forslag/mine", mine);
+        await Expect(mine.GetByRole(AriaRole.Row).Filter(new() { HasText = tittel })).ToHaveCountAsync(0);
+        await n.LoggInn("demo-admin");
+        await n.Gaa("/admin/ko");
+        await Expect(Kort(n.Side, tittel)).ToHaveCountAsync(0);
+        Assert.DoesNotContain(await n.Frister(), f => (string?)f!["tittel"] == tittel);
+        var admin = n.Side;
+        n.Side = utfylling;
+        await maaned.FillAsync("2030-12");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Send inn", Exact = true }).ClickAsync();
+        var rad = n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = tittel });
+        await Expect(rad).ToHaveCountAsync(1);
+        await Expect(rad).ToContainTextAsync("01.12.2030");
+        await Expect(rad).ToContainTextAsync("2032");
+        await Expect(rad).ToContainTextAsync("Venter");
+        n.Side = admin;
+        await n.Gaa("/admin/ko");
+        var kort = Kort(n.Side, tittel);
+        await Expect(kort).ToHaveCountAsync(1);
+        await Expect(kort).ToContainTextAsync(notat);
+        await Expect(kort).ToContainTextAsync("Gul bok");
+        await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
+        await kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft godkjenning", Exact = true }).ClickAsync();
+        await Expect(kort).ToHaveCountAsync(0);
+        var publisert = Assert.Single(await n.Frister(), f => (string?)f!["tittel"] == tittel)!;
+        Assert.Equal("2030-12-01", (string?)publisert["dato"]);
+        Assert.Equal(1, (int)publisert["datopresisjon"]!);
+        Assert.Equal(1, (int)publisert["datokvalifikator"]!);
+        Assert.Equal(2032, (int)publisert["budsjettaar"]!);
+        Assert.Equal(notat, (string?)publisert["notat"]);
+        n.BekreftIngenKretsfeil();
+    });
+
     internal static ILocator Kort(IPage side, string tittel)
         => side.Locator("article.kort").Filter(new() { Has = side.GetByRole(AriaRole.Heading, new() { Name = tittel, Exact = true }) });
 

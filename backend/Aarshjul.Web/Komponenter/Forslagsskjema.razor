@@ -1,0 +1,250 @@
+@implements IDisposable
+@inject IForslagsinnsending Innsending
+@inject IFristlesing Fristlesing
+@inject IGruppetjeneste Grupper
+@inject Gjeldendebrukerkilde Brukerkilde
+@inject Synlighetskontekstkilde Kontekstkilde
+@inject AuthenticationStateProvider AuthState
+@inject IAuthorizationService Autorisering
+@inject TimeProvider Klokke
+
+@{ _vistFeil = _feil; }
+@if (ErEndring)
+{
+    <p class="forslagsforklaring">Du foreslår en endring på en publisert frist. Originalfristen og hvem den er synlig for, beholdes til administrator godkjenner. Forslaget endrer bare innholdet.</p>
+}
+else
+{
+    <p class="forslagsforklaring">Forslaget sendes til administrator og venter på behandling. Det blir synlig i kalenderen etter godkjenning. Administrator beslutter endelig synlighet.</p>
+}
+
+@if (_feil is not null)
+{
+    <div class="feil" role="alert" tabindex="-1" @ref="_feilfelt">@_feil</div>
+}
+@if (!_lastet)
+{
+    <p class="melding" role="status">Laster …</p>
+}
+else if (_inndata is null)
+{
+    @if (_feil is null)
+    {
+        <p class="melding">@(FristId is not null ? "Fristen finnes ikke, eller du har ikke tilgang til den." : "Forslaget finnes ikke, eller kan ikke redigeres.")</p>
+    }
+    @if (_kanProeveIgjen) { <button class="knapp" @onclick="LastInnAsync">Prøv igjen</button> }
+}
+else
+{
+    <form class="skjema forslagsskjema" @onsubmit="SendAsync" @onsubmit:preventDefault="true" aria-busy="@(_sender ? "true" : "false")">
+        <fieldset class="forslagsfelter" disabled="@(_sender || _sendt)">
+            <label>Tittel<input @bind="_inndata.Tittel" /></label>
+            <div class="skjemarad">
+                <label>Presisjon
+                    <select @bind="_inndata.Datopresisjon">
+                        <option value="@Datopresisjon.Dag">Dag</option>
+                        <option value="@Datopresisjon.Maaned">Måned</option>
+                    </select>
+                </label>
+                @if (_inndata.Datopresisjon == Datopresisjon.Maaned)
+                {
+                    <label>Måned<input type="month" min="0001-01" max="9999-12" value="@(_maanedUgyldig ? "" : _inndata.Dato.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture))" @onchange="VelgMaaned" /></label>
+                    <label>Kvalifikator
+                        <select @bind="_kvalifikator">
+                            <option value="">(ingen)</option>
+                            <option value="Primo">Primo</option>
+                            <option value="Medio">Medio</option>
+                            <option value="Ultimo">Ultimo</option>
+                        </select>
+                    </label>
+                }
+                else
+                {
+                    <label>Dato<input type="date" @bind="_inndata.Dato" /></label>
+                }
+            </div>
+            @if (_inndata.Datopresisjon == Datopresisjon.Maaned)
+            {
+                <p class="felthjelp">Tentativ måned – dato er ikke fastsatt.</p>
+            }
+            <div class="skjemarad">
+                <label>Budsjettår<input type="number" @bind="_inndata.Budsjettaar" /></label>
+                <label>Kategori
+                    <select @bind="_inndata.Kategori">
+                        <option value="@Kategori.Budsjett">Budsjett</option>
+                        <option value="@Kategori.Gulbok">Gul bok</option>
+                        <option value="@Kategori.Regnskap">Regnskap</option>
+                    </select>
+                </label>
+            </div>
+            <p class="felthjelp">Budsjettåret velges uavhengig av kalenderdatoen.</p>
+            <label>Notat<textarea @bind="_inndata.Notat" rows="3"></textarea></label>
+            @if (!ErEndring)
+            {
+                <fieldset class="synlighet">
+                    <legend>Foreslått synlig for (valgfritt – administrator beslutter endelig)</legend>
+                    @foreach (var gruppe in _grupper)
+                    {
+                        <label class="filtervalg @(gruppe.Kode == "POL" ? "pol-valg" : "")">
+                            <input type="checkbox" @bind:get="_inndata.ForeslaattSynlighet.Contains(gruppe.Kode)" @bind:set="paa => VekslGruppe(gruppe.Kode, paa)" />
+                            @gruppe.Navn (@gruppe.Kode)
+                        </label>
+                    }
+                </fieldset>
+            }
+        </fieldset>
+        <div class="skjemarad forslagsknapper">
+            <button type="submit" class="knapp knapp-primær" disabled="@(_sender || _sendt)">@(_sender ? "Sender …" : "Send inn")</button>
+            <button type="button" class="knapp" disabled="@_sender" @onclick="() => Avbrutt.InvokeAsync()">Avbryt</button>
+        </div>
+        @if (_sender) { <p class="felthjelp" role="status">Sender forslaget til behandling …</p> }
+    </form>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    [Parameter] public Guid? FristId { get; set; }
+    [Parameter] public DateOnly? Startdato { get; set; }
+    [Parameter] public int? Startbudsjettaar { get; set; }
+    [Parameter] public EventCallback Sendt { get; set; }
+    [Parameter] public EventCallback Avbrutt { get; set; }
+    [Parameter] public EventCallback<bool> InnsendingPaagaar { get; set; }
+
+    private readonly CancellationTokenSource _avslutning = new();
+    private BrukerforslagInndata? _inndata;
+    private IReadOnlyList<GruppeDto> _grupper = [];
+    private string _kvalifikator = "";
+    private string? _feil;
+    private string? _vistFeil;
+    private ElementReference _feilfelt;
+    private bool _fokuserFeil;
+    private bool _lastet;
+    private bool _kanProeveIgjen;
+    private bool _sender;
+    private bool _sendt;
+    private bool _maanedUgyldig;
+    private bool ErEndring => FristId is not null || _inndata?.EndrerFristId is not null;
+
+    protected override Task OnInitializedAsync() => LastInnAsync();
+
+    private async Task<bool> HarTilgangAsync() =>
+        (await Autorisering.AuthorizeAsync((await AuthState.GetAuthenticationStateAsync()).User, Autorisasjon.ErBidragsyter)).Succeeded;
+
+    private async Task LastInnAsync()
+    {
+        _lastet = false;
+        _feil = null;
+        _kanProeveIgjen = false;
+        try
+        {
+            // Komponenter arver ikke route-policy. Kontroller før data lastes eller skjema åpnes.
+            if (!await HarTilgangAsync())
+            {
+                VisFeil("Du har ikke tilgang til å sende forslag.");
+                return;
+            }
+            _grupper = await Grupper.HentAktiveAsync(_avslutning.Token);
+            var bruker = await Brukerkilde.HentAsync(_avslutning.Token);
+            if (FristId is { } fristId)
+            {
+                var frist = await Fristlesing.HentEnAsync(await Kontekstkilde.HentAsync(), fristId, _avslutning.Token);
+                if (frist is not null)
+                    _inndata = new BrukerforslagInndata
+                    {
+                        Tittel = frist.Tittel, Dato = frist.Dato, Datopresisjon = frist.Datopresisjon,
+                        Datokvalifikator = frist.Datokvalifikator, Budsjettaar = frist.Budsjettaar,
+                        Kategori = frist.Kategori, Notat = frist.Notat, EndrerFristId = fristId
+                    };
+            }
+            else if (Id is { } id)
+            {
+                _inndata = await Innsending.HentForRedigeringAsync(id, bruker.Id, _avslutning.Token);
+                if (_inndata is not null)
+                    _inndata.ForeslaattSynlighet = _inndata.ForeslaattSynlighet.Where(k => _grupper.Any(g => g.Kode == k)).ToList();
+            }
+            else
+            {
+                var idag = Datohjelp.Idag(Klokke);
+                _inndata = new BrukerforslagInndata { Dato = Startdato ?? idag, Budsjettaar = Startbudsjettaar ?? idag.Year + 1 };
+            }
+            _kvalifikator = _inndata?.Datokvalifikator?.ToString() ?? "";
+        }
+        catch (OperationCanceledException) when (_avslutning.IsCancellationRequested) { }
+        catch (Exception)
+        {
+            VisFeil("Kunne ikke åpne forslaget akkurat nå. Prøv igjen.");
+            _kanProeveIgjen = true;
+        }
+        finally { _lastet = true; }
+    }
+
+    private void VelgMaaned(ChangeEventArgs e)
+    {
+        _maanedUgyldig = !DateOnly.TryParseExact($"{e.Value}-01", "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var dato);
+        if (!_maanedUgyldig) _inndata!.Dato = dato;
+    }
+
+    private void VekslGruppe(string kode, bool paa)
+    {
+        if (paa && !_inndata!.ForeslaattSynlighet.Contains(kode)) _inndata.ForeslaattSynlighet.Add(kode);
+        else if (!paa) _inndata!.ForeslaattSynlighet.Remove(kode);
+    }
+
+    private async Task SendAsync()
+    {
+        // Køede submit-hendelser kan nå frem etter lagring. Sperr også etter suksess,
+        // før første await, til en uttrykkelig ny registrering oppretter et nytt skjema.
+        if (_sender || _sendt || _inndata is null) return;
+        _sender = true;
+        _feil = null;
+        try
+        {
+            await InnsendingPaagaar.InvokeAsync(true);
+            if (!await HarTilgangAsync())
+            {
+                VisFeil("Du har ikke tilgang til å sende forslag.");
+                return;
+            }
+            if (_inndata.Datopresisjon == Datopresisjon.Maaned && _maanedUgyldig)
+            {
+                VisFeil("Velg en gyldig måned før du sender inn forslaget.");
+                return;
+            }
+            var bruker = await Brukerkilde.HentAsync(_avslutning.Token);
+            if (_inndata.EndrerFristId is { } fristId
+                && await Fristlesing.HentEnAsync(await Kontekstkilde.HentAsync(), fristId, _avslutning.Token) is null)
+            {
+                VisFeil("Fristen finnes ikke, eller du har ikke tilgang til den.");
+                return;
+            }
+            _inndata.Datokvalifikator = _inndata.Datopresisjon == Datopresisjon.Maaned && Enum.TryParse<Datokvalifikator>(_kvalifikator, out var kvalifikator) ? kvalifikator : null;
+            if (_inndata.Datopresisjon == Datopresisjon.Maaned) _inndata.Dato = new(_inndata.Dato.Year, _inndata.Dato.Month, 1);
+            if (Id is { } id) await Innsending.SendInnPaaNyttAsync(id, _inndata, bruker, _avslutning.Token);
+            else await Innsending.SendInnAsync(_inndata, bruker, _avslutning.Token);
+            _sendt = true;
+            await Sendt.InvokeAsync();
+        }
+        catch (Valideringsfeil feil) { VisFeil(feil.Message); }
+        catch (OperationCanceledException) when (_avslutning.IsCancellationRequested) { }
+        catch (Exception) { VisFeil("Kunne ikke sende forslaget akkurat nå. Feltene er beholdt. Prøv igjen."); }
+        finally
+        {
+            _sender = false;
+            await InnsendingPaagaar.InvokeAsync(false);
+        }
+    }
+
+    private void VisFeil(string melding) { _feil = melding; _fokuserFeil = true; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // En eldre render kan fullføre mens innsendingen venter. Feilen må være
+        // med i den fullførte renderen før elementreferansen kan fokuseres.
+        if (!_fokuserFeil || _vistFeil != _feil || _feilfelt.Context is null || _avslutning.IsCancellationRequested) return;
+        _fokuserFeil = false;
+        await _feilfelt.FocusAsync();
+    }
+
+    public void Dispose() { _avslutning.Cancel(); _avslutning.Dispose(); }
+}

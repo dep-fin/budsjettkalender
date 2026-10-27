@@ -20,7 +20,7 @@
                                 <div class="dagshendelser">
                                     @foreach (var frist in frister.Take(3))
                                     {
-                                        <button class="kalenderhendelse @Visningformat.FargeklasseForAar(frist.Budsjettaar)" aria-label="@frist.Tittel" title="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
+                                        <button class="kalenderhendelse @Visningformat.FargeklasseForAar(frist.Budsjettaar)" data-frist-id="@frist.Id" aria-label="@frist.Tittel" title="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
                                             <span class="hendelsestittel">@if (frist.Klokkeslett is { } tid) { <span>@tid.ToString("HH:mm") · </span> }@frist.Tittel</span>
                                             <small>Budsjettår @frist.Budsjettaar</small>
                                         </button>
@@ -50,7 +50,7 @@
             <h3><button class="knapp-lenke" @onclick="() => AapneDag.InvokeAsync(dag)">@Kalendervisning.Dato(dag)</button></h3>
             @foreach (var frist in Kalendervisning.Dagsfrister(Frister, dag))
             {
-                <button class="agenda-frist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
+                <button class="agenda-frist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" data-frist-id="@frist.Id" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
                     <strong>@frist.Tittel</strong>
                     <span>@(frist.Klokkeslett is { } tid ? $"Kl. {tid:HH:mm}" : "Heldag") · Budsjettår @frist.Budsjettaar</span>
                 </button>

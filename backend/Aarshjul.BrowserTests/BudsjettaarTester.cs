@@ -181,7 +181,7 @@ public sealed class BudsjettaarTester
                 await Expect(kilde).ToHaveAttributeAsync("referrerpolicy", "no-referrer");
                 Assert.True(await kilde.EvaluateAsync<bool>("el => !!(el.compareDocumentPosition(document.querySelector('section[aria-label=\"Om fristen\"]')) & Node.DOCUMENT_POSITION_FOLLOWING)"));
                 await Expect(dialog.GetByRole(AriaRole.Link, new() { Name = "Rediger", Exact = true })).ToHaveCountAsync(persona == "demo-admin" ? 1 : 0);
-                await Expect(dialog.GetByRole(AriaRole.Link, new() { Name = "Foreslå endring", Exact = true })).ToHaveCountAsync(persona is "demo-fa" or "demo-finfag" ? 1 : 0);
+                await Expect(dialog.GetByRole(AriaRole.Button, new() { Name = "Foreslå endring", Exact = true })).ToHaveCountAsync(persona is "demo-fa" or "demo-finfag" ? 1 : 0);
                 await n.Side.Keyboard.PressAsync("Escape");
                 await Expect(knapp).ToBeFocusedAsync();
                 await flate.GetByRole(AriaRole.Button, new() { Name = "UX80 kildefri", Exact = true }).ClickAsync();
