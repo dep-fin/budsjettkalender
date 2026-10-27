@@ -128,8 +128,8 @@ public sealed class DokumentTester
         await Expect(mal).ToContainTextAsync("Importerte 1 malregler");
         await Expect(mal).ToContainTextAsync("ak-ugyldig");
         await n.Gaa("/admin/mal");
-        await Expect(n.Side.Locator("tbody tr")).ToHaveCountAsync(1);
-        await Expect(n.Side.Locator("tbody tr")).ToContainTextAsync("AK importregel");
+        await Expect(n.Side.GetByRole(AriaRole.Article)).ToHaveCountAsync(1);
+        await Expect(n.Side.GetByRole(AriaRole.Article)).ToContainTextAsync("AK importregel");
         n.BekreftIngenKretsfeil();
     });
 

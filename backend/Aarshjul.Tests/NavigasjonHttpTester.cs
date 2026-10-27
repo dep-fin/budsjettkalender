@@ -5,6 +5,29 @@ public sealed class NavigasjonHttpTester(TestApplikasjon app) : IClassFixture<Te
     [Theory]
     [InlineData(null, 401)]
     [InlineData("Leser", 403)]
+    [InlineData("Bidragsyter", 403)]
+    [InlineData("Administrator", 200)]
+    public async Task Regelbyggerens_liste_ny_rediger_og_kopiruter_krever_administrator_paa_server(string? rolle, int status)
+    {
+        using var klient = app.CreateClient();
+        if (rolle is not null) klient.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
+        var id = Guid.NewGuid();
+        foreach (var sti in new[] { "/admin/mal", "/admin/mal/ny", $"/admin/mal/{id}", $"/admin/mal/ny?kopierFra={id}" })
+        {
+            var svar = await klient.GetAsync(sti);
+            Assert.Equal(status, (int)svar.StatusCode);
+            if (status != 200)
+            {
+                var tekst = await svar.Content.ReadAsStringAsync();
+                Assert.DoesNotContain("Lagre regel", tekst);
+                Assert.DoesNotContain("Forhåndsvisning for fem budsjettår", tekst);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(null, 401)]
+    [InlineData("Leser", 403)]
     [InlineData("Administrator", 403)]
     [InlineData("Bidragsyter", 200)]
     public async Task Forslagsinnganger_avviser_uautoriserte_serverkall_uavhengig_av_skjulte_UI_handlinger(string? rolle, int status)

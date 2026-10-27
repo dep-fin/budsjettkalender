@@ -58,8 +58,9 @@ og 61 Edge/Kestrel-scenarioer passerer. Etter samlet review, separat sikkerhetsa
 rettede initialiserings-/dialogkappløp er ordinær, SQL Server- og Chromium-CI grønn i
 [kjøring 40579908804](https://github.com/depmartin/Budsjettkalender/actions/runs/40579908804).
 [Akseptanse](acceptance/2026-10-27-atelier-ux07.md) beskriver bevisene.
-Atelier UX08 ([#83](https://github.com/depmartin/Budsjettkalender/issues/83)) har en lokal
-kandidat med én varig, versjonert felles fasemal under Administrator-innstillinger →
+Atelier UX08 ([#83](https://github.com/depmartin/Budsjettkalender/issues/83)) er levert i
+[PR #103](https://github.com/depmartin/Budsjettkalender/pull/103), merget som
+`2990c1b8f644788d9405a78434b2b92cab664690`, med én varig, versjonert felles fasemal under Administrator-innstillinger →
 Faseinndeling. Administrator lagrer fem navn/månedsgrenser; alle roller og budsjettår
 leser samme mal. Serverkommandoen håndhever administratorpolicy. Ugyldige felt og gammel
 versjon avvises med beholdte felt. Reell egen-appomstart på samme SQLite-fil bevarer
@@ -67,8 +68,23 @@ mal/versjon; komplette frist-, synlighets-, forslag-, dokument- og regeldata er 
 før/etter uten endring, og frister utenfor vinduet består. 675 ordinære tester og 65
 reelle Edge/Kestrel-scenarioer passerer uten feil eller hopp.
 [Akseptanse](acceptance/2026-10-27-atelier-ux08.md) beskriver fire nye nettleserflyter,
-14 delte lagringstilfeller og SQL-oppgradering fra siste tidligere migrasjon. Ekte SQL Server-/Chromium-CI, samlet review og separat audit er porter
-før levering. #84 og senere er ikke implementert her.
+14 delte lagringstilfeller og SQL-oppgradering fra siste tidligere migrasjon. Samlet
+Standards-/Spec-review, visuell gjennomgang og separat audit hadde ingen funn.
+[CI 40585115379](https://github.com/depmartin/Budsjettkalender/actions/runs/40585115379)
+er grønn med 37 ekte SQL Server-prøver og 65 Chromium-scenarioer.
+Atelier UX09 ([#84](https://github.com/depmartin/Budsjettkalender/issues/84)) har en lokal
+kandidat med separate flater for eksisterende og nye gjentaksregler. Fire kodefrie
+feltvalg åpner, redigerer og kopierer de samme tre lagrede regeltypene. Lesbar setning
+og sideeffektfri femårsvisning bruker eksisterende beregning, også for skuddår,
+årsforskyvning, valgår og ankerkjeder. Ulagret arbeid, felt-/lagringsfeil og sletting
+har forklaring, tastatur og fokus. 705 ordinære tester og 89 reelle Edge/Kestrel-scenarioer
+passerer lokalt uten feil eller hopp; alle tidligere 675/65 er bevart. 26 faktiske
+desktop-/mobilbilder er visuelt inspisert. [Akseptanse](acceptance/2026-10-27-atelier-ux09.md)
+beskriver rød/grønn og datainvariantene. Standards-/Spec-review og separat audit fant
+samme P2 ved navigasjon under lasting; et utkast kunne ellers bli lagret på en annen regel.
+Rettingen binder lasting, preview og lagring til samme visning og er dekket av 14 nye
+reelle nettlesertilfeller. Etterkontroll og ekte SQL Server-/Chromium-CI er fortsatt
+leveranseporter. #85 og senere er ikke implementert her.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -91,12 +107,13 @@ før levering. #84 og senere er ikke implementert her.
 | [#80](https://github.com/depmartin/Budsjettkalender/issues/80) | Komplett enkeltårsutvalg i Tidslinje/Fristliste, alle samtidige og tentative frister, bevart kalenderutvalg og eksplisitt eldre flereårs-/historikkvalg | Merget i [PR #100](https://github.com/depmartin/Budsjettkalender/pull/100), `b1404d8`; [akseptanse](acceptance/2026-10-27-atelier-ux05.md) |
 | [#81](https://github.com/depmartin/Budsjettkalender/issues/81) | Forslag fra valgt kalenderdato og synlig fristdetalj, gjenbrukt kø/godkjenning, bevart presisjon/synlighet og én publisert frist i Kalender/Tidslinje/Fristliste | Merget i [PR #101](https://github.com/depmartin/Budsjettkalender/pull/101), `1a65626`; [akseptanse](acceptance/2026-10-27-atelier-ux06.md) |
 | [#82](https://github.com/depmartin/Budsjettkalender/issues/82) | Konkret arbeidsår i fire lokale faner, årsavgrenset register/kø, synlige andre års forslag, bevart behandling/filter/synlighet og én frist på tvers av visninger | Merget i [PR #102](https://github.com/depmartin/Budsjettkalender/pull/102), `37d12d7`; [akseptanse](acceptance/2026-10-27-atelier-ux07.md) |
-| [#83](https://github.com/depmartin/Budsjettkalender/issues/83) | Én varig felles fasemal med versjonert atomisk lagring, administratorvern, alle års lesing, feil/konflikt og bevarte fristdata | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux08.md) |
+| [#83](https://github.com/depmartin/Budsjettkalender/issues/83) | Én varig felles fasemal med versjonert atomisk lagring, administratorvern, alle års lesing, feil/konflikt og bevarte fristdata | Merget i [PR #103](https://github.com/depmartin/Budsjettkalender/pull/103), `2990c1b`; [akseptanse](acceptance/2026-10-27-atelier-ux08.md) |
+| [#84](https://github.com/depmartin/Budsjettkalender/issues/84) | Fire kodefrie regelvalg, femårsvisning, bevart parser-/anker-/valgårskontrakt, redigering/kopi/slettekonsekvens og vern av ulagret arbeid | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux09.md) |
 
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. Med #83 er testomfanget 65 reelle Playwright-/Edge-scenarioer og 675 ordinære tester som
+eksterne miljøporter. Med #84 er testomfanget 89 reelle Playwright-/Edge-scenarioer og 705 ordinære tester som
 passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.

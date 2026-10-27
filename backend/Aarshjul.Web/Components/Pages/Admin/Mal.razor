@@ -1,69 +1,104 @@
 @page "/admin/mal"
 @using Aarshjul.Application.Generering
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+@implements IAsyncDisposable
 @inject IMaltjeneste Maltjeneste
-@inject NavigationManager Nav
+@inject IJSRuntime Js
+@inject ILogger<Mal> Logg
 
-<PageTitle>Årsmal</PageTitle>
-
-<div class="admintopp">
-    <h1>Årsmal (gjentaksregler)</h1>
-    <button class="knapp knapp-primær" @onclick='() => Nav.NavigateTo("/admin/mal/ny")'>Ny regel</button>
-</div>
-
-<p class="melding">
-    Malen lagrer regler, ikke datoer. «Generér budsjettår» beregner konkrete datoer fra disse reglene.
-</p>
-
-@if (!_lastet)
+<PageTitle>Eksisterende gjentaksregler</PageTitle>
+<div class="mallistetopp"><div><p class="menyoverskrift">Årsmal</p><h1>Eksisterende gjentaksregler</h1></div><a class="knapp knapp-primær" href="/admin/mal/ny">Ny regel</a></div>
+<p class="ingress">Felles regler som beregner frister for hvert budsjettår. Rediger en regel eller lag en kopi som et nytt utkast.</p>
+<p class="hint">Malen lagrer regler, ikke datoer. Generer fra årsmal beregner forslag som må godkjennes før publisering.</p>
+@if (_feil is not null)
 {
-    <p class="melding">Laster …</p>
+    <div class="feil" role="alert"><p>@_feil</p>@if (!_lastet) { <button class="knapp" @onclick="LastAsync">Prøv igjen</button> }</div>
 }
-else if (_regler.Count == 0)
+@if (_status is not null) { <p class="malstatus" role="status" tabindex="-1" @ref="_statusfelt">@_status</p> }
+@if (_laster)
 {
-    <p class="melding">Ingen regler i malen ennå.</p>
+    <p class="melding" role="status">Laster gjentaksregler …</p>
 }
-else
+else if (_lastet && _regler.Count == 0)
 {
-    <table class="tabell">
-        <thead>
-            <tr><th>Løp</th><th>Tittel</th><th>Kategori</th><th>Regeltype</th><th>Parametre</th><th>Valgår</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var r in _regler)
-            {
-                <tr>
-                    <td>@r.Loep</td>
-                    <td>@r.Tittel</td>
-                    <td>@Visningformat.KategoriNavn(r.Kategori)</td>
-                    <td>@r.Regeltype</td>
-                    <td><code>@r.Regelparametre</code></td>
-                    <td>@(r.Valgaarssensitiv ? "Ja" : "")</td>
-                    <td>
-                        <a href="@($"/admin/mal/{r.Id}")">Rediger</a>
-                        <button class="knapp-lenke" @onclick="() => Slett(r.Id)">Slett</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="tommal"><h2>Ingen gjentaksregler ennå</h2><p>Opprett den første regelen for å bygge en felles årsmal.</p><a href="/admin/mal/ny" class="knapp">Opprett gjentaksregel</a></div>
 }
+else if (_lastet)
+{
+    <p class="malantall">@_regler.Count gjentaksregler</p>
+    <div class="malregler">
+        @foreach (var regel in _regler)
+        {
+            <article class="malregel" aria-labelledby="@($"mal-{regel.Id}")">
+                <div class="malregelinnhold"><span class="kategori">@Visningformat.KategoriNavn(regel.Kategori)</span><h2 id="@($"mal-{regel.Id}")">@(string.IsNullOrWhiteSpace(regel.Tittel) ? regel.Loep : regel.Tittel)</h2><p>@Malregelutkast.Beskriv(regel)</p><small>Løp: @regel.Loep@(regel.Valgaarssensitiv ? " · Valgårssensitiv" : "")</small></div>
+                <div class="malregelhandlinger"><a class="knapp" href="@($"/admin/mal/{regel.Id}")">Rediger</a><a href="@($"/admin/mal/ny?kopierFra={regel.Id}")">Kopier</a><button type="button" class="knapp-lenke" @onclick="() => BeOmSlett(regel)">Slett</button></div>
+            </article>
+        }
+    </div>
+}
+<dialog @ref="_slettDialog" class="mal-dialog" aria-labelledby="slett-regel-tittel" data-arbeider="@(_sletter ? "true" : "false")">
+    <h2 id="slett-regel-tittel">Slett gjentaksregel?</h2>
+    @if (_slett is { } valgt)
+    {
+        <p><strong>@valgt.Tittel</strong> fjernes fra årsmalen. Publiserte frister og eksisterende forslag endres ikke.</p>
+        <p>@Malregelutkast.Avhengige(_regler, valgt.Loep) ankerkobling(er) bruker løpet «@valgt.Loep». De slettes ikke. Hvis ingen annen regel gir løpet en dato, må ankerdato fastsettes manuelt eller koblingene endres.</p>
+        @if (_slettefeil is not null) { <p class="feil" role="alert">@_slettefeil</p> }
+        <div class="dialoghandlinger"><button type="button" class="knapp knapp-primær" autofocus disabled="@_sletter" @onclick="AvbrytSlettAsync">Avbryt</button><button type="button" class="knapp" disabled="@_sletter" @onclick="SlettAsync">@(_sletter ? "Sletter …" : "Slett regelen")</button></div>
+    }
+</dialog>
 
 @code {
+    private readonly CancellationTokenSource _levetid = new();
     private IReadOnlyList<MalRegelDto> _regler = [];
-    private bool _lastet;
-
-    protected override async Task OnInitializedAsync() => await Last();
-
-    private async Task Last()
+    private bool _lastet, _laster, _sletter, _aapneSlett, _fokuserStatus, _avsluttet;
+    private string? _feil, _status, _slettefeil;
+    private MalRegelDto? _slett;
+    private ElementReference _slettDialog, _statusfelt;
+    private IJSObjectReference? _modul;
+    protected override Task OnInitializedAsync() => LastAsync();
+    private async Task LastAsync()
     {
-        _regler = await Maltjeneste.HentAlleAsync();
-        _lastet = true;
+        if (_laster) return;
+        _laster = true;
+        _feil = null;
+        try { _regler = await Maltjeneste.HentAlleAsync(_levetid.Token); _lastet = true; }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (Exception e) { Logg.LogError(e, "Kunne ikke laste gjentaksregler."); _feil = "Kunne ikke laste gjentaksreglene akkurat nå. Prøv igjen."; }
+        finally { _laster = false; }
     }
-
-    private async Task Slett(Guid id)
+    private void BeOmSlett(MalRegelDto regel) { if (_sletter) return; _slett = regel; _slettefeil = null; _aapneSlett = true; }
+    private async Task AvbrytSlettAsync() { if (_sletter) return; if (_modul is not null) await _modul.InvokeVoidAsync("lukk", _slettDialog); _slett = null; }
+    private async Task SlettAsync()
     {
-        await Maltjeneste.SlettAsync(id);
-        await Last();
+        if (_sletter || _slett is null) return;
+        _sletter = true;
+        _slettefeil = null;
+        try
+        {
+            await Maltjeneste.SlettAsync(_slett.Id, _levetid.Token);
+            if (_modul is not null) await _modul.InvokeVoidAsync("lukk", _slettDialog);
+            _status = $"«{_slett.Tittel}» er slettet fra årsmalen. Frister og forslag er uendret.";
+            _slett = null;
+            await LastAsync();
+            _fokuserStatus = true;
+        }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (Exception e) { Logg.LogError(e, "Kunne ikke slette gjentaksregel."); _slettefeil = "Kunne ikke slette regelen akkurat nå. Prøv igjen eller avbryt."; }
+        finally { _sletter = false; }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_fokuserStatus) { _fokuserStatus = false; await _statusfelt.FocusAsync(); }
+        if (_aapneSlett)
+        {
+            _aapneSlett = false;
+            try { _modul ??= await Js.InvokeAsync<IJSObjectReference>("import", "./regelbygger.js"); if (!_avsluttet) await _modul.InvokeVoidAsync("vis", _slettDialog); }
+            catch (JSDisconnectedException) { }
+        }
+    }
+    public async ValueTask DisposeAsync()
+    {
+        _avsluttet = true; _levetid.Cancel(); _levetid.Dispose();
+        if (_modul is not null) { try { await _modul.DisposeAsync(); } catch (JSDisconnectedException) { } }
     }
 }

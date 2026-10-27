@@ -103,11 +103,12 @@ public sealed class GruppeadministrasjonTester
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Frister", Exact = true })).ToBeVisibleAsync();
         await n.Gaa("/admin/mal/ny");
-        await n.Side.GetByLabel("Løp (funksjonsnavn)").FillAsync("ak-skok");
+        await n.Side.GetByLabel("Funksjon / løp", new() { Exact = true }).FillAsync("ak-skok");
         await n.Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync("AK videreført SKOK");
-        await n.Side.GetByLabel("Regelparametre (JSON)").FillAsync("{\"maaned\":11,\"dag\":20}");
-        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
-        await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "AK videreført SKOK" })).ToBeVisibleAsync();
+        await n.Side.GetByLabel("Måned", new() { Exact = true }).SelectOptionAsync("11");
+        await n.Side.GetByLabel("Dag", new() { Exact = true }).FillAsync("20");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre regel", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Article).Filter(new() { HasText = "AK videreført SKOK" })).ToBeVisibleAsync();
         await DeaktiverSkok(n);
         await n.Gaa("/admin/generer");
         await n.Side.GetByLabel("Målbudsjettår").FillAsync("2032");
