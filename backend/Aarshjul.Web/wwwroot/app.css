@@ -303,6 +303,15 @@ a.knapp { display: inline-block; }
 .dialognotat { margin-top: 24px; }
 .dialognotat p { white-space: pre-wrap; font-size: 14px; color: var(--dempet); }
 .dialoghandlinger { border-top: 1px solid var(--kant); padding-top: 18px; margin-top: 24px; }
+.forslagsforklaring { font-size: 13px; line-height: 1.7; color: var(--dempet); }
+.forslagsfelter { display: flex; flex-direction: column; gap: 18px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.forslagsskjema .felthjelp { margin: -8px 0 0; color: var(--dempet); font-size: 12px; font-weight: 400; }
+.forslagsknapper { gap: 10px; }
+.fristdialog .forslagsskjema { border: 0; padding: 0; margin: 24px 0 0; }
+.fristdialog .synlighet { margin: 0; }
+.forslagskvittering > p { color: var(--dempet); line-height: 1.7; }
+.forslagskvittering .dialoghandlinger { display: flex; flex-wrap: wrap; gap: 10px; }
+.dialogfeil { margin: 0 30px 24px; }
 
 /* Budsjettåret følger Atelier-skissen: årsbånd, hvit graf, kort rundt aksen og faser. */
 .budsjett-aarsvalg { display: flex; flex-direction: column; gap: 10px; font-size: 12px; color: var(--dempet); }

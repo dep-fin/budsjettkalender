@@ -266,7 +266,7 @@ public sealed class KalenderperspektivTester
                 await Expect(kilde).ToHaveAttributeAsync("referrerpolicy", "no-referrer");
                 await Expect(kilde).ToHaveAttributeAsync("rel", "noopener noreferrer");
                 await Expect(dialog.GetByRole(AriaRole.Link, new() { Name = "Rediger", Exact = true })).ToHaveCountAsync(persona == "demo-admin" ? 1 : 0);
-                await Expect(dialog.GetByRole(AriaRole.Link, new() { Name = "Foreslå endring", Exact = true })).ToHaveCountAsync(persona is "demo-fa" or "demo-finfag" ? 1 : 0);
+                await Expect(dialog.GetByRole(AriaRole.Button, new() { Name = "Foreslå endring", Exact = true })).ToHaveCountAsync(persona is "demo-fa" or "demo-finfag" ? 1 : 0);
                 await n.Side.Keyboard.PressAsync("Escape");
                 await Expect(frist).ToBeFocusedAsync();
                 await flate.GetByRole(AriaRole.Button, new() { Name = "UX79 kildefri", Exact = true }).PressAsync("Enter");

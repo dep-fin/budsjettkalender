@@ -3,6 +3,33 @@ namespace Aarshjul.Tests;
 public sealed class NavigasjonHttpTester(TestApplikasjon app) : IClassFixture<TestApplikasjon>
 {
     [Theory]
+    [InlineData(null, 401)]
+    [InlineData("Leser", 403)]
+    [InlineData("Administrator", 403)]
+    [InlineData("Bidragsyter", 200)]
+    public async Task Forslagsinnganger_avviser_uautoriserte_serverkall_uavhengig_av_skjulte_UI_handlinger(string? rolle, int status)
+    {
+        using var klient = app.CreateClient();
+        if (rolle is not null) klient.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
+        var id = Guid.NewGuid();
+        foreach (var sti in new[] { "/forslag/ny", $"/forslag/endre/{id}", $"/forslag/{id}/rediger" })
+        {
+            var svar = await klient.GetAsync(sti);
+            Assert.Equal(status, (int)svar.StatusCode);
+            var tekst = await svar.Content.ReadAsStringAsync();
+            if (status != 200)
+            {
+                Assert.DoesNotContain("Send inn", tekst);
+                Assert.DoesNotContain("Foreslått synlig", tekst);
+            }
+            else
+            {
+                Assert.Contains(sti == "/forslag/ny" ? "Send inn" : "finnes ikke", tekst);
+            }
+        }
+    }
+
+    [Theory]
     [InlineData(null, 401, 401)]
     [InlineData("Leser", 200, 403)]
     [InlineData("Bidragsyter", 200, 403)]

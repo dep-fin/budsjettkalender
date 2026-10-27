@@ -30,14 +30,25 @@ valgte måned-/ukeperioden. Uken viser heldag og alle klokkeslett hver for seg, 
 tentative frister fra alle berørte måneder uten oppdiktet dagsdato eller varighet.
 [Akseptanse](acceptance/2026-10-27-atelier-ux04.md) beskriver periode-, detalj-, rolle-,
 mobil- og tastaturprøvene.
-Atelier UX05 ([#80](https://github.com/depmartin/Budsjettkalender/issues/80)) har en lokal
-kandidat med komplett Tidslinje og Fristliste for ett budsjettår, inklusive alle kategorier,
+Atelier UX05 ([#80](https://github.com/depmartin/Budsjettkalender/issues/80)) er levert i
+[PR #100](https://github.com/depmartin/Budsjettkalender/pull/100), merget som
+`b1404d87f108854a535e307db33787b35f1e9e20`, med komplett Tidslinje og Fristliste for ett budsjettår, inklusive alle kategorier,
 historikk og frister utenfor standardvinduet. Tette månedsgrupper åpner alle frister;
 tentative måneder beholder presisjon og kvalifikator. Kalenderovergangen bevarer søk,
 kategorier og årsvalg og legger til målets budsjettår ved behov. Det gamle `/aarshjul`
 åpner Flere år og historikk med tidligere filterkontrakt. [Akseptanse](acceptance/2026-10-27-atelier-ux05.md)
-beskriver kilder, roller, Oslo-dato, datogrenser, mobil og tastatur. #81 og senere er
-ikke implementert her; SQL Server/Chromium kontrolleres i CI.
+beskriver kilder, roller, Oslo-dato, datogrenser, mobil og tastatur.
+Atelier UX06 ([#81](https://github.com/depmartin/Budsjettkalender/issues/81)) har en lokal
+kandidat med Foreslå frist fra dagsagenda, redigerbar forhåndsutfylt dato, selvstendig
+budsjettår, tentativ måned og kvittering. Forslaget er i Mine forslag og godkjenningskøen
+før publisering. Administratorgodkjenning gir én frist med samme identitet og verdier i
+Kalender og begge Budsjettår-visninger. Endringsforslag fra synlige detaljer bevarer
+original synlighet. [Akseptanse](acceptance/2026-10-27-atelier-ux06.md) beskriver
+rolle-/serververn, feil, kontekst, dobbeltinnsending, mobil og tastatur. Etter samlet
+Standards-/Spec-review og separat sikkerhetsaudit er tømt månedsfelt rettet med en
+reell nettleserregresjon; 643 ordinære og 56 Edge/Kestrel-scenarioer passerer.
+Etterkontroll av rettingen gjenstår før publisering. #82 og senere
+er ikke implementert her; SQL Server/Chromium kontrolleres i CI.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -57,12 +68,13 @@ ikke implementert her; SQL Server/Chromium kontrolleres i CI.
 | [#77](https://github.com/depmartin/Budsjettkalender/issues/77) | Månedskalender, minikalender, dagsagenda og fristdetaljer med gyldig kilde og bevart tilgang | Merget i [PR #97](https://github.com/depmartin/Budsjettkalender/pull/97), `a65ae35`; [akseptanse](acceptance/2026-10-27-atelier-ux02.md) |
 | [#78](https://github.com/depmartin/Budsjettkalender/issues/78) | Eksplisitt flervalg av budsjettår/kategorier, søk, nullstilling og bevart kalenderkontekst | Merget i [PR #98](https://github.com/depmartin/Budsjettkalender/pull/98), `f72b2b7`; [akseptanse](acceptance/2026-10-27-atelier-ux03.md) |
 | [#79](https://github.com/depmartin/Budsjettkalender/issues/79) | Uke og periodeavgrenset Liste med bevart dato/filter/søk, tentative måneder og fullstendige fristdetaljer | Merget i [PR #99](https://github.com/depmartin/Budsjettkalender/pull/99), `19d7949`; [akseptanse](acceptance/2026-10-27-atelier-ux04.md) |
-| [#80](https://github.com/depmartin/Budsjettkalender/issues/80) | Komplett enkeltårsutvalg i Tidslinje/Fristliste, alle samtidige og tentative frister, bevart kalenderutvalg og eksplisitt eldre flereårs-/historikkvalg | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux05.md) |
+| [#80](https://github.com/depmartin/Budsjettkalender/issues/80) | Komplett enkeltårsutvalg i Tidslinje/Fristliste, alle samtidige og tentative frister, bevart kalenderutvalg og eksplisitt eldre flereårs-/historikkvalg | Merget i [PR #100](https://github.com/depmartin/Budsjettkalender/pull/100), `b1404d8`; [akseptanse](acceptance/2026-10-27-atelier-ux05.md) |
+| [#81](https://github.com/depmartin/Budsjettkalender/issues/81) | Forslag fra valgt kalenderdato og synlig fristdetalj, gjenbrukt kø/godkjenning, bevart presisjon/synlighet og én publisert frist i Kalender/Tidslinje/Fristliste | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux06.md) |
 
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. Med #80 er testomfanget 47 reelle Playwright-/Edge-scenarioer og 639 ordinære tester som
+eksterne miljøporter. Med #81 er testomfanget 55 reelle Playwright-/Edge-scenarioer og 643 ordinære tester som
 passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.

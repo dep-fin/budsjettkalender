@@ -12,7 +12,7 @@
                 <h4>Heldag</h4>
                 @foreach (var frist in frister.Where(f => !f.HarKlokkeslett))
                 {
-                    <button class="uke-frist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
+                    <button class="uke-frist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" data-frist-id="@frist.Id" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
                         <strong>@frist.Tittel</strong><span>Budsjettår @frist.Budsjettaar</span>
                     </button>
                 }
@@ -22,7 +22,7 @@
                 <h4>Klokkeslett</h4>
                 @foreach (var frist in frister.Where(f => f.HarKlokkeslett))
                 {
-                    <button class="uke-frist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
+                    <button class="uke-frist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" data-frist-id="@frist.Id" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
                         <time>@frist.Klokkeslett!.Value.ToString("HH:mm")</time><strong>@frist.Tittel</strong><span>Budsjettår @frist.Budsjettaar</span>
                     </button>
                 }

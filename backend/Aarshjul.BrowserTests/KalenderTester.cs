@@ -265,11 +265,11 @@ public sealed class KalenderTester
             await AapneFrist(n, tittel);
             var dialog = n.Side.GetByRole(AriaRole.Dialog, new() { Name = tittel, Exact = true });
             var bidrag = persona is "demo-fa" or "demo-finfag";
-            await Expect(dialog.GetByRole(AriaRole.Link, new() { Name = "Foreslå endring", Exact = true })).ToHaveCountAsync(bidrag ? 1 : 0);
+            await Expect(dialog.GetByRole(AriaRole.Button, new() { Name = "Foreslå endring", Exact = true })).ToHaveCountAsync(bidrag ? 1 : 0);
             await Expect(dialog.GetByRole(AriaRole.Link, new() { Name = "Rediger", Exact = true })).ToHaveCountAsync(persona == "demo-admin" ? 1 : 0);
             if (bidrag || persona == "demo-admin")
             {
-                await dialog.GetByRole(AriaRole.Link, new() { Name = bidrag ? "Foreslå endring" : "Rediger", Exact = true }).ClickAsync();
+                await dialog.GetByRole(bidrag ? AriaRole.Button : AriaRole.Link, new() { Name = bidrag ? "Foreslå endring" : "Rediger", Exact = true }).ClickAsync();
                 await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = bidrag ? "Foreslå endring på en publisert frist" : "Rediger frist", Exact = true })).ToBeVisibleAsync();
                 await Expect(n.Side.GetByLabel("Tittel", new() { Exact = true })).ToHaveValueAsync(tittel);
                 await Expect(n.Side.GetByLabel("Dato", new() { Exact = true })).ToHaveValueAsync("2030-11-20");

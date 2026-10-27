@@ -1,16 +1,40 @@
 @using Microsoft.JSInterop
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthState
+@inject IAuthorizationService Autorisering
 
+@{ _vistForslagsfeil = _forslagsfeil; }
 <dialog @ref="_dialog" class="fristdialog" aria-labelledby="fristdialog-tittel">
     <div class="dialogtopp">
-        @if (_frist is not null && _agendadato is not null)
+        @if (!_forslag && !_sendt && _frist is not null && _agendadato is not null)
         {
             <button class="knapp" @onclick="TilbakeAsync">‹ Tilbake til dagsagenda</button>
         }
-        <button class="knapp dialoglukk" @onclick="LukkAsync">Lukk</button>
+        <button class="knapp dialoglukk" disabled="@_sender" @onclick="LukkAsync">Lukk</button>
     </div>
-    @if (_frist is { } frist)
+    @if (_forslag)
+    {
+        <div class="dialoginnhold">
+            <p class="menyoverskrift">Til behandling</p>
+            <h2 id="fristdialog-tittel" tabindex="-1">@(_frist is null ? "Foreslå en frist" : "Foreslå endring på en publisert frist")</h2>
+            <Forslagsskjema @key="_registrering" FristId="_frist?.Id" Startdato="_agendadato" Startbudsjettaar="Startbudsjettaar"
+                           Sendt="ForslagSendtAsync" Avbrutt="AvbrytForslagAsync" InnsendingPaagaar="VedInnsendingAsync" />
+        </div>
+    }
+    else if (_sendt)
+    {
+        <div class="dialoginnhold forslagskvittering" role="status">
+            <p class="menyoverskrift">Venter på behandling</p>
+            <h2 id="fristdialog-tittel" tabindex="-1">Forslaget er sendt inn</h2>
+            <p>Administrator behandler forslaget før fristen blir publisert. Du kan følge behandlingen under Mine forslag.</p>
+            <div class="dialoghandlinger">
+                <a class="knapp knapp-primær" href="/forslag/mine">Mine forslag</a>
+                <button class="knapp" @onclick="TilbakeEtterForslagAsync">@(_agendadato is not null ? "Tilbake til dagsagenda" : "Tilbake til fristen")</button>
+            </div>
+        </div>
+    }
+    else if (_frist is { } frist)
     {
         <div class="dialoginnhold @Visningformat.FargeklasseForAar(frist.Budsjettaar)">
             <p class="menyoverskrift">Fristdetaljer</p>
@@ -55,7 +79,7 @@
                 <div class="dialoghandlinger"><button class="knapp" @onclick="() => TilKalenderAsync(frist)">Vis i kalenderen</button></div>
             }
             <AuthorizeView Policy="@Autorisasjon.ErBidragsyter">
-                <div class="dialoghandlinger"><a class="knapp" href="@($"/forslag/endre/{frist.Id}")">Foreslå endring</a></div>
+                <div class="dialoghandlinger"><button class="knapp" data-dialoghandling="endre" @onclick="AapneForslagAsync">Foreslå endring</button></div>
             </AuthorizeView>
         </div>
     }
@@ -83,12 +107,23 @@
                     }
                 </div>
             }
+            <AuthorizeView Policy="@Autorisasjon.ErBidragsyter">
+                <div class="dialoghandlinger">
+                    <p class="dempet">Har du en frist som mangler? Send et forslag til administrator.</p>
+                    <button class="knapp knapp-primær" data-dialoghandling="foreslaa" @onclick="AapneForslagAsync">Foreslå frist</button>
+                </div>
+            </AuthorizeView>
         </div>
+    }
+    @if (_forslagsfeil is not null)
+    {
+        <div class="feil dialogfeil" role="alert" tabindex="-1" @ref="_feilfelt">@_forslagsfeil</div>
     }
 </dialog>
 
 @code {
     [Parameter] public EventCallback<FristDto> VisIKalenderen { get; set; }
+    [Parameter] public int? Startbudsjettaar { get; set; }
     private ElementReference _dialog;
     private IJSObjectReference? _modul;
     private DotNetObjectReference<Fristdialog>? _referanse;
@@ -98,6 +133,15 @@
     private bool _vis;
     private bool _avsluttet;
     private string? _fokusFrist;
+    private string? _fokusHandling;
+    private string? _forslagsfeil;
+    private string? _vistForslagsfeil;
+    private ElementReference _feilfelt;
+    private bool _fokuserFeil;
+    private bool _forslag;
+    private bool _sendt;
+    private bool _sender;
+    private int _registrering;
 
     public Task VisAgendaAsync(DateOnly dato, IReadOnlyList<FristDto> frister)
     {
@@ -106,6 +150,7 @@
         _frist = null;
         _vis = true;
         _fokusFrist = null;
+        NullstillForslag();
         return InvokeAsync(StateHasChanged);
     }
 
@@ -115,6 +160,7 @@
         _frist = frist;
         _vis = true;
         _fokusFrist = null;
+        NullstillForslag();
         return InvokeAsync(StateHasChanged);
     }
 
@@ -137,6 +183,12 @@
     [JSInvokable]
     public Task TilbakeFraTastaturAsync()
     {
+        if (_sender) return Task.CompletedTask;
+        if (_forslag)
+        {
+            AvbrytForslagAsync();
+            return InvokeAsync(StateHasChanged);
+        }
         if (_frist is null || _agendadato is null) return Task.CompletedTask;
         TilbakeAsync();
         return InvokeAsync(StateHasChanged);
@@ -144,7 +196,68 @@
 
     private async Task LukkAsync()
     {
+        if (_sender) return;
         if (_modul is not null) await _modul.InvokeVoidAsync("lukk", _dialog);
+    }
+
+    private void NullstillForslag()
+    {
+        _forslag = false;
+        _sendt = false;
+        _sender = false;
+        _forslagsfeil = null;
+        _fokusHandling = null;
+    }
+
+    private async Task AapneForslagAsync()
+    {
+        if (_forslag || _sender) return;
+        // AuthorizeView skjuler handlingen, men håndhever ikke serverhendelsen.
+        if (!(await Autorisering.AuthorizeAsync((await AuthState.GetAuthenticationStateAsync()).User, Autorisasjon.ErBidragsyter)).Succeeded)
+        {
+            _forslagsfeil = "Du har ikke tilgang til å sende forslag.";
+            _fokuserFeil = true;
+            return;
+        }
+        _registrering++;
+        _forslag = true;
+        _sendt = false;
+        _forslagsfeil = null;
+        _fokusHandling = null;
+        _vis = true;
+    }
+
+    private Task AvbrytForslagAsync()
+    {
+        if (_sender) return Task.CompletedTask;
+        _forslag = false;
+        _fokusHandling = _frist is null ? "foreslaa" : "endre";
+        _vis = true;
+        return Task.CompletedTask;
+    }
+
+    private Task ForslagSendtAsync()
+    {
+        _forslag = false;
+        _sendt = true;
+        _fokusHandling = null;
+        _vis = true;
+        return Task.CompletedTask;
+    }
+
+    private Task TilbakeEtterForslagAsync()
+    {
+        _sendt = false;
+        if (_agendadato is not null) _frist = null;
+        _fokusHandling = _frist is null ? "foreslaa" : "endre";
+        _vis = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task VedInnsendingAsync(bool paagaar)
+    {
+        _sender = paagaar;
+        if (_modul is not null && !_avsluttet) await _modul.InvokeVoidAsync("innsending", _dialog, paagaar);
     }
 
     private async Task TilKalenderAsync(FristDto frist)
@@ -155,6 +268,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_fokuserFeil && _vistForslagsfeil == _forslagsfeil && _feilfelt.Context is not null && !_avsluttet)
+        {
+            _fokuserFeil = false;
+            await _feilfelt.FocusAsync();
+        }
         if (!_vis || _avsluttet) return;
         _vis = false;
         if (_modul is null)
@@ -170,7 +288,7 @@
         }
         if (_avsluttet) return;
         _referanse ??= DotNetObjectReference.Create(this);
-        await _modul!.InvokeVoidAsync("vis", _dialog, _fokusFrist, _frist is not null && _agendadato is not null, _referanse);
+        await _modul!.InvokeVoidAsync("vis", _dialog, _fokusFrist, _forslag || (!_sendt && _frist is not null && _agendadato is not null), _referanse, _fokusHandling);
     }
 
     public async ValueTask DisposeAsync()

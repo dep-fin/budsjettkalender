@@ -78,7 +78,7 @@
                         <h3>@Kalendervisning.Maaned(maaned.Key) · Dato ikke fastsatt</h3>
                         @foreach (var frist in maaned.OrderBy(f => f.Sorteringsdag).ThenBy(f => f.Tittel))
                         {
-                            <button class="tentativ-hendelse @Visningformat.FargeklasseForAar(frist.Budsjettaar)" aria-label="@frist.Tittel" @onclick="() => AapneFristAsync(frist)">
+                            <button class="tentativ-hendelse @Visningformat.FargeklasseForAar(frist.Budsjettaar)" data-frist-id="@frist.Id" aria-label="@frist.Tittel" @onclick="() => AapneFristAsync(frist)">
                                 <strong>@frist.Tittel</strong><span>@Visningformat.FormatDato(frist) · Budsjettår @frist.Budsjettaar</span>
                             </button>
                         }
@@ -105,7 +105,7 @@
         </section>
     </div>
 </div>
-<Fristdialog @ref="_fristdialog" />
+<Fristdialog @ref="_fristdialog" Startbudsjettaar="@(Tilstand.Budsjettaar.Count == 1 ? Tilstand.Budsjettaar.Single() : (int?)null)" />
 
 @code {
     private static readonly (Kalenderpresentasjon Visning, string Navn)[] Visninger =
