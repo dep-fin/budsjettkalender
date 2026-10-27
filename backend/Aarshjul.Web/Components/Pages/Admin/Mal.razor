@@ -1,104 +1,87 @@
 @page "/admin/mal"
 @using Aarshjul.Application.Generering
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
-@implements IAsyncDisposable
-@inject IMaltjeneste Maltjeneste
-@inject IJSRuntime Js
-@inject ILogger<Mal> Logg
 
 <PageTitle>Eksisterende gjentaksregler</PageTitle>
-<div class="mallistetopp"><div><p class="menyoverskrift">Årsmal</p><h1>Eksisterende gjentaksregler</h1></div><a class="knapp knapp-primær" href="/admin/mal/ny">Ny regel</a></div>
-<p class="ingress">Felles regler som beregner frister for hvert budsjettår. Rediger en regel eller lag en kopi som et nytt utkast.</p>
+<div class="mallistetopp"><div><p class="menyoverskrift">Årsmal</p><h1 id="malliste-tittel" tabindex="-1">Eksisterende gjentaksregler</h1></div><a class="knapp knapp-primær" href="/admin/mal/ny">Ny regel</a></div>
+<p class="ingress">Felles regler som beregner frister for hvert budsjettår. Finn en regel, se sammenhengen og fortsett å redigere.</p>
 <p class="hint">Malen lagrer regler, ikke datoer. Generer fra årsmal beregner forslag som må godkjennes før publisering.</p>
-@if (_feil is not null)
-{
-    <div class="feil" role="alert"><p>@_feil</p>@if (!_lastet) { <button class="knapp" @onclick="LastAsync">Prøv igjen</button> }</div>
-}
-@if (_status is not null) { <p class="malstatus" role="status" tabindex="-1" @ref="_statusfelt">@_status</p> }
-@if (_laster)
-{
-    <p class="melding" role="status">Laster gjentaksregler …</p>
-}
+<section class="malfiltre" aria-label="Filtrer og sorter gjentaksregler">
+    <div class="malfilterrad">
+        <div class="malsoek"><label for="mal-soek">Søk i regler</label><input id="mal-soek" type="search" @bind="Kontekst.Soek" @bind:event="oninput" aria-describedby="mal-soek-hjelp" /><small id="mal-soek-hjelp">Søk i tittel, løp og regelens lesbare setning.</small></div>
+        <div class="malaarsfelt"><label for="mal-aar">Beregn datoer for budsjettår</label><input id="mal-aar" type="text" inputmode="numeric" value="@Kontekst.Aarsfelt" @oninput="AarEndretAsync" aria-invalid="@(Aarsfeil is not null ? "true" : "false")" aria-describedby="mal-aar-hjelp mal-aar-feil" /><small id="mal-aar-hjelp">Ett år fra 1 til 9999. Beregningen lagrer ingenting.</small></div>
+    </div>
+    @if (Aarsfeil is not null) { <p class="malfeltfeil" id="mal-aar-feil" role="alert">@Aarsfeil @if (_lastet) { <span>@($" Resultatene nedenfor gjelder fortsatt budsjettår {_vistAar}.")</span> }</p> }
+    <div class="malfilterrad malfiltervalg">
+        <fieldset class="malkategorier"><legend>Kategorier</legend><div class="malkategorivalg">
+            @foreach (var kategori in Kategoriene) { <label><input type="checkbox" checked="@Kontekst.Kategorier.Contains(kategori)" @onchange="e => KategoriEndret(kategori, e)" /> @Visningformat.KategoriNavn(kategori)</label> }
+        </div><div class="malfilterknapper"><button type="button" class="knapp-lenke" @onclick="VelgAlle">Velg alle</button><button type="button" class="knapp-lenke" @onclick="() => Kontekst.Kategorier.Clear()">Fjern alle</button></div></fieldset>
+        <div><label for="mal-sammenheng">Sammenheng</label><select id="mal-sammenheng" @bind="Kontekst.Sammenheng"><option value="Alle">Alle regler</option><option value="Milepael">Milepæler (selvstendige)</option><option value="Selvstendig">Andre selvstendige regler</option><option value="Avhengig">Avhengige regler</option></select></div>
+        <div><label for="mal-sortering">Sortering</label><select id="mal-sortering" @bind="Kontekst.Sortering"><option value="Tidligst">Tidligst først</option><option value="Senest">Senest først</option><option value="Tittel">Tittel – A til Å</option></select></div>
+    </div>
+    <div class="malfilterfot"><p>En <strong>milepæl</strong> er en selvstendig regel andre bygger på. En <strong>avhengig</strong> regel beholder merket også når andre bygger videre på den.</p><button type="button" class="knapp-lenke" @onclick="Kontekst.NullstillFiltre">Nullstill filtre</button></div>
+</section>
+@if (_feil is not null) { <div class="feil" role="alert"><p>@_feil</p><button class="knapp" @onclick="LastAsync">Prøv igjen</button></div> }
+@if (_status is not null) { <div class="malstatus" role="status"><p>@_status</p>@if (LagretSkjult) { <p>Regelen er skjult av de aktive filtrene. Juster valgene eller nullstill filtrene for å finne den.</p><button class="knapp-lenke" @onclick="NullstillEtterLagring">Nullstill filtre for å finne regelen</button> }</div> }
+@if (_laster) { <p class="melding" role="status">Laster og beregner gjentaksregler …</p> }
 else if (_lastet && _regler.Count == 0)
 {
-    <div class="tommal"><h2>Ingen gjentaksregler ennå</h2><p>Opprett den første regelen for å bygge en felles årsmal.</p><a href="/admin/mal/ny" class="knapp">Opprett gjentaksregel</a></div>
+    <div class="tommal"><h2>Ingen regler i malen ennå</h2><p>Opprett den første regelen for å bygge en felles årsmal.</p><a href="/admin/mal/ny" class="knapp">Opprett gjentaksregel</a></div>
 }
 else if (_lastet)
 {
-    <p class="malantall">@_regler.Count gjentaksregler</p>
-    <div class="malregler">
-        @foreach (var regel in _regler)
-        {
-            <article class="malregel" aria-labelledby="@($"mal-{regel.Id}")">
-                <div class="malregelinnhold"><span class="kategori">@Visningformat.KategoriNavn(regel.Kategori)</span><h2 id="@($"mal-{regel.Id}")">@(string.IsNullOrWhiteSpace(regel.Tittel) ? regel.Loep : regel.Tittel)</h2><p>@Malregelutkast.Beskriv(regel)</p><small>Løp: @regel.Loep@(regel.Valgaarssensitiv ? " · Valgårssensitiv" : "")</small></div>
-                <div class="malregelhandlinger"><a class="knapp" href="@($"/admin/mal/{regel.Id}")">Rediger</a><a href="@($"/admin/mal/ny?kopierFra={regel.Id}")">Kopier</a><button type="button" class="knapp-lenke" @onclick="() => BeOmSlett(regel)">Slett</button></div>
-            </article>
-        }
-    </div>
+    var viste = VisteRader;
+    <div class="malresultattopp"><p class="malantall" role="status">Viser @viste.Count av @_rader.Count regler · Budsjettår @_vistAar</p><p class="hint">@Sorteringstekst</p></div>
+    <p class="malrekkefolgehjelp">Hele kalenderdatoen avgjør rekkefølgen. Tentative måneder plasseres etter måned; plasseringen angir ingen fastsatt dag. Ved lik dato brukes tittel fra A til Å, deretter regelens identitet. Uberegnbare regler står sist i begge datoretninger; tittelvalg sorterer alle titler.</p>
+    @if (viste.Count == 0)
+    {
+        <div class="tommal"><h2>@(Kontekst.Kategorier.Count == 0 ? "Ingen kategorier er valgt" : "Ingen regler passer til valgene")</h2><p>@(Kontekst.Kategorier.Count == 0 ? "Velg én eller flere kategorier for å vise regler." : "Prøv et annet søk, en annen sammenheng eller flere kategorier.")</p><button type="button" class="knapp" @onclick="Kontekst.NullstillFiltre">Vis alle regler</button></div>
+    }
+    else
+    {
+        <div class="malregler">
+            @foreach (var rad in viste)
+            {
+                var regel = rad.Regel;
+                <article @key="regel.Id" class="malregel" data-regel-id="@regel.Id" aria-labelledby="@($"mal-{regel.Id}")">
+                    <div class="malregelinnhold"><div class="malmerker"><span class="kategori">@Visningformat.KategoriNavn(regel.Kategori)</span><span class="sammenheng @(rad.Sammenheng == Regelsammenheng.Milepael ? "milepael" : null)">@if (rad.Sammenheng == Regelsammenheng.Milepael) { <span aria-hidden="true">◆ </span> }@rad.Sammenhengstekst</span></div><h2 id="@($"mal-{regel.Id}")">@rad.Tittel</h2><p>@rad.Setning</p><small>Løp: @regel.Loep@(regel.Valgaarssensitiv ? " · Valgårssensitiv" : "")</small></div>
+                    <div class="malregelresultat"><span class="resultatetikett">Budsjettår @_vistAar</span>@if (rad.ErFeil) { <strong class="beregningsfeil">Kan ikke beregnes</strong><p class="beregningsfeil">@(rad.Beregning.Feil ?? "Beregningen ga ingen dato.")</p> } else { <time datetime="@Mallistevisning.Maskindato(rad.Beregning)">@Mallistevisning.Dato(rad.Beregning)</time>@if (rad.Beregning.Valgaarsflagg) { <small>Valgår</small> } }</div>
+                    <div class="malregelhandlinger"><a id="@($"rediger-{regel.Id}")" class="knapp" href="@($"/admin/mal/{regel.Id}")" @onclick="() => AapneRedigering(regel.Id)">Rediger</a><div class="malhandlinglenker"><button type="button" class="knapp-lenke" @onclick="() => SeDatoerAsync(rad)">Se datoer</button><button type="button" class="knapp-lenke" @onclick="() => SeSammenheng(rad)">Se sammenhengen</button><a href="@($"/admin/mal/ny?kopierFra={regel.Id}")" @onclick="() => AapneRedigering(regel.Id)">Kopier</a><button type="button" class="knapp-lenke" @onclick="() => BeOmSlett(regel)">Slett</button></div></div>
+                </article>
+            }
+        </div>
+    }
 }
+<dialog @ref="_visDialog" class="mal-dialog" aria-labelledby="mal-visning-tittel">
+    <h2 id="mal-visning-tittel">@(_datoer ? "Datoer for regelen" : "Regelens sammenheng")</h2>
+    @if (_valgt is { } detalj)
+    {
+        <p><strong>@detalj.Tittel</strong></p>
+        @if (_datoer)
+        {
+            <p class="hint">Fem budsjettår fra @_foerstePreviewaar. @if (_vistAar > 9995) { <span>Femårsvisningen starter ved 9995 for å holde alle årene innenfor datoområdet.</span> } Kontrollen lagrer ingenting.</p>
+            @if (_previewLaster) { <p role="status">Beregner datoer …</p> }
+            @if (_previewFeil is not null) { <p class="feil" role="alert">@_previewFeil</p> }
+            @if (_preview.Count > 0) { <table class="malpreview" aria-label="Forhåndsvisning for fem budsjettår"><thead><tr><th>Budsjettår</th><th>Beregnet dato og kalenderår</th></tr></thead><tbody>@foreach (var resultat in _preview) { <tr><th scope="row">@resultat.Budsjettaar</th><td>@if (resultat.Feil is not null) { <span class="beregningsfeil">@resultat.Feil</span> } else { <time datetime="@Mallistevisning.Maskindato(resultat)">@Mallistevisning.Dato(resultat)</time> }</td></tr> }</tbody></table> }
+        }
+        else
+        {
+            <p>@detalj.Sammenhengstekst. @detalj.Setning</p>
+            @if (detalj.Anker is not null) { <p>Ankerløp: <strong>@detalj.Anker</strong>. @if (!_regler.Any(r => string.Equals(r.Loep, detalj.Anker, StringComparison.OrdinalIgnoreCase))) { <span>Ingen regel gir dette løpet en dato. Ankerdato må fastsettes manuelt ved prøving eller generering.</span> }</p> }
+            <h3>Regler som bygger direkte på denne</h3>
+            @if (detalj.Barn.Count == 0) { <p>Ingen direkte avhengige regler.</p> } else { <ul>@foreach (var barn in detalj.Barn) { <li>@Mallistevisning.Navn(barn) · løp @barn.Loep</li> }</ul> }
+            <p class="hint">Sammenhengen gjelder hele malen, også regler som er skjult av filtrene. En relativ regel er alltid avhengig.</p>
+        }
+    }
+    <div class="dialoghandlinger"><button type="button" class="knapp knapp-primær" autofocus @onclick="LukkVisningAsync">Lukk</button></div>
+</dialog>
 <dialog @ref="_slettDialog" class="mal-dialog" aria-labelledby="slett-regel-tittel" data-arbeider="@(_sletter ? "true" : "false")">
     <h2 id="slett-regel-tittel">Slett gjentaksregel?</h2>
     @if (_slett is { } valgt)
     {
-        <p><strong>@valgt.Tittel</strong> fjernes fra årsmalen. Publiserte frister og eksisterende forslag endres ikke.</p>
+        <p><strong>@Mallistevisning.Navn(valgt)</strong> fjernes fra årsmalen. Publiserte frister og eksisterende forslag endres ikke.</p>
         <p>@Malregelutkast.Avhengige(_regler, valgt.Loep) ankerkobling(er) bruker løpet «@valgt.Loep». De slettes ikke. Hvis ingen annen regel gir løpet en dato, må ankerdato fastsettes manuelt eller koblingene endres.</p>
         @if (_slettefeil is not null) { <p class="feil" role="alert">@_slettefeil</p> }
         <div class="dialoghandlinger"><button type="button" class="knapp knapp-primær" autofocus disabled="@_sletter" @onclick="AvbrytSlettAsync">Avbryt</button><button type="button" class="knapp" disabled="@_sletter" @onclick="SlettAsync">@(_sletter ? "Sletter …" : "Slett regelen")</button></div>
     }
 </dialog>
-
-@code {
-    private readonly CancellationTokenSource _levetid = new();
-    private IReadOnlyList<MalRegelDto> _regler = [];
-    private bool _lastet, _laster, _sletter, _aapneSlett, _fokuserStatus, _avsluttet;
-    private string? _feil, _status, _slettefeil;
-    private MalRegelDto? _slett;
-    private ElementReference _slettDialog, _statusfelt;
-    private IJSObjectReference? _modul;
-    protected override Task OnInitializedAsync() => LastAsync();
-    private async Task LastAsync()
-    {
-        if (_laster) return;
-        _laster = true;
-        _feil = null;
-        try { _regler = await Maltjeneste.HentAlleAsync(_levetid.Token); _lastet = true; }
-        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
-        catch (Exception e) { Logg.LogError(e, "Kunne ikke laste gjentaksregler."); _feil = "Kunne ikke laste gjentaksreglene akkurat nå. Prøv igjen."; }
-        finally { _laster = false; }
-    }
-    private void BeOmSlett(MalRegelDto regel) { if (_sletter) return; _slett = regel; _slettefeil = null; _aapneSlett = true; }
-    private async Task AvbrytSlettAsync() { if (_sletter) return; if (_modul is not null) await _modul.InvokeVoidAsync("lukk", _slettDialog); _slett = null; }
-    private async Task SlettAsync()
-    {
-        if (_sletter || _slett is null) return;
-        _sletter = true;
-        _slettefeil = null;
-        try
-        {
-            await Maltjeneste.SlettAsync(_slett.Id, _levetid.Token);
-            if (_modul is not null) await _modul.InvokeVoidAsync("lukk", _slettDialog);
-            _status = $"«{_slett.Tittel}» er slettet fra årsmalen. Frister og forslag er uendret.";
-            _slett = null;
-            await LastAsync();
-            _fokuserStatus = true;
-        }
-        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
-        catch (Exception e) { Logg.LogError(e, "Kunne ikke slette gjentaksregel."); _slettefeil = "Kunne ikke slette regelen akkurat nå. Prøv igjen eller avbryt."; }
-        finally { _sletter = false; }
-    }
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_fokuserStatus) { _fokuserStatus = false; await _statusfelt.FocusAsync(); }
-        if (_aapneSlett)
-        {
-            _aapneSlett = false;
-            try { _modul ??= await Js.InvokeAsync<IJSObjectReference>("import", "./regelbygger.js"); if (!_avsluttet) await _modul.InvokeVoidAsync("vis", _slettDialog); }
-            catch (JSDisconnectedException) { }
-        }
-    }
-    public async ValueTask DisposeAsync()
-    {
-        _avsluttet = true; _levetid.Cancel(); _levetid.Dispose();
-        if (_modul is not null) { try { await _modul.DisposeAsync(); } catch (JSDisconnectedException) { } }
-    }
-}

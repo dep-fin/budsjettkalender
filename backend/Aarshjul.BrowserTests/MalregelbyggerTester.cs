@@ -282,7 +282,7 @@ public sealed class MalregelbyggerTester
         Assert.NotNull(await mal.HentForRedigeringAsync(id));
         await slett.ClickAsync();
         await dialog.GetByRole(AriaRole.Button, new() { Name = "Slett regelen", Exact = true }).ClickAsync();
-        await Expect(n.Side.GetByRole(AriaRole.Status)).ToContainTextAsync("er slettet");
+        await Expect(n.Side.GetByRole(AriaRole.Status).Filter(new() { HasText = "er slettet" })).ToContainTextAsync("AK ny tittel");
         Assert.Null(await mal.HentForRedigeringAsync(id));
         Assert.NotNull(await mal.HentForRedigeringAsync(barnId));
         Assert.NotNull(await mal.HentForRedigeringAsync(kopi.Id));
@@ -437,10 +437,12 @@ public sealed class MalregelbyggerTester
     private static async Task Aar(IPage side, string aar) { await Felt(side, "Første budsjettår").FillAsync(aar); await Felt(side, "Første budsjettår").PressAsync("Tab"); }
     private static async Task Lagre(IPage side)
     {
+        var tittel = await Felt(side, "Tittel").InputValueAsync();
         await side.GetByRole(AriaRole.Button, new() { Name = "Lagre regel", Exact = true }).ClickAsync();
         var overskrift = side.GetByRole(AriaRole.Heading, new() { Name = "Eksisterende gjentaksregler", Exact = true });
         await Expect(overskrift).ToBeVisibleAsync();
-        await Expect(overskrift).ToBeFocusedAsync();
+        // UX10 returnerer til den synlige målregelen; skjult rad har egen fokusprøve.
+        await Expect(Kort(side, tittel).GetByRole(AriaRole.Link, new() { Name = "Rediger", Exact = true })).ToBeFocusedAsync();
     }
     private static string UtenRegler(string json) { var data = JsonNode.Parse(json)!.AsObject(); data.Remove("Regler"); return data.ToJsonString(); }
     private static IMaltjeneste Mal(Nettleser n) => new Maltjeneste(Fabrikk(n));

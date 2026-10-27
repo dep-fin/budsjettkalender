@@ -16,6 +16,7 @@ public partial class RedigerMalregel : IAsyncDisposable
     [Inject] private IJSRuntime Js { get; set; } = default!;
     [Inject] private TimeProvider Klokke { get; set; } = default!;
     [Inject] private ILogger<RedigerMalregel> Logg { get; set; } = default!;
+    [Inject] private Mallistekontekst Listekontekst { get; set; } = default!;
     [Parameter] public Guid? Id { get; set; }
     [SupplyParameterFromQuery(Name = "kopierFra")] public Guid? KopierFra { get; set; }
 
@@ -59,6 +60,11 @@ public partial class RedigerMalregel : IAsyncDisposable
         var maalId = Id;
         var kopierFra = KopierFra;
         var kildeId = maalId ?? kopierFra;
+        if (maalId is { } aapnetId)
+        {
+            Listekontekst.AapnetRegel = aapnetId;
+            Listekontekst.Returfokus = $"rediger-{aapnetId}";
+        }
         ++_previewVersjon;
         _laster = true;
         _lagrer = false;
@@ -178,9 +184,11 @@ public partial class RedigerMalregel : IAsyncDisposable
         _lagrer = true;
         try
         {
+            var lagretId = maalId;
             if (maalId is { } id) await Mal.OppdaterAsync(id, data, _levetid.Token);
-            else await Mal.OpprettAsync(data, _levetid.Token);
+            else lagretId = await Mal.OpprettAsync(data, _levetid.Token);
             if (!ErGjeldende(versjon)) return;
+            Listekontekst.LagretRegel = lagretId;
             _tillatNavigasjon = true;
             Nav.NavigateTo("/admin/mal");
         }
