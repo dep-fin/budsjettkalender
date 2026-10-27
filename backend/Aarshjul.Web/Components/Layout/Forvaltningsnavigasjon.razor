@@ -1,0 +1,80 @@
+@if (VisOmraader)
+{
+    <nav class="omraadenav" aria-label="Administrasjonsområder">
+        @foreach (var omraade in Omraader)
+        {
+            @if (omraade.Policy is { } policy)
+            {
+                <AuthorizeView Policy="@policy">
+                    <a href="@omraade.Sti" class="@(AktivtOmraade == omraade ? "active" : null)" aria-current="@(AktivtOmraade == omraade ? "location" : null)">@omraade.Navn</a>
+                </AuthorizeView>
+            }
+            else
+            {
+                <a href="@omraade.Sti" class="@(AktivtOmraade == omraade ? "active" : null)" aria-current="@(AktivtOmraade == omraade ? "location" : null)">@omraade.Navn</a>
+            }
+        }
+    </nav>
+}
+else
+{
+    <nav class="undernav" aria-label="Områdenavigasjon">
+        @foreach (var inngang in AktivtOmraade.Underinnganger)
+        {
+            <a href="@inngang.Sti" class="@(ErAktiv(inngang.Sti) ? "active" : null)" aria-current="@(ErAktiv(inngang.Sti) ? "page" : null)">@inngang.Navn</a>
+        }
+    </nav>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Sti { get; set; } = "";
+    [Parameter] public bool VisOmraader { get; set; }
+
+    private sealed record Inngang(string Navn, string Sti);
+
+    private sealed record Omraade(string Navn, string Sti, Inngang[] Underinnganger,
+        string[] Stier, string? Stiprefiks = null, string? Policy = null)
+    {
+        public bool Gjelder(string sti) => Stier.Contains(sti, StringComparer.Ordinal)
+            || (Stiprefiks is not null && sti.StartsWith(Stiprefiks, StringComparison.Ordinal));
+    }
+
+    private static readonly Omraade Fristomraade = new("Budsjettår og frister", "/admin/frister",
+        [new("Fristregister", "/admin/frister"), new("Ny frist", "/admin/frist/ny"), new("Kø", "/admin/ko"), new("Last opp", "/admin/last-opp"), new("Generér", "/admin/generer")],
+        Stier: ["admin/frister"]);
+
+    private static readonly Omraade[] Omraader =
+    [
+        Fristomraade,
+        new("Årsmal", "/admin/mal",
+            [new("Gjentaksregler", "/admin/mal"), new("Ny gjentaksregel", "/admin/mal/ny")],
+            Stier: [], Stiprefiks: "admin/mal"),
+        new("Grupper og innsyn", "/admin/grupper",
+            [new("Grupper", "/admin/grupper"), new("Innsyn", "/admin/innsyn")],
+            Stier: ["admin/grupper", "admin/innsyn"]),
+        new("Eksport og deling", "/admin/eksport",
+            [new("Eksporter", "/admin/eksport"), new("Del kalender", "/admin/abonnement"), new("Data", "/admin/data")],
+            Stier: ["admin/eksport", "admin/abonnement", "admin/data"]),
+        // Behold internkalenderens egen policy også når den vises i administrasjonen.
+        new("Internkalender", "/internkalender",
+            [new("Internrunder", "/internkalender"), new("Mine gjøremål", "/internkalender/mine"), new("Gjøremålsregler", "/internkalender/regler")],
+            Stier: [], Stiprefiks: "internkalender", Policy: Autorisasjon.ErSbr),
+        new("Administrator-innstillinger", "/admin/innstillinger",
+            [new("Innstillinger", "/admin/innstillinger")],
+            Stier: ["admin/innstillinger"])
+    ];
+
+    private Omraade AktivtOmraade => Omraader.FirstOrDefault(omraade => omraade.Gjelder(Sti)) ?? Fristomraade;
+
+    private bool ErAktiv(string sti) => sti switch
+    {
+        "/admin/frister" => Sti == "admin/frister" || (Sti.StartsWith("admin/frist/", StringComparison.Ordinal)
+            && Sti != "admin/frist/ny" && !Sti.StartsWith("admin/frist/juster/", StringComparison.Ordinal)),
+        "/admin/ko" => Sti == "admin/ko" || Sti.StartsWith("admin/frist/juster/", StringComparison.Ordinal),
+        "/admin/mal" => Sti.StartsWith("admin/mal", StringComparison.Ordinal) && Sti != "admin/mal/ny",
+        "/internkalender" => Sti == "internkalender" || Sti.StartsWith("internkalender/runde/", StringComparison.Ordinal)
+            || Sti.StartsWith("internkalender/gjoeremaal/", StringComparison.Ordinal),
+        "/internkalender/regler" => Sti.StartsWith("internkalender/regler", StringComparison.Ordinal),
+        _ => Sti == sti.TrimStart('/')
+    };
+}

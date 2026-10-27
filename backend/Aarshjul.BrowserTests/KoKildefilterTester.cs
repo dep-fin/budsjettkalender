@@ -158,6 +158,7 @@ public sealed class KoKildefilterTester
         }
         await n.Side.GetByRole(AriaRole.Link, new() { Name = "Kalender", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Kalender", Exact = true })).ToBeVisibleAsync();
+        await n.Side.GetByRole(AriaRole.Link, new() { Name = "Administrasjon", Exact = true }).ClickAsync();
         await n.Side.GetByRole(AriaRole.Link, new() { Name = "Kø", Exact = true }).ClickAsync();
         await Expect(Kilde(n)).ToHaveValueAsync("");
         await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Type", Exact = true })).ToHaveValueAsync("");

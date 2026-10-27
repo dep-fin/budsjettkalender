@@ -1,0 +1,15 @@
+@page "/admin/innstillinger"
+@attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+
+<PageTitle>Administrator-innstillinger</PageTitle>
+
+<h1>Administrator-innstillinger</h1>
+<p class="ingress">Forvaltning av kalenderens lagrede data og årsmaler.</p>
+
+<section class="innstillingskort">
+    <h2>Dataforvaltning</h2>
+    <p>Eksporter frister og gjentaksregler som JSON for sikkerhetskopiering eller overføring.
+        Her kan du også importere data. Import erstatter alle eksisterende data av den valgte typen
+        og krever bekreftelse.</p>
+    <a class="knapp" href="/admin/data">Åpne dataforvaltning</a>
+</section>

@@ -1,9 +1,16 @@
 # Gjeldende status
 
-Oppdatert 22. oktober 2026. Denne siden beskriver implementert kode, testbevis og
+Oppdatert 27. oktober 2026. Denne siden beskriver implementert kode, testbevis og
 gjenstående grenser. GitHub-lenkene er kilden for oppgavenes og PR-enes livsløp.
 [Gjennomgangen fra 20. oktober](reviews/2026-10-20.md) er et datert utgangspunkt,
 ikke en liste over dagens urettede kodefeil.
+
+Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) har en
+lokal kandidat med felles skall, rollebasert hovedmeny, seks virksomme
+administrasjonsområder og Budsjettår → Fristliste. `/aarshjul` og tidligere direkte
+innganger består. [Akseptanse og prøvekommandoer](acceptance/2026-10-27-atelier-ux01.md)
+beskriver rød/grønn, mobil/tastatur, 629 ordinære tester og 26 nettleserscenarioer.
+Senere Atelier-tickets er ikke implementert her; SQL Server/Chromium kontrolleres i CI.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -290,11 +297,12 @@ innføres. Datooperasjoner for feed, lister og internoppgaver er utenfor denne r
 
 ## Verifikasjon
 
-SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **625 ordinære
+SDK 10.0.402: låst restore og Release-bygg av ordinær løsning passerer. Alle **629 ordinære
 tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer 447 fra #36, ni nye
 opplastings-/køtilfeller for #46, 22 nye oppstartstilfeller for #40, 34 gruppe-/HTTP-/regresjonstilfeller for #44
-og 55 kilde-/HTTP-tilfeller for #69, 36 lese-/HTTP-tilfeller for #71 og 22 kø-/HTTP-tilfeller for #73.
-23 nettleserscenarioer passerer med 0 feil/hopp.
+og 55 kilde-/HTTP-tilfeller for #69, 36 lese-/HTTP-tilfeller for #71, 22 kø-/HTTP-tilfeller for #73
+og fire nye HTTP-rolleprøver for #76.
+26 nettleserscenarioer passerer med 0 feil/hopp, inklusive tre nye Atelier-navigasjonsscenarioer.
 Nettleserprosjektets låste restore og Release-bygg passerer også.
 Den eksisterende CS0649-advarselen i Runde.razor er uendret.
 SQL Server-prosjektets låste restore og Release-bygg passerer. #73 endrer verken EF-modell,

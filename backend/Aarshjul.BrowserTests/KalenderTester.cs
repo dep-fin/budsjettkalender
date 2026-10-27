@@ -55,7 +55,16 @@ public sealed class KalenderTester
             await n.Side.GetByLabel("Regnskap", new() { Exact = true }).CheckAsync();
             foreach (var f in data) await Expect(n.Side.Locator("main")).ToContainTextAsync((string)f!["tittel"]!);
             // Intern navigasjon beholder kretsens filtervalg.
-            await n.Side.GetByRole(AriaRole.Link, new() { Name = "Årshjul", Exact = true }).ClickAsync();
+            await n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Hovedmeny", Exact = true })
+                .GetByRole(AriaRole.Link, new() { Name = "Budsjettår", Exact = true }).ClickAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Budsjettår", Exact = true })).ToBeVisibleAsync();
+            await Expect(n.Side.GetByLabel("Vis historikk", new() { Exact = true })).ToBeCheckedAsync();
+            foreach (var f in data) await Expect(n.Side.Locator("main")).ToContainTextAsync((string)f!["tittel"]!);
+            // Det gamle bokmerket er fortsatt den samme virksomme fristlisten.
+            await n.Gaa("/aarshjul");
+            await n.Side.GetByLabel("Vis historikk", new() { Exact = true }).CheckAsync();
+            await n.Side.GetByLabel("Regnskap", new() { Exact = true }).CheckAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Budsjettår", Exact = true })).ToBeVisibleAsync();
             await Expect(n.Side.GetByLabel("Vis historikk", new() { Exact = true })).ToBeCheckedAsync();
             foreach (var f in data) await Expect(n.Side.Locator("main")).ToContainTextAsync((string)f!["tittel"]!);
             await n.Side.GetByLabel("Budsjett", new() { Exact = true }).UncheckAsync();
