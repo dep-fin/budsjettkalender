@@ -25,8 +25,11 @@ public class TestApplikasjon : WebApplicationFactory<Program>
     private readonly string _tilkobling = $"Data Source=web-{Guid.NewGuid()};Mode=Memory;Cache=Shared";
     private SqliteConnection? _connection;
 
-    public TestApplikasjon()
+    public TestApplikasjon() : this(brukKestrel: false) { }
+
+    protected TestApplikasjon(bool brukKestrel)
     {
+        if (brukKestrel) UseKestrel(0);
         // Bygg host (kjører ConfigureWebHost), opprett skjema og seed mot SQLite-tilkoblingen.
         using var scope = Services.CreateScope();
         using var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext();

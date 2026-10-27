@@ -23,11 +23,12 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         // Genererte forslag behandles på sin egen generér-flate, adskilt fra den løpende køen
         // (beslutning 2026-06-18). De utelates derfor her.
-        var forslag = await db.Forslag
+        var sporring = db.Forslag
             .AsNoTracking()
             .Include(f => f.UttrekksBevis)
-            .Where(f => f.Status == FristStatus.Forslag && f.ForslagType != ForslagType.Generert)
-            .ToListAsync(ct);
+            .Where(f => f.Status == FristStatus.Forslag && f.ForslagType != ForslagType.Generert);
+        if (filter?.Budsjettaar is { } aar) sporring = sporring.Where(f => f.Budsjettaar == aar);
+        var forslag = await sporring.ToListAsync(ct);
 
         // Endringsforslag viser før/etter — hent gjeldende verdier for de berørte fristene.
         var endrerIder = forslag.Where(f => f.EndrerFristId is not null)

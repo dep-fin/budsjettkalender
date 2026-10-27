@@ -44,7 +44,7 @@ public sealed class KoKildefilterHttpTester : IDisposable
         using var klient = _app.CreateClient();
         if (rolle is not null) klient.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
         if (grupper is not null) klient.DefaultRequestHeaders.Add("X-Test-Grupper", grupper);
-        var svar = await klient.GetAsync("/admin/ko");
+        var svar = await klient.GetAsync("/admin/ko?aar=alle");
         Assert.Equal(status, (int)svar.StatusCode);
         var innhold = await svar.Content.ReadAsStringAsync();
         var markoerer = new[] { "KO73-hemmelig-forslag", "KO73-hemmelig-innsender", "KO73-hemmelig-notat",
@@ -58,6 +58,31 @@ public sealed class KoKildefilterHttpTester : IDisposable
         {
             Assert.DoesNotContain("Kilde eller innsender", innhold);
             foreach (var markoer in markoerer) Assert.DoesNotContain(markoer, innhold, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Theory]
+    [InlineData(null, null, 401)]
+    [InlineData("Leser", "FA", 403)]
+    [InlineData("Bidragsyter", "FA", 403)]
+    [InlineData("Bidragsyter", "FIN-FAG", 403)]
+    [InlineData("Leser", "POL", 403)]
+    public async Task Arbeidsaarsruter_sender_ingen_administrative_metadata_til_andre_roller(
+        string? rolle, string? grupper, int status)
+    {
+        using var klient = _app.CreateClient();
+        if (rolle is not null) klient.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
+        if (grupper is not null) klient.DefaultRequestHeaders.Add("X-Test-Grupper", grupper);
+        foreach (var aar in new[] { "2031", "alle" })
+        foreach (var sti in new[] { "/admin/frister", "/admin/ko", "/admin/last-opp", "/admin/generer",
+            "/admin/frist/ny", $"/admin/frist/{_id}", $"/admin/frist/juster/{_id}" })
+        {
+            var svar = await klient.GetAsync($"{sti}?aar={aar}");
+            Assert.Equal(status, (int)svar.StatusCode);
+            var tekst = await svar.Content.ReadAsStringAsync();
+            foreach (var markoer in new[] { "KO73-hemmelig", _id.ToString(), "Kilde eller innsender",
+                "Arbeidsår", "åpne forslag", "Uttrekksbevis", "Budsjettår 2031" })
+                Assert.DoesNotContain(markoer, tekst, StringComparison.OrdinalIgnoreCase);
         }
     }
 

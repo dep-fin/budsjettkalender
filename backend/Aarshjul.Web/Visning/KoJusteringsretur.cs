@@ -32,7 +32,7 @@ public sealed class KoJusteringsretur : IDisposable
 
     private void VedNavigasjon(object? sender, LocationChangedEventArgs e)
     {
-        var sti = _nav.ToBaseRelativePath(e.Location);
+        var sti = _nav.ToBaseRelativePath(e.Location).Split('?', '#')[0];
         // Vanlig navigasjon forkaster returen. Ingen URL-, nettleser- eller databaselagring.
         if (sti != _justeringssti && sti != "admin/ko") _filter = null;
     }

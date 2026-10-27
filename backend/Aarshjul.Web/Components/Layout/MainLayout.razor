@@ -3,6 +3,7 @@
 @inject IWebHostEnvironment Env
 @inject IConfiguration Konfigurasjon
 @inject NavigationManager Nav
+@inject TimeProvider Klokke
 
 <a class="hopp-til-innhold" href="#hovedinnhold">Hopp til innhold</a>
 <div class="side">
@@ -57,7 +58,7 @@
             <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
                 <aside class="forvaltningsmeny">
                     <p class="menyoverskrift">Administrasjon</p>
-                    <Forvaltningsnavigasjon Sti="@_sti" VisOmraader="true" />
+                    <Forvaltningsnavigasjon Sti="@_sti" VisOmraader="true" Arbeidsaar="@Arbeidsaar" />
                 </aside>
             </AuthorizeView>
         }
@@ -67,13 +68,13 @@
                 @if (_sti.StartsWith("internkalender", StringComparison.OrdinalIgnoreCase))
                 {
                     <AuthorizeView Policy="@Autorisasjon.ErSbr">
-                        <Forvaltningsnavigasjon Sti="@_sti" />
+                        <Forvaltningsnavigasjon Sti="@_sti" Arbeidsaar="@Arbeidsaar" />
                     </AuthorizeView>
                 }
                 else
                 {
                     <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
-                        <Forvaltningsnavigasjon Sti="@_sti" />
+                        <Forvaltningsnavigasjon Sti="@_sti" Arbeidsaar="@Arbeidsaar" />
                     </AuthorizeView>
                 }
             }
@@ -87,6 +88,7 @@
     private bool _menyAapen;
     private bool _fokuserMeny;
     private ElementReference _menyknapp;
+    private int? Arbeidsaar => Arbeidsaarkontekst.FraUri(Nav.Uri, Klokke);
     private bool ErKalender => _sti is "" or "kalender";
     private bool ErBudsjettaar => _sti is "budsjettaar" or "aarshjul";
     private bool ErForvaltning => _sti.StartsWith("admin/", StringComparison.OrdinalIgnoreCase)

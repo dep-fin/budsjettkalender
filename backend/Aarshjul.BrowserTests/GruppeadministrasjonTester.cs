@@ -37,7 +37,7 @@ public sealed class GruppeadministrasjonTester
         await ForslagTester.Send(n, "AK gammelt SKOK-forslag", "SKOK");
         await n.LoggInn("demo-admin");
         await DeaktiverSkok(n);
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var kort = ForslagTester.Kort(n.Side, "AK gammelt SKOK-forslag");
         await Expect(kort).ToContainTextAsync("SKOK");
         await kort.GetByRole(AriaRole.Button, new() { Name = juster ? "Juster" : "Godkjenn", Exact = true }).ClickAsync();
@@ -64,7 +64,7 @@ public sealed class GruppeadministrasjonTester
         await ForslagTester.Send(n, "AK revidert SKOK-forslag", "SKOK");
         await n.LoggInn("demo-admin");
         await DeaktiverSkok(n);
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var kort = ForslagTester.Kort(n.Side, "AK revidert SKOK-forslag");
         await kort.GetByRole(AriaRole.Button, new() { Name = "Avvis", Exact = true }).ClickAsync();
         await kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft avvisning", Exact = true }).ClickAsync();
@@ -79,7 +79,7 @@ public sealed class GruppeadministrasjonTester
         await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Mine forslag", Exact = true })).ToBeVisibleAsync();
         await Expect(rad).ToContainTextAsync("Venter");
         await n.LoggInn("demo-admin");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         kort = ForslagTester.Kort(n.Side, "AK revidert SKOK-forslag");
         await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
         await Expect(kort.GetByRole(AriaRole.Checkbox, new() { NameRegex = new("\\(FA\\)$") })).ToBeCheckedAsync();
@@ -111,6 +111,8 @@ public sealed class GruppeadministrasjonTester
         await DeaktiverSkok(n);
         await n.Gaa("/admin/generer");
         await n.Side.GetByLabel("Målbudsjettår").FillAsync("2032");
+        await n.Side.GetByLabel("Målbudsjettår").PressAsync("Tab");
+        await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Budsjettår 2032", Exact = true })).ToBeVisibleAsync();
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Generér", Exact = true }).ClickAsync();
         var kort = ForslagTester.Kort(n.Side, "AK videreført SKOK");
         await Expect(kort).ToContainTextAsync("SKOK");

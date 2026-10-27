@@ -40,7 +40,7 @@ public sealed class KalenderforslagTester
         await VelgMaaned(n, "2030-11");
         await Expect(Maanedskalender(n).GetByRole(AriaRole.Button, new() { Name = tittel, Exact = true })).ToHaveCountAsync(0);
         await n.LoggInn("demo-admin");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var kort = ForslagTester.Kort(n.Side, tittel);
         await Expect(kort).ToHaveCountAsync(1);
         foreach (var verdi in new[] { "21.11.2030", "2032", "Gul bok", notat })
@@ -167,7 +167,7 @@ public sealed class KalenderforslagTester
         await n.Gaa("/forslag/mine");
         await Expect(MittForslag(n, tittel)).ToHaveCountAsync(1);
         await n.LoggInn("demo-admin");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         await Expect(ForslagTester.Kort(n.Side, tittel)).ToHaveCountAsync(1);
         n.BekreftIngenKretsfeil();
     });
@@ -204,7 +204,7 @@ public sealed class KalenderforslagTester
         await Expect(MittForslag(n, tittel)).ToHaveCountAsync(1);
         await Expect(MittForslag(n, tittel)).ToContainTextAsync("Venter");
         await n.LoggInn("demo-admin");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         await Expect(ForslagTester.Kort(n.Side, tittel)).ToHaveCountAsync(1);
         Assert.DoesNotContain(await n.Frister(), f => (string?)f!["tittel"] == tittel);
         n.BekreftIngenKretsfeil();
@@ -268,7 +268,7 @@ public sealed class KalenderforslagTester
         await SendOgKvitter(n);
         Assert.Equal("UX81 original", (string?)(await n.Frister()).Single(f => (string?)f!["id"] == id)!["tittel"]);
         await n.LoggInn("demo-admin");
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var kort = ForslagTester.Kort(n.Side, "UX81 korrigert");
         await Expect(kort).ToContainTextAsync("Endring");
         await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
@@ -319,7 +319,7 @@ public sealed class KalenderforslagTester
 
     private static async Task Godkjenn(Nettleser n, string tittel)
     {
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var kort = ForslagTester.Kort(n.Side, tittel);
         await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
         await kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft godkjenning", Exact = true }).ClickAsync();
@@ -336,7 +336,7 @@ public sealed class KalenderforslagTester
         await Expect(n.Side.GetByLabel("Regnskap", new() { Exact = true })).Not.ToBeCheckedAsync();
     }
 
-    private static async Task KontrollerVisninger(Nettleser n, JsonNode publisert, params string[] verdier)
+    internal static async Task KontrollerVisninger(Nettleser n, JsonNode publisert, params string[] verdier)
     {
         var id = (string)publisert["id"]!;
         var tittel = (string)publisert["tittel"]!;

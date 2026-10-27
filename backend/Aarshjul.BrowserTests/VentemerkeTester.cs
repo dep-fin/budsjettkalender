@@ -82,7 +82,7 @@ public sealed class VentemerkeTester
         await Expect(Kalenderkort(n.Side, "VENT71 original")).ToHaveCountAsync(0);
         await Expect(n.Side.GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(0);
 
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var forste = ForslagTester.Kort(n.Side, "VENT71 første forslag");
         await forste.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
         await Expect(forste.Locator("fieldset.synlighet")).ToHaveCountAsync(0);
@@ -95,7 +95,7 @@ public sealed class VentemerkeTester
         await Expect(Detaljer(n.Side, "VENT71 første forslag").GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(1);
         Assert.Equal(synlighet, (await n.Frister()).Single(f => (string?)f!["id"] == id)!["synlighet"]!.ToJsonString());
 
-        await n.Gaa("/admin/ko");
+        await n.Gaa("/admin/ko?aar=alle");
         var siste = ForslagTester.Kort(n.Side, "VENT71 andre forslag");
         await siste.GetByRole(AriaRole.Button, new() { Name = "Avvis", Exact = true }).ClickAsync();
         await siste.GetByRole(AriaRole.Button, new() { Name = "Bekreft avvisning" }).ClickAsync();

@@ -50,6 +50,8 @@ public sealed record Koelement
 /// <summary>Filtre for køen (kravdok. 5.1): opphav, kilde, ukjent type, kategori, forslagstype.</summary>
 public sealed record Kofilter
 {
+    /// <summary>Budsjettåret forslaget gjelder. Null beholder utvalget på tvers av alle år.</summary>
+    public int? Budsjettaar { get; init; }
     public Opphav? Opphav { get; init; }
     public string? Kilde { get; init; }
     public bool? UkjentType { get; init; }

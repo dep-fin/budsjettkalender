@@ -4,10 +4,34 @@
 @inject IGruppetjeneste Grupper
 @inject NavigationManager Nav
 @inject Aarshjul.Web.Visning.KoJusteringsretur Justeringsretur
+@inject TimeProvider Klokke
 
 <PageTitle>Godkjenningskø</PageTitle>
 
+<Arbeidsaarvelger Aar="_arbeidsaar" AarChanged="ByttAar" />
+
 <h1>Godkjenningskø</h1>
+
+@if (LagretAar is { } lagret)
+{
+    <p class="melding" role="status">Fristen er lagret i budsjettår @lagret.
+        <a href="@Arbeidsaarkontekst.Lenke("/admin/frister", lagret)">Åpne fristregisteret for @lagret</a>
+    </p>
+}
+
+@if (_andreAar.Count > 0)
+{
+    <aside class="andre-arbeidsaar" aria-label="Åpne forslag i andre budsjettår">
+        <h2>Forslag i andre år</h2>
+        <p>Disse forslagene venter uavhengig av filtrene nedenfor. Snarveien åpner alle forslag i det valgte året.</p>
+        <div class="aarsnarveier">
+            @foreach (var annet in _andreAar)
+            {
+                <a href="@Arbeidsaarkontekst.Lenke("/admin/ko", annet.Aar)" @onclick="() => AapneAnnetAar(annet.Aar)" @onclick:preventDefault="true">@annet.Aar: @annet.Antall åpne forslag</a>
+            }
+        </div>
+    </aside>
+}
 
 <div class="filterpanel">
     <label>Kilde eller innsender
@@ -162,8 +186,8 @@ else
                             </fieldset>
                         }
                         <div class="kort-handlinger">
-                            <button class="knapp knapp-primær" @onclick="() => Godkjenn(e, t)">Bekreft godkjenning</button>
-                            <button class="knapp" @onclick="() => t.Modus = Kortmodus.Ingen">Avbryt</button>
+                            <button class="knapp knapp-primær" disabled="@t.Arbeider" @onclick="() => Godkjenn(e, t)">Bekreft godkjenning</button>
+                            <button class="knapp" disabled="@t.Arbeider" @onclick="() => t.Modus = Kortmodus.Ingen">Avbryt</button>
                         </div>
                     }
                     else if (t.Modus == Kortmodus.Avvis)
@@ -178,8 +202,8 @@ else
                             </label>
                         }
                         <div class="kort-handlinger">
-                            <button class="knapp knapp-primær" @onclick="() => Avvis(e, t)">Bekreft avvisning</button>
-                            <button class="knapp" @onclick="() => t.Modus = Kortmodus.Ingen">Avbryt</button>
+                            <button class="knapp knapp-primær" disabled="@t.Arbeider" @onclick="() => Avvis(e, t)">Bekreft avvisning</button>
+                            <button class="knapp" disabled="@t.Arbeider" @onclick="() => t.Modus = Kortmodus.Ingen">Avbryt</button>
                         </div>
                     }
                     else
@@ -197,6 +221,8 @@ else
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "aar")] public string? AarQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "lagretAar")] public int? LagretAar { get; set; }
     private const string Pol = "POL";
 
     private IReadOnlyList<Koelement> _elementer = [];
@@ -204,6 +230,9 @@ else
     private IReadOnlyList<GruppeDto> _grupper = [];
     private readonly Dictionary<Guid, Korttilstand> _tilstand = new();
     private bool _lastet;
+    private int? _arbeidsaar;
+    private int _versjon;
+    private IReadOnlyList<(int Aar, int Antall)> _andreAar = [];
 
     // Filtervalg (tomme strenger = «alle»).
     private string _kilde = "";
@@ -223,33 +252,58 @@ else
             _kunUkjent = retur.UkjentType == true;
         }
         _grupper = await Grupper.HentAktiveAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _arbeidsaar = Arbeidsaarkontekst.Les(AarQuery, Klokke);
+        _elementer = [];
+        _tilstand.Clear();
+        _lastet = false;
         await LastAsync();
     }
 
     private async Task LastAsync()
     {
+        var filter = LagFilter();
+        var versjon = ++_versjon;
         // Valglisten kommer fra hele den åpne køen, uavhengig av de aktive filtrene.
         // Behold også aktivt valg når siste treff er behandlet, så tomt utvalg er synlig.
-        _kilder = (await Ko.HentKoAsync())
+        var heleKoen = await Ko.HentKoAsync();
+        var elementer = await Ko.HentKoAsync(filter);
+        if (versjon != _versjon) return;
+        _andreAar = heleKoen.Where(e => filter.Budsjettaar is { } aar && e.Budsjettaar != aar)
+            .GroupBy(e => e.Budsjettaar).OrderBy(g => g.Key).Select(g => (g.Key, g.Count())).ToList();
+        _kilder = heleKoen
             .Select(e => e.KildeEllerInnsender)
             .Where(k => !string.IsNullOrWhiteSpace(k))
             .Select(k => k!)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToList();
-        _elementer = await Ko.HentKoAsync(LagFilter());
+        _elementer = elementer;
         _tilstand.Clear();
         _lastet = true;
     }
 
     private Kofilter LagFilter() => new()
     {
+        Budsjettaar = _arbeidsaar,
         Kilde = _kilde,
         Opphav = Enum.TryParse<Opphav>(_opphav, out var o) ? o : null,
         ForslagType = Enum.TryParse<ForslagType>(_type, out var ft) ? ft : null,
         Kategori = Enum.TryParse<Kategori>(_kategori, out var k) ? k : null,
         UkjentType = _kunUkjent ? true : null
     };
+
+    private void ByttAar(int? aar) => Nav.NavigateTo(Arbeidsaarkontekst.Lenke("/admin/ko", aar));
+
+    private void AapneAnnetAar(int aar)
+    {
+        _kilde = _opphav = _type = _kategori = "";
+        _kunUkjent = false;
+        ByttAar(aar);
+    }
 
     private Korttilstand Tilstand(Koelement e) =>
         _tilstand.TryGetValue(e.Id, out var t) ? t : _tilstand[e.Id] = new Korttilstand();
@@ -276,11 +330,13 @@ else
     private void Juster(Koelement e)
     {
         Justeringsretur.Bevar(e.Id, LagFilter());
-        Nav.NavigateTo($"/admin/frist/juster/{e.Id}");
+        Nav.NavigateTo(Arbeidsaarkontekst.Lenke($"/admin/frist/juster/{e.Id}", _arbeidsaar));
     }
 
     private async Task Godkjenn(Koelement e, Korttilstand t)
     {
+        if (t.Arbeider) return;
+        t.Arbeider = true;
         t.Feil = null;
         try
         {
@@ -297,10 +353,13 @@ else
         {
             t.Feil = f.Message;
         }
+        finally { t.Arbeider = false; }
     }
 
     private async Task Avvis(Koelement e, Korttilstand t)
     {
+        if (t.Arbeider) return;
+        t.Arbeider = true;
         t.Feil = null;
         try
         {
@@ -311,6 +370,7 @@ else
         {
             t.Feil = f.Message;
         }
+        finally { t.Arbeider = false; }
     }
 
     private static string FormatDato(Koelement e)
@@ -342,5 +402,6 @@ else
         public HashSet<string> Koder { get; set; } = [];
         public string? Begrunnelse { get; set; }
         public string? Feil { get; set; }
+        public bool Arbeider { get; set; }
     }
 }

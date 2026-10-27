@@ -50,6 +50,8 @@ public sealed class GenereringTester
         var publisertFoer = (await n.Frister()).Count;
         await n.Gaa("/admin/generer");
         await n.Side.GetByLabel("Målbudsjettår").FillAsync("2033");
+        await n.Side.GetByLabel("Målbudsjettår").PressAsync("Tab");
+        await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Budsjettår 2033", Exact = true })).ToBeVisibleAsync();
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Generér", Exact = true }).ClickAsync();
         await Expect(n.Side.Locator(".feil")).ToContainTextAsync("AK overflyt");
         await Expect(ForslagTester.Kort(n.Side, "AK ukedag")).ToContainTextAsync("09.05.2033");
