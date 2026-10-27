@@ -23,3 +23,9 @@ Den samlede referansen er [Atelier med oppdatert administrasjon og årsmal](atel
 - [Separat demo av fleksibel årsmal](atelier-aarsmal-2026-10-27/forslag.md). Denne demonstrerte regelbyggeren før regellisten og Administrator-innstillinger ble tatt inn i den samlede referansen.
 
 Historiske varianter skal ikke overstyre nyere avklaringer i den samlede skissen eller issue #75.
+
+## Gjenoppta implementering
+
+Start med [overleveringen og ticketkartet](atelier-samlet-2026-10-27/overlevering.md). #75 er delt i UX01–UX18 og AD01–AD02, totalt 20 konkrete GitHub-tickets (#76–#95). Implementer én om gangen. [UX01 · #76](https://github.com/depmartin/Budsjettkalender/issues/76) er første startklare kodeoppgave; øvrige har Blocked by og må avvente forgjenger/avklaring.
+
+Regellisten har nå kronologisk sortering etter beregnet dato for valgt budsjettår, med tidligst/senest først og tittel. Tentative måneder beholder presisjonen, og uberegnbare regler står sist. Se [kravkartet](atelier-samlet-2026-10-27/kravkart.md) for dekning av alle 89 historier.

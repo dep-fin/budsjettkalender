@@ -1,0 +1,227 @@
+[
+  {
+    "planId": "UX01",
+    "issue": 76,
+    "title": "UX01: Atelier: grunnstruktur, rollebasert navigasjon og bevarte innganger",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/76",
+    "blockedBy": [],
+    "labelsAtHandoff": [
+      "ready-for-agent"
+    ],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX02",
+    "issue": 77,
+    "title": "UX02: Atelier: månedskalender, minikalender, dagsagenda og fristdetaljer",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/77",
+    "blockedBy": [
+      76
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX03",
+    "issue": 78,
+    "title": "UX03: Atelier: felles kalenderfiltre med flervalg av budsjettår",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/78",
+    "blockedBy": [
+      77
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX04",
+    "issue": 79,
+    "title": "UX04: Atelier: uke- og listevisning med bevart kalenderkontekst",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/79",
+    "blockedBy": [
+      78
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX05",
+    "issue": 80,
+    "title": "UX05: Atelier: Budsjettår med tidslinje og samlet Fristliste",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/80",
+    "blockedBy": [
+      79
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX06",
+    "issue": 81,
+    "title": "UX06: Atelier: forslag fra valgt kalenderdato til godkjent frist",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/81",
+    "blockedBy": [
+      80
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX07",
+    "issue": 82,
+    "title": "UX07: Atelier: konkret arbeidsår for fristregister og godkjenningskø",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/82",
+    "blockedBy": [
+      81
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX08",
+    "issue": 83,
+    "title": "UX08: Atelier: lagret felles fasemal under Administrator-innstillinger",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/83",
+    "blockedBy": [
+      82
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX09",
+    "issue": 84,
+    "title": "UX09: Atelier: kodefri regelbygger for nye og eksisterende gjentaksregler",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/84",
+    "blockedBy": [
+      83
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX10",
+    "issue": 85,
+    "title": "UX10: Atelier: regelliste med kategorifilter, milepælmerke og kronologisk sortering",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/85",
+    "blockedBy": [
+      84
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX11",
+    "issue": 86,
+    "title": "UX11: Atelier: prøv årsmal og generer fra samme regler for konkret budsjettår",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/86",
+    "blockedBy": [
+      85
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX12",
+    "issue": 87,
+    "title": "UX12: Atelier: maleksport og forhåndsvist import uten kontrakttap",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/87",
+    "blockedBy": [
+      86
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX13",
+    "issue": 88,
+    "title": "UX13: Atelier: fullfør dokumentflyt fra årsvisning til kontroll og godkjent frist",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/88",
+    "blockedBy": [
+      87
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX14",
+    "issue": 89,
+    "title": "UX14: Atelier: grupper og innsyn med bevarte tilgangsregler",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/89",
+    "blockedBy": [
+      88
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX15",
+    "issue": 90,
+    "title": "UX15: Atelier: eksport, kalenderdeling og dataoverføring med uendret policy",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/90",
+    "blockedBy": [
+      89
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX16",
+    "issue": 91,
+    "title": "UX16: Atelier: internkalender med runder, egne gjøremål og gjøremålsregler",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/91",
+    "blockedBy": [
+      90
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX17",
+    "issue": 92,
+    "title": "UX17: Atelier: lesbar administratoroversikt med tilgangskilde",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/92",
+    "blockedBy": [
+      91
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "UX18",
+    "issue": 93,
+    "title": "UX18: Atelier: samlet kompatibilitets- og tilgjengelighetsakseptanse for #75",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/93",
+    "blockedBy": [
+      92
+    ],
+    "labelsAtHandoff": [],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "AD01",
+    "issue": 94,
+    "title": "AD01: Administratortilganger: avklar produksjonskontrakt før manuell utnevnelse",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/94",
+    "blockedBy": [
+      39,
+      92
+    ],
+    "labelsAtHandoff": [
+      "needs-info"
+    ],
+    "stateAtHandoff": "open"
+  },
+  {
+    "planId": "AD02",
+    "issue": 95,
+    "title": "AD02: Administratortilganger: implementer godkjent manuell utnevnelse og fjerning",
+    "url": "https://github.com/depmartin/Budsjettkalender/issues/95",
+    "blockedBy": [
+      94
+    ],
+    "labelsAtHandoff": [
+      "needs-info"
+    ],
+    "stateAtHandoff": "open"
+  }
+]

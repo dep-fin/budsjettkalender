@@ -57,3 +57,5 @@ Tilleggskontroll for sortering viste kronologisk rekkefølge fra mars i t−1 ti
 
 Issue #75 er den samlede produktspesifikasjonen. Denne mappen og den oppdaterte referanseindeksen skal brukes ved fremtidig Atelier-arbeid. Ved implementering gjenbrukes eksisterende Blazor-, tjeneste- og testgrenser; prototypens JavaScript og innfelte dokument er utforskingskode som ikke skal kopieres til produksjon. Produksjonskode, hovedgren og utrulling er ikke endret av denne leveransen.
 
+Spesifikasjonen er delt i 20 konkrete GitHub-tickets, #76–#95. [Overleveringen](overlevering.md) har oppstartsinstruks, avhengigheter og startstatus; [kravkartet](kravkart.md) dekker alle 89 brukerhistoriene. Begynn med UX01 (#76), som er eneste startklare Atelier-kodeoppgave ved denne overleveringen. #75 er koordinering og skal ikke implementeres som én stor endring. Ticketene har egne akseptansekriterier og Blocked by-lenker; reell administratorutnevnelse har egne beslutnings-/implementeringsporter.
+
