@@ -3,7 +3,7 @@ using Aarshjul.Application.Frister;
 
 namespace Aarshjul.Web.Visning;
 
-/// <summary>Månedsruter og norsk datotekst. Utfyllingsruter utenfor DateOnly er tomme.</summary>
+/// <summary>Kalenderperioder og norsk datotekst. Utfyllingsruter utenfor DateOnly er tomme.</summary>
 public static class Kalendervisning
 {
     private static readonly CultureInfo Norsk = CultureInfo.GetCultureInfo("nb-NO");
@@ -15,6 +15,28 @@ public static class Kalendervisning
     public static bool KanFlytte(DateOnly dato, int steg) => steg < 0
         ? dato.Year > 1 || dato.Month > 1
         : dato.Year < 9999 || dato.Month < 12;
+
+    public static (DateOnly Fra, DateOnly Til) Periode(DateOnly dato, Kalenderperiode periode)
+    {
+        if (periode == Kalenderperiode.Maaned) return (FoersteDag(dato), SisteDag(dato));
+        var mandag = dato.DayNumber - ((int)dato.DayOfWeek + 6) % 7;
+        return (DateOnly.FromDayNumber(Math.Max(DateOnly.MinValue.DayNumber, mandag)),
+            DateOnly.FromDayNumber(Math.Min(DateOnly.MaxValue.DayNumber, mandag + 6)));
+    }
+
+    public static string Periodetekst(DateOnly dato, Kalenderperiode periode)
+    {
+        if (periode == Kalenderperiode.Maaned) return Maaned(dato);
+        var (fra, til) = Periode(dato, periode);
+        var iso = Isouke([fra]);
+        return $"Uke {iso.Nummer}, {iso.Aar} · {Dato(fra)}–{Dato(til)}";
+    }
+
+    public static IEnumerable<DateOnly> Ukedager(DateOnly dato)
+    {
+        var (fra, til) = Periode(dato, Kalenderperiode.Uke);
+        for (var dag = fra.DayNumber; dag <= til.DayNumber; dag++) yield return DateOnly.FromDayNumber(dag);
+    }
 
     public static IReadOnlyList<DateOnly?[]> Uker(DateOnly maaned)
     {
