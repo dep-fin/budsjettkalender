@@ -17,6 +17,8 @@
 
 Eksisterende regler vises i en egen liste med tittel, kategori, sammenheng, lesbar datoregel, Rediger og Se datoer. Søk, kategorikryss og sammenhengsfilter virker sammen; tomt kategoriutvalg gir ingen resultater. Filter og søk beholdes når en regel åpnes for redigering. Nye gjentaksregler har en egen side med hele regelbyggeren uten regellisten ved siden av.
 
+Listen sorteres som standard kronologisk for et eksplisitt valgt budsjettår, på beregnede kalenderdatoer også før og etter dette året. Administrator kan bytte til senest først eller norsk tittelrekkefølge. Tentative frister plasseres etter måned, uten oppdiktet dagsdato. Like datoer får stabil tittelrekkefølge. Regler som ikke kan beregnes, står sist i begge datoretninger med forklaring. Filtre og sortering virker sammen og påvirker bare presentasjonen.
+
 Milepælmerket er **avledet presentasjon**, ikke en ny domenetype eller en ny beregningsgren:
 
 - En selvstendig regel med avhengige regler får et lite flagg og merket **Milepæl**.
@@ -48,6 +50,8 @@ PDF-behandling er fortsatt utsatt etter avtale. Filvalg viser metadata; innholde
 Kontrollert i isolert Edge: kalender som start og minikalender; seks administratorvalg; separat regelliste og registreringsflate; kombinasjonen kategori og milepælfilter; et avhengig mellomledd som forblir avhengig; oppretting og redigering av datovinduregel; utnevnelse/fjerning i demoen; faseendring delt med tidslinjens modell; generering fra den nylig endrede malen uten publisering; enkeltgodkjenning; årsavgrenset kø og snarvei til andre år; deaktivert PDF-behandling og tilgjengelige øvrige administratorområder. Mobil sidebredde var 390/390 og innfelt regelmodul 358/358. Ingen JavaScript-feil ble registrert i disse flytene. Dette er ingen akseptansetest av produksjonsappen.
 
 Den tidligere separate årsmal-demoen dokumenterer dessuten juli-vindu over fem år, femte ukedag med reserve, valgårsvalg, manuell ankerdato, null dagers forskyvning og eksport/import av eksempelreglene. Beregningsgrunnlaget er undersøkt i prosjektets Regelparametre, Genereringsberegning, Datoberegning og ADR-0008.
+
+Tilleggskontroll for sortering viste kronologisk rekkefølge fra mars i t−1 til regnskap i t+1, omvendt rekkefølge, endret beregningsår og kategori-/avhengighetsutvalg. Uberegnbar eksempelregel stod sist også ved synkende sortering. De lagrede reglene var identiske før og etter sortering; mobilbredde var 390/390 og ingen JavaScript-feil ble registrert. Dette gjelder bare prototypen.
 
 ## Videre arbeid
 

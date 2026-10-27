@@ -5,3 +5,5 @@
 .embedded dialog{top:25px;bottom:auto;max-height:750px;margin-top:0}.embedded .settings-info{margin-top:0}
 
 .tabs button.new-tab[aria-pressed=true]{color:#fff}.connections-link{display:block}.rule-register td:nth-child(4){line-height:1.7}
+
+.sorting-row{display:grid;grid-template-columns:1fr 230px 1.3fr;gap:20px;align-items:start;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}.sorting-row .field{margin:0}.sorting-row p{font-size:11px;line-height:1.7;color:var(--muted);margin:23px 0 0}.rule-sort-date{margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid var(--line)}.rule-sort-date .result-date{display:block;font-size:12px;font-weight:600}.rule-sort-date small{display:block}.rule-sort-date small:empty{display:none}@media(max-width:1100px){.sorting-row{grid-template-columns:1fr 1fr}.sorting-row p{grid-column:1/-1;margin-top:0}}@media(max-width:760px){.sorting-row{grid-template-columns:1fr}.sorting-row p{grid-column:auto}}
