@@ -17,12 +17,18 @@ Atelier UX02 ([#77](https://github.com/depmartin/Budsjettkalender/issues/77)) er
 Hele valgt måned vises, mens Fristlistens historikkvalg bevares separat. Tentative
 månedsfrister ligger utenfor dagsrutene. [Akseptanse](acceptance/2026-10-27-atelier-ux02.md)
 beskriver kalender-, kilde-, synlighets-, rolle- og tastaturprøvene.
-Atelier UX03 ([#78](https://github.com/depmartin/Budsjettkalender/issues/78)) har en lokal
-kandidat med eksplisitte års-/kategorivalg, søk i tittel/notat, nullstilling og synlig
+Atelier UX03 ([#78](https://github.com/depmartin/Budsjettkalender/issues/78)) er levert i
+[PR #98](https://github.com/depmartin/Budsjettkalender/pull/98), merget som
+`f72b2b7dca618067bc408723d0295a6af0471ab0`, med eksplisitte års-/kategorivalg, søk i tittel/notat, nullstilling og synlig
 periode-/filterkontekst. Kalenderen beholder sin egen tilstand i kretsen; Fristlistens
 historikk og leseportens null/tom=alle består. [Akseptanse](acceptance/2026-10-27-atelier-ux03.md)
-beskriver union, snitt, nulltreff, autoriserte årsvalg og mobilprøvene. #79 og senere
-Atelier-tickets er ikke implementert her; SQL Server/Chromium kontrolleres i CI.
+beskriver union, snitt, nulltreff, autoriserte årsvalg og mobilprøvene.
+Atelier UX04 ([#79](https://github.com/depmartin/Budsjettkalender/issues/79)) har en lokal
+kandidat med Uke og Liste på samme kalenderkontekst. Listen følger eksplisitt den sist
+valgte måned-/ukeperioden. Uken viser heldag og alle klokkeslett hver for seg, samt
+tentative frister fra alle berørte måneder uten oppdiktet dagsdato eller varighet.
+[Akseptanse](acceptance/2026-10-27-atelier-ux04.md) beskriver periode-, detalj-, rolle-,
+mobil- og tastaturprøvene. #80 og senere er ikke implementert her; SQL Server/Chromium kontrolleres i CI.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -40,12 +46,13 @@ Atelier-tickets er ikke implementert her; SQL Server/Chromium kontrolleres i CI.
 | [#73](https://github.com/depmartin/Budsjettkalender/issues/73) | Kilde eller innsender i administratorens kø, kombinert med øvrige filtre og bevart gjennom behandling | Lokal kandidat; supplerende bevis i [akseptanserapporten](acceptance/2026-10-20.md#supplerende-akseptanse-for-73) |
 | [#76](https://github.com/depmartin/Budsjettkalender/issues/76) | Atelier-skall, rollebasert navigasjon og bevarte innganger | Merget i [PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), `c1f250e` |
 | [#77](https://github.com/depmartin/Budsjettkalender/issues/77) | Månedskalender, minikalender, dagsagenda og fristdetaljer med gyldig kilde og bevart tilgang | Merget i [PR #97](https://github.com/depmartin/Budsjettkalender/pull/97), `a65ae35`; [akseptanse](acceptance/2026-10-27-atelier-ux02.md) |
-| [#78](https://github.com/depmartin/Budsjettkalender/issues/78) | Eksplisitt flervalg av budsjettår/kategorier, søk, nullstilling og bevart kalenderkontekst | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux03.md) |
+| [#78](https://github.com/depmartin/Budsjettkalender/issues/78) | Eksplisitt flervalg av budsjettår/kategorier, søk, nullstilling og bevart kalenderkontekst | Merget i [PR #98](https://github.com/depmartin/Budsjettkalender/pull/98), `f72b2b7`; [akseptanse](acceptance/2026-10-27-atelier-ux03.md) |
+| [#79](https://github.com/depmartin/Budsjettkalender/issues/79) | Uke og periodeavgrenset Liste med bevart dato/filter/søk, tentative måneder og fullstendige fristdetaljer | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux04.md) |
 
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. Med #78 passerer 36 reelle Playwright-/Edge-scenarioer og 633 ordinære tester
+eksterne miljøporter. Med #79 passerer 41 reelle Playwright-/Edge-scenarioer og 633 ordinære tester
 passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.
@@ -317,20 +324,21 @@ tester passerer**, 0 feilet og 0 hoppet over. Dette inkluderer 447 fra #36, ni n
 opplastings-/køtilfeller for #46, 22 nye oppstartstilfeller for #40, 34 gruppe-/HTTP-/regresjonstilfeller for #44
 og 55 kilde-/HTTP-tilfeller for #69, 36 lese-/HTTP-tilfeller for #71, 22 kø-/HTTP-tilfeller for #73
 og fire nye HTTP-rolleprøver for #76 samt fire lesekontrakttilfeller for #78.
-36 nettleserscenarioer passerer med 0 feil/hopp, inklusive tre Atelier-navigasjonsscenarioer
-fra #76, syv kalender-/detaljscenarioer fra #77 og tre filter-/søke-/mobilscenarioer fra #78. Eksisterende kalender-, kilde-,
+41 nettleserscenarioer passerer med 0 feil/hopp, inklusive tre Atelier-navigasjonsscenarioer
+fra #76, syv kalender-/detaljscenarioer fra #77, tre filter-/søke-/mobilscenarioer fra #78
+og fem perspektiv-/periode-/rolle-/feilscenarioer fra #79. Eksisterende kalender-, kilde-,
 ventemerke- og HTTP-prøver er tilpasset den tilsiktede overgangen fra kort til
 interaktive detaljer; tilgangs-, publiserings- og metadatahemmelighold er bevart.
 Nettleserprosjektets låste restore og Release-bygg passerer også.
 Den eksisterende CS0649-advarselen i Runde.razor er uendret.
-SQL Server-prosjektets låste restore og Release-bygg passerer. #78 endrer verken EF-modell,
+SQL Server-prosjektets låste restore og Release-bygg passerer. #79 endrer verken EF-modell,
 migrasjoner eller SQL-kontrakttilfeller. Lokale Markdown-lenker og git diff --check passerer.
 Tidligere lokal NuGet-kjøring ga NU1900 fordi sårbarhetsmetadata ikke kunne hentes;
-#69s, #71s, #73s, #77s og #78s låste sluttkjøringer ga ingen NU1900. Ingen auditkontroll er deaktivert.
+#69s, #71s, #73s, #77s, #78s og #79s låste sluttkjøringer ga ingen NU1900. Ingen auditkontroll er deaktivert.
 
 [CI for PR #35](https://github.com/depmartin/Budsjettkalender/actions/runs/39443717020)
 bekreftet før merge 442 ordinære og **22 SQL Server-tester**, begge med 0 feil og 0 hopp.
-SQL-testene er ikke kjørt lokalt for #78; de krever en konfigurert SQL Server.
+SQL-testene er ikke kjørt lokalt for #79; de krever en konfigurert SQL Server.
 CI krever ekte SQL Server-tester uten hopp, og deploy venter på den jobben.
 Kommandoer og miljøkrav står i [utviklingsveiledningen](development.md).
 

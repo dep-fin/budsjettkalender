@@ -1,0 +1,17 @@
+<ol class="kalenderliste">
+    @foreach (var frist in Frister.Where(f => !f.ErTentativ).OrderBy(f => f.Dato).ThenBy(f => f.Klokkeslett).ThenBy(f => f.Tittel).ThenBy(f => f.Id))
+    {
+        <li>
+            <button class="listefrist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
+                <span class="listefrist-dato">@Visningformat.FormatDato(frist)@if (!frist.HarKlokkeslett) { <small>Heldag</small> }</span>
+                <span class="listefrist-tittel"><strong>@frist.Tittel</strong><small>@Visningformat.KategoriNavn(frist.Kategori)</small></span>
+                <span class="listefrist-aar"><i class="aarsprikk" aria-hidden="true"></i>Budsjettår @frist.Budsjettaar</span>
+            </button>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter] public IReadOnlyList<FristDto> Frister { get; set; } = [];
+    [Parameter] public EventCallback<FristDto> AapneFrist { get; set; }
+}

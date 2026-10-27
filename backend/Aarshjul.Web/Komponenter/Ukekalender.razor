@@ -1,0 +1,41 @@
+<p class="kalenderhint">Heldagsfrister og fristtidspunkter vises hver for seg. Klokkeslett angir et tidspunkt, uten varighet.</p>
+<div class="ukedager">
+    @foreach (var dato in Kalendervisning.Ukedager(ValgtDato))
+    {
+        var frister = Kalendervisning.Dagsfrister(Frister, dato);
+        <section class="ukedag @(dato == ValgtDato ? "valgt-ukedag" : null)" aria-label="@Kalendervisning.Dato(dato)">
+            <h3><button class="ukedato @(dato == Idag ? "idag" : null)" aria-label="@($"Åpne dagsagenda for {Kalendervisning.Dato(dato)}")"
+                        aria-current="@(dato == Idag ? "date" : null)" aria-pressed="@(dato == ValgtDato ? "true" : "false")" @onclick="() => AapneDag.InvokeAsync(dato)">
+                <span>@dato.ToString("dddd", System.Globalization.CultureInfo.GetCultureInfo("nb-NO"))</span>@dato.ToString("d. MMM", System.Globalization.CultureInfo.GetCultureInfo("nb-NO"))
+            </button></h3>
+            <section class="uke-heldag" aria-label="@($"Heldagsfrister {Kalendervisning.Dato(dato)}")">
+                <h4>Heldag</h4>
+                @foreach (var frist in frister.Where(f => !f.HarKlokkeslett))
+                {
+                    <button class="uke-frist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
+                        <strong>@frist.Tittel</strong><span>Budsjettår @frist.Budsjettaar</span>
+                    </button>
+                }
+                @if (!frister.Any(f => !f.HarKlokkeslett)) { <p class="uke-uten-frister">Ingen heldagsfrister</p> }
+            </section>
+            <section class="uke-tidspunkt" aria-label="@($"Fristtidspunkter {Kalendervisning.Dato(dato)}")">
+                <h4>Klokkeslett</h4>
+                @foreach (var frist in frister.Where(f => f.HarKlokkeslett))
+                {
+                    <button class="uke-frist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
+                        <time>@frist.Klokkeslett!.Value.ToString("HH:mm")</time><strong>@frist.Tittel</strong><span>Budsjettår @frist.Budsjettaar</span>
+                    </button>
+                }
+                @if (!frister.Any(f => f.HarKlokkeslett)) { <p class="uke-uten-frister">Ingen fristtidspunkter</p> }
+            </section>
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter] public DateOnly ValgtDato { get; set; }
+    [Parameter] public DateOnly Idag { get; set; }
+    [Parameter] public IReadOnlyList<FristDto> Frister { get; set; } = [];
+    [Parameter] public EventCallback<DateOnly> AapneDag { get; set; }
+    [Parameter] public EventCallback<FristDto> AapneFrist { get; set; }
+}

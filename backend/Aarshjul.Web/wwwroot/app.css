@@ -223,6 +223,7 @@ a.knapp { display: inline-block; }
 .kalenderforklaring p { margin-top: 8px; color: var(--dempet); line-height: 1.8; }
 .maanedsnavigasjon { display: flex; align-items: center; gap: 10px; margin: 36px 0 18px; flex-wrap: wrap; }
 .maanedsnavigasjon h2 { font-size: 19px; margin: 0 0 0 6px; text-transform: capitalize; }
+.maanedsnavigasjon h2.periodeoverskrift { text-transform: none; }
 .maanedsvalg { margin-left: auto; display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--dempet); }
 .aarsforklaring { display: flex; flex-wrap: wrap; gap: 18px; margin: 0 0 14px; font-size: 11px; color: var(--dempet); }
 .aarsprikk { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--aarfarge); margin-right: 7px; }
@@ -256,6 +257,34 @@ a.knapp { display: inline-block; }
 .leserfilter .kalenderfilter > label { flex: initial; }
 .kalenderutvalg span { overflow-wrap: anywhere; }
 .kalenderhint { margin-top: 16px; font-size: 11px; color: var(--dempet); }
+.kalendervisninger { display: flex; gap: 3px; padding: 4px; width: fit-content; border-radius: 9px; background: #e8eae5; }
+.kalendervisninger button { min-height: 34px; border: 0; border-radius: 6px; padding: 6px 18px; background: transparent; cursor: pointer; font-size: 12px; }
+.kalendervisninger button[aria-pressed=true] { background: white; box-shadow: 0 1px 3px #1a302316; font-weight: 600; }
+.ukedager { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.ukedag { min-width: 0; border-right: 1px solid var(--kant); }
+.ukedag:last-child { border-right: 0; }
+.ukedag h3 { margin: 0; background: var(--skall); border-bottom: 1px solid var(--kant); }
+.ukedato { width: 100%; padding: 14px 6px; border: 0; background: transparent; cursor: pointer; font-size: 14px; }
+.ukedato span { display: block; color: var(--dempet); font-size: 11px; text-transform: capitalize; margin-bottom: 4px; }
+.ukedato.idag { box-shadow: inset 0 -3px var(--primaer); }
+.valgt-ukedag h3 { background: var(--myk); }
+.uke-heldag, .uke-tidspunkt { padding: 12px 8px; }
+.uke-heldag { border-bottom: 1px solid var(--kant); }
+.ukedag h4 { font-size: 11px; font-weight: 500; color: var(--dempet); margin: 0 0 12px; }
+.uke-uten-frister { font-size: 10px; color: var(--dempet); }
+.uke-frist { display: flex; flex-direction: column; gap: 5px; width: 100%; margin-top: 8px; text-align: left; border: 1px solid var(--kant); border-left: 3px solid var(--aarfarge); border-radius: 6px; background: #f5f8f5; padding: 8px 6px; cursor: pointer; overflow-wrap: anywhere; }
+.uke-frist strong { font-size: 12px; font-weight: 600; }
+.uke-frist span { font-size: 10px; color: var(--dempet); }
+.uke-frist time { font-size: 12px; font-weight: 600; }
+.kalenderflate > .kalenderhint { margin: 0; padding: 12px 18px; border-bottom: 1px solid var(--kant); }
+.kalenderliste { list-style: none; margin: 0; padding: 0 20px; }
+.kalenderliste li + li { border-top: 1px solid var(--kant); }
+.listefrist { display: grid; grid-template-columns: 170px minmax(0, 1fr) 145px; gap: 20px; width: 100%; text-align: left; align-items: center; border: 0; border-left: 3px solid var(--aarfarge); background: white; margin: 10px 0; padding: 10px 14px; cursor: pointer; overflow-wrap: anywhere; }
+.listefrist:hover, .uke-frist:hover { background: var(--myk); }
+.listefrist strong { font-size: 14px; font-weight: 600; }
+.listefrist small { display: block; margin-top: 4px; color: var(--dempet); font-size: 11px; }
+.listefrist-dato { font-size: 12px; }
+.listefrist-aar { font-size: 12px; }
 .mobilagenda { display: none; }
 .fristdialog { border: 1px solid var(--kant); border-radius: 16px; padding: 0; width: min(640px, calc(100% - 32px)); max-height: calc(100dvh - 48px); color: var(--tekst); background: white; box-shadow: 0 20px 80px #26353138; }
 .fristdialog::backdrop { background: #26353166; }
@@ -308,6 +337,19 @@ a.knapp { display: inline-block; }
     .mobilagenda-dag h3 .knapp-lenke { margin: 0; font-weight: 600; font-size: 13px; }
     .mobilagenda-dag .agenda-frist { margin-top: 8px; }
     .tentative-maanedsfrister { align-items: stretch; flex-direction: column; }
+    .ukedager { display: block; }
+    .ukedag { border-right: 0; border-bottom: 1px solid var(--kant); }
+    .ukedag:last-child { border-bottom: 0; }
+    .ukedato { text-align: left; padding: 14px 18px; }
+    .ukedato span { display: inline; margin-right: 6px; }
+    .uke-heldag, .uke-tidspunkt { padding: 14px 18px; }
+    .uke-heldag { border-bottom: 0; }
+    .uke-frist { padding: 12px; }
+    .uke-frist strong { font-size: 14px; }
+    .uke-frist span { font-size: 12px; }
+    .kalenderliste { padding: 0 14px; }
+    .listefrist { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px; }
+    .maanedsnavigasjon h2 { overflow-wrap: anywhere; }
     .dialogtopp { padding: 12px 16px; }
     .dialogtopp .knapp { font-size: 12px; padding: 8px 10px; }
     .dialoginnhold { padding: 22px 20px; }
