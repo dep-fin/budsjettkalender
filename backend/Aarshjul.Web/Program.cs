@@ -122,6 +122,7 @@ public partial class Program
         builder.Services.AddScoped<Synlighetskontekstkilde>();
         builder.Services.AddScoped<Gjeldendebrukerkilde>();
         builder.Services.AddScoped<Visningstilstand>();
+        builder.Services.AddScoped<Kalendertilstand>();
         builder.Services.AddScoped<KoJusteringsretur>();
 
         // --- Autentisering. Produksjon: Entra ID (OIDC). Demo: cookie + dev-innlogging (ingen Entra).
