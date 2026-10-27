@@ -42,6 +42,60 @@ public class Maltjeneste(IDbContextFactory<AppDbContext> dbFactory) : IMaltjenes
         };
     }
 
+    public async Task<IReadOnlyList<MalRegelForhaandsvisning>> ForhaandsvisAsync(
+        MalRegelInndata inndata, int foersteBudsjettaar, Guid? id = null, CancellationToken ct = default)
+    {
+        Valider(inndata);
+        if (foersteBudsjettaar is < 1 or > 9995)
+        {
+            throw new Valideringsfeil("Første budsjettår må være mellom 1 og 9995 for femårsvisningen.");
+        }
+
+        // Kopier utkastet før første await, slik at senere feltendringer ikke endrer dette kallet.
+        var kandidat = new Gjentaksregel
+        {
+            Id = id ?? Guid.NewGuid(),
+            Loep = inndata.Loep.Trim(),
+            Tittel = inndata.Tittel.Trim(),
+            Kategori = inndata.Kategori,
+            Regeltype = inndata.Regeltype,
+            Regelparametre = inndata.Regelparametre.Trim(),
+            Valgaarssensitiv = inndata.Valgaarssensitiv
+        };
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        // Samme usorterte innlasting som GenereringsTjeneste: første regel per løp er anker.
+        // HentAlleAsyncs visningssortering må ikke velge en annen representant her.
+        var regler = await db.Gjentaksregler.AsNoTracking().ToListAsync(ct);
+        int kandidatindeks;
+        if (id is { } regelId)
+        {
+            kandidatindeks = regler.FindIndex(r => r.Id == regelId);
+            if (kandidatindeks < 0)
+            {
+                throw new Valideringsfeil("Regelen finnes ikke.");
+            }
+            regler[kandidatindeks] = kandidat;
+        }
+        else
+        {
+            kandidatindeks = regler.Count;
+            regler.Add(kandidat);
+        }
+
+        var resultater = new List<MalRegelForhaandsvisning>(5);
+        for (var forskyvning = 0; forskyvning < 5; forskyvning++)
+        {
+            ct.ThrowIfCancellationRequested();
+            var budsjettaar = foersteBudsjettaar + forskyvning;
+            var beregnet = Genereringsberegning.Beregn(budsjettaar, regler)[kandidatindeks];
+            resultater.Add(new MalRegelForhaandsvisning(
+                budsjettaar, beregnet.Dato, beregnet.Presisjon,
+                beregnet.Tentativ, beregnet.Valgaarsflagg, beregnet.Feil));
+        }
+        return resultater;
+    }
+
     public async Task<Guid> OpprettAsync(MalRegelInndata inndata, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);

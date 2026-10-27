@@ -1,209 +1,165 @@
 @page "/admin/mal/ny"
 @page "/admin/mal/{Id:guid}"
 @using Aarshjul.Application.Generering
+@using static Aarshjul.Web.Components.Pages.Admin.Malregelutkast
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
-@inject IMaltjeneste Mal
-@inject NavigationManager Nav
 
-<PageTitle>@Tittel</PageTitle>
+<PageTitle>@Sidetittel</PageTitle>
+<NavigationLock ConfirmExternalNavigation="@ErEndret" OnBeforeInternalNavigation="FoerNavigasjon" />
 
-<h1>@Tittel</h1>
+<div class="regeltopp">
+    <div><p class="menyoverskrift">Årsmal</p><h1>@Sidetittel</h1></div>
+    <a href="/admin/mal" class="knapp">Tilbake til regellisten</a>
+</div>
+<p class="ingress">Beskriv når fristen skal inntreffe. Malen beregner datoer for hvert budsjettår.</p>
 
-@if (!_lastet)
+@if (_laster)
 {
-    <p class="melding">Laster …</p>
+    <p class="melding" role="status">Laster gjentaksregel …</p>
 }
-else if (_inndata is null)
+else if (_lastfeil is not null)
 {
-    <p class="melding">Regelen finnes ikke.</p>
+    <div class="feil" role="alert"><p>@_lastfeil</p><button class="knapp" @onclick="LastAsync">Prøv igjen</button></div>
+}
+else if (_utkast is null)
+{
+    <div class="regeltilstand"><h2>Regelen finnes ikke</h2><p>Den kan ha blitt slettet. Gå tilbake til regellisten for å velge en annen regel.</p></div>
 }
 else
 {
-    @if (_feil is not null)
+    @if (_kopi)
     {
-        <div class="feil">@_feil</div>
+        <p class="regelmerknad">Dette er et nytt utkast med egen identitet. Originalregelen endres ikke når du lagrer kopien.</p>
     }
-
-    <form class="skjema" @onsubmit="Lagre" @onsubmit:preventDefault="true">
-        <div class="skjemarad">
-            <label>Løp (funksjonsnavn)
-                <input @bind="_inndata.Loep" placeholder="f.eks. rammefordeling" />
-            </label>
-            <label>Kategori
-                <select @bind="_inndata.Kategori">
-                    <option value="@Kategori.Budsjett">Budsjett</option>
-                    <option value="@Kategori.Gulbok">Gul bok</option>
-                    <option value="@Kategori.Regnskap">Regnskap</option>
-                </select>
-            </label>
-        </div>
-
-        <label>Tittel
-            <input @bind="_inndata.Tittel" />
-        </label>
-
-        <div class="skjemarad">
-            <label>Regeltype
-                <select @bind="_inndata.Regeltype" @bind:after="SettMalParametre">
-                    <option value="@Regeltype.FastDato">Fast dato</option>
-                    <option value="@Regeltype.RelativUkedag">Relativ ukedag</option>
-                    <option value="@Regeltype.RelativTilMilepael">Relativ til milepæl</option>
-                </select>
-            </label>
-            <label class="filtervalg">
-                <input type="checkbox" @bind="_inndata.Valgaarssensitiv" /> Valgårssensitiv
-            </label>
-        </div>
-
-        @if (_inndata.Regeltype == Regeltype.RelativTilMilepael)
-        {
-            @* Enklere kobling til en eksisterende regel: velg milepæl fra nedtrekksliste framfor
-               å skrive løp-navnet manuelt i JSON. JSON bygges automatisk ved lagring. *@
-            @if (Ankerkandidater().Count == 0)
+    @if (_feilmelding is not null)
+    {
+        <div class="feil regelfeilsammendrag" role="alert" tabindex="-1" @ref="_feilfelt">
+            <strong>@_feilmelding</strong>
+            @if (_feltfeil.Count > 0)
             {
-                <div class="feil">Det finnes ingen andre malregler å bruke som milepæl ennå. Opprett minst én annen regel først.</div>
+                <ul>@foreach (var feil in _feltfeil) { <li><a href="@($"#{feil.Key}")" @onclick="() => FokuserFeltAsync(feil.Key)" @onclick:preventDefault="true">@feil.Value</a></li> }</ul>
             }
-            else
-            {
-                <div class="skjemarad">
-                    <label>Milepæl (eksisterende regel)
-                        <select @bind="_ankerLoep">
-                            <option value="">— velg milepæl —</option>
-                            @foreach (var r in Ankerkandidater())
-                            {
-                                <option value="@r.Loep">@(string.IsNullOrWhiteSpace(r.Tittel) ? r.Loep : r.Tittel) (løp: @r.Loep)</option>
-                            }
-                        </select>
-                    </label>
-                    <label>Antall dager (negativ = før, positiv = etter)
-                        <input type="number" @bind="_offsetDager" />
-                    </label>
+        </div>
+    }
+    @if (_utkast.MaaKorrigeres)
+    {
+        <section class="regelmerknad eldre-regel" aria-labelledby="eldre-regel-tittel">
+            <h2 id="eldre-regel-tittel">Denne eldre regelen kan ikke leses</h2>
+            <p>Regelens lagrede parametre er ugyldige eller har en ukjent type. Vi har ikke erstattet dem med en standarddato. Velg å korrigere feltene for å lage en gyldig beregning før du lagrer.</p>
+            <button type="button" class="knapp" id="regel-korriger" @onclick="KorrigerAsync">Korriger regelen med felter</button>
+        </section>
+    }
+    <div class="regelbygger">
+        <form class="skjema regelskjema" aria-label="Gjentaksregel" @onsubmit="LagreAsync" @onsubmit:preventDefault="true" novalidate>
+            <fieldset disabled="@_lagrer" class="regelgruppe">
+                <legend><span class="trinn">1</span> Om fristen</legend>
+                <div class="regelfelt">
+                    <label for="regel-tittel">Tittel</label>
+                    <input id="regel-tittel" value="@_utkast.Tittel" @oninput="TittelEndretAsync" aria-invalid="@Ugyldig("regel-tittel")" aria-describedby="@Feilreferanse("regel-tittel")" />
+                    @Feltfeil("regel-tittel")
                 </div>
-                <p class="melding"><small>Fristen beregnes @OffsetTekst() den valgte milepælen, og flytter seg automatisk når milepælen flyttes.</small></p>
+                <div class="regelrad">
+                    <div class="regelfelt"><label for="regel-kategori">Kategori</label>
+                        <select id="regel-kategori" @bind="_utkast.Kategori" @bind:after="EndretAsync">
+                            <option value="@Kategori.Budsjett">Budsjett</option><option value="@Kategori.Gulbok">Gul bok</option><option value="@Kategori.Regnskap">Regnskap</option>
+                        </select>
+                    </div>
+                    <div class="regelfelt"><label for="regel-loep">Funksjon / løp</label>
+                        <input id="regel-loep" value="@_utkast.Loep" @oninput="LoepEndretAsync" aria-invalid="@Ugyldig("regel-loep")" aria-describedby="@($"loep-hjelp {Feilreferanse("regel-loep")}")" />
+                        @Feltfeil("regel-loep")
+                    </div>
+                </div>
+                <p class="hint" id="loep-hjelp">Et stabilt funksjonsnavn som andre regler kan bruke som anker. Rundskrivnummer er ikke løpets identitet.</p>
+                @if (Id is not null && _utkast.Loep.Trim() != _opprinneligLoep)
+                {
+                    <p class="regelmerknad" role="status">Du endrer løpets navn. @AntallAvhengige ankerkobling(er) bruker det opprinnelige løpet «@_opprinneligLoep». Koblingene omskrives ikke og må eventuelt endres hver for seg.</p>
+                }
+            </fieldset>
+            <fieldset disabled="@(_lagrer || _utkast.MaaKorrigeres)" class="regelgruppe" id="regel-type" aria-describedby="type-hjelp">
+                <legend><span class="trinn">2</span> Hvordan beregnes datoen?</legend>
+                <p class="hint" id="type-hjelp">Velg én beregning. Feltene dine beholdes hvis du prøver et annet valg.</p>
+                <div class="regelvalg">
+                    @foreach (var valg in Valgene)
+                    {
+                        <label class="@(_utkast.Type == valg.Type ? "valgt" : null)">
+                            <input type="radio" name="regeltype" aria-label="@valg.Navn" value="@valg.Type" checked="@(_utkast.Type == valg.Type)" @onchange="() => ByttTypeAsync(valg.Type)" />
+                            <span><strong>@valg.Navn</strong><small>@valg.Hjelp</small></span>
+                        </label>
+                    }
+                </div>
+                @Feltfeil("regel-type")
+                @if (_utkast.Type == Valg.Milepael)
+                {
+                    <div class="regelfelt"><label for="regel-anker">Ankerløp</label>
+                        <input id="regel-anker" list="ankerforslag" @bind="_utkast.Anker" @bind:event="oninput" @bind:after="EndretAsync" aria-invalid="@Ugyldig("regel-anker")" aria-describedby="@($"anker-hjelp {Feilreferanse("regel-anker")}")" />
+                        <datalist id="ankerforslag">@foreach (var regel in Ankerkandidater) { <option value="@regel.Loep">@regel.Tittel</option> }</datalist>
+                        @Feltfeil("regel-anker")
+                        <small class="hint" id="anker-hjelp">Velg et eksisterende løp, også en relativ regel, eller skriv navnet på en milepæl som fastsettes manuelt.</small>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(_utkast.Anker) && !_alleRegler.Any(r => string.Equals(r.Loep, _utkast.Anker, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        <p class="regelmerknad">Dato fastsettes manuelt for «@_utkast.Anker». Regelen kan lagres nå; forhåndsvisningen viser manglende anker frem til en dato er fastsatt.</p>
+                    }
+                    <div class="regelrad">
+                        <div class="regelfelt"><label for="regel-retning">Retning</label><select id="regel-retning" @bind="_utkast.Retning" @bind:after="EndretAsync"><option value="for">Før</option><option value="etter">Etter</option><option value="samme">Samme dag</option></select></div>
+                        @if (_utkast.Retning != "samme")
+                        {
+                            <div class="regelfelt"><label for="regel-antall">Antall kalenderdager</label><input id="regel-antall" type="text" inputmode="numeric" @bind="_utkast.Antall" @bind:event="oninput" @bind:after="EndretAsync" aria-invalid="@Ugyldig("regel-antall")" aria-describedby="@Feilreferanse("regel-antall")" />@Feltfeil("regel-antall")</div>
+                        }
+                    </div>
+                    <p class="hint">Kalenderdager regnes fra ankeret, også over nyttår. Resultatet justeres ikke på nytt ved helg.</p>
+                }
+                else
+                {
+                    var dato = _utkast.AktivDato;
+                    <div class="regelrad">
+                        @if (_utkast.Type == Valg.Forekomst)
+                        {
+                            <div class="regelfelt"><label for="regel-uke">Forekomst</label><select id="regel-uke" @bind="dato.Uke" @bind:after="EndretAsync" aria-invalid="@Ugyldig("regel-uke")" aria-describedby="@Feilreferanse("regel-uke")">@for (var i = 1; i <= 5; i++) { <option value="@i">@Forekomster[i - 1]</option> }</select>@Feltfeil("regel-uke")</div>
+                        }
+                        else
+                        {
+                            <div class="regelfelt"><label for="regel-dag">@(_utkast.Type == Valg.FraDato ? "Fra og med dag" : "Dag")</label><input id="regel-dag" type="text" inputmode="numeric" @bind="dato.Dag" @bind:event="oninput" @bind:after="EndretAsync" aria-invalid="@Ugyldig("regel-dag")" aria-describedby="@Feilreferanse("regel-dag")" />@Feltfeil("regel-dag")</div>
+                        }
+                        <div class="regelfelt"><label for="regel-maaned">Måned</label><select id="regel-maaned" @bind="dato.Maaned" @bind:after="EndretAsync" aria-invalid="@Ugyldig("regel-maaned")" aria-describedby="@Feilreferanse("regel-maaned")">@for (var i = 1; i <= 12; i++) { <option value="@i">@Maaneder[i - 1]</option> }</select>@Feltfeil("regel-maaned")</div>
+                        @if (_utkast.Type != Valg.FastDato)
+                        {
+                            <div class="regelfelt"><label for="regel-ukedag">Ukedag</label><select id="regel-ukedag" @bind="dato.Ukedag" @bind:after="EndretAsync" aria-invalid="@Ugyldig("regel-ukedag")" aria-describedby="@Feilreferanse("regel-ukedag")">@foreach (var dag in Ukedager) { <option value="@dag.Kode">@dag.Navn</option> }</select>@Feltfeil("regel-ukedag")</div>
+                        }
+                    </div>
+                    <div class="regelfelt aarsfelt"><label for="regel-aar">Kalenderår i forhold til budsjettåret</label><input id="regel-aar" type="text" inputmode="numeric" @bind="dato.Aar" @bind:event="oninput" @bind:after="EndretAsync" aria-invalid="@Ugyldig("regel-aar")" aria-describedby="@($"aar-hjelp {Feilreferanse("regel-aar")}")" />@Feltfeil("regel-aar")<small class="hint" id="aar-hjelp">−1 er året før, 0 er budsjettåret og 1 er året etter. Alle heltall fra −2147483648 til 2147483647 kan lagres.</small></div>
+                    @if (_utkast.Type == Valg.Forekomst) { <p class="hint">Hvis den femte forekomsten ikke finnes, brukes den siste i måneden.</p> }
+                    @if (_utkast.Type == Valg.FraDato) { <p class="hint">Finner første valgte ukedag fra og med startdatoen. Resultatet kan krysse en måneds- eller årsgrense.</p> }
+                    <p class="hint">Fast dato og ukedagsregler justeres til nærmeste virkedag innen kalenderåret ved helg. Derfor kan også en valgt lørdag eller søndag vises som en annen ukedag. Helligdager beregnes ikke særskilt.</p>
+                }
+            </fieldset>
+            <fieldset disabled="@_lagrer" class="regelgruppe valgaargruppe">
+                <legend><span class="trinn">3</span> Valgår</legend>
+                <label class="filtervalg"><input type="checkbox" @bind="_utkast.Valgaarssensitiv" @bind:after="EndretAsync" /> Valgårssensitiv</label>
+                <p class="hint">Datoens kalenderår avgjør: Stortingsvalgår gir tentativ måned, kommunevalgår gir valgmarkering med dagsdato. Relative regler arver ankerets tentative presisjon.</p>
+            </fieldset>
+            <div class="regelhandlinger"><button type="submit" class="knapp knapp-primær" disabled="@(_lagrer || _utkast.MaaKorrigeres)">@(_lagrer ? "Lagrer regel …" : _kopi ? "Lagre kopi" : "Lagre regel")</button><a href="/admin/mal" class="knapp">Avbryt</a><span class="hint">@(ErEndret ? "Ulagrede endringer" : "Ingen ulagrede endringer")</span></div>
+            <p class="hint">Lagring endrer bare årsmalen. Publiserte frister og eksisterende forslag endres ikke.</p>
+        </form>
+        <aside class="regelkontroll" aria-labelledby="regelkontroll-tittel">
+            <p class="menyoverskrift">Kontroller utkastet</p><h2 id="regelkontroll-tittel">Slik blir regelen</h2>
+            <p class="regelsetning">@_utkast.Setning()</p>
+            <p class="hint">Datoene gjelder utkastet frem til du lagrer. Kontrollen lagrer ingen forslag eller frister.</p>
+            <div class="regelfelt"><label for="preview-aar">Første budsjettår</label><input id="preview-aar" type="text" inputmode="numeric" @bind="_foersteAar" @bind:event="oninput" @bind:after="OppdaterPreviewAsync" aria-invalid="@(_aarsfeil is not null ? "true" : "false")" aria-describedby="@($"preview-aar-hjelp {(_aarsfeil is not null ? "preview-aar-feil" : null)}")" /><small class="hint" id="preview-aar-hjelp">Fem sammenhengende år. Første år kan være 1–9995.</small></div>
+            @if (_aarsfeil is not null) { <p class="regelfeltfeil" id="preview-aar-feil">@_aarsfeil</p> }
+            @if (_previewLaster) { <p class="hint" role="status">Beregner fem budsjettår …</p> }
+            @if (_previewFeil is not null) { <p class="regelmerknad" role="status">@_previewFeil</p> }
+            @if (_preview.Count > 0)
+            {
+                <table class="regelpreview" aria-label="Forhåndsvisning for fem budsjettår"><thead><tr><th>Budsjettår</th><th>Beregnet dato og kalenderår</th></tr></thead><tbody>
+                    @foreach (var rad in _preview)
+                    {
+                        <tr><th scope="row">@rad.Budsjettaar</th><td>@if (rad.Feil is not null) { <span class="previewfeil">@rad.Feil</span> } else { <strong>@Dato(rad)</strong>@if (rad.Valgaarsflagg) { <small class="valgmerke">Valgår</small> } }</td></tr>
+                    }
+                </tbody></table>
+                @if (_preview.Any(r => r.ErFeil)) { <p class="hint">Beregningsfeil gjelder bare det viste året. En gyldig malregel kan lagres selv om et år mangler dato.</p> }
             }
-        }
-        else
-        {
-            <label>Regelparametre (JSON)
-                <textarea @bind="_inndata.Regelparametre" rows="3"></textarea>
-            </label>
-            <p class="melding"><small>@Hjelpetekst(_inndata.Regeltype)</small></p>
-        }
-
-        <div class="skjemarad">
-            <button type="submit" class="knapp knapp-primær">Lagre</button>
-            <button type="button" class="knapp" @onclick='() => Nav.NavigateTo("/admin/mal")'>Avbryt</button>
-        </div>
-    </form>
+        </aside>
+    </div>
 }
-
-@code {
-    [Parameter] public Guid? Id { get; set; }
-
-    private MalRegelInndata? _inndata;
-    private string? _feil;
-    private bool _lastet;
-
-    private IReadOnlyList<MalRegelDto> _alleRegler = [];
-    private string _ankerLoep = "";
-    private int _offsetDager = -7;
-
-    private string Tittel => Id is null ? "Ny malregel" : "Rediger malregel";
-
-    protected override async Task OnInitializedAsync()
-    {
-        _alleRegler = await Mal.HentAlleAsync();
-        _inndata = Id is null ? new MalRegelInndata() : await Mal.HentForRedigeringAsync(Id.Value);
-
-        // Forhåndsutfyll milepæl-feltene fra eksisterende JSON når vi redigerer en relativ-regel.
-        if (_inndata is { Regeltype: Regeltype.RelativTilMilepael })
-        {
-            try
-            {
-                var p = Regelparser.RelativTilMilepael(_inndata.Regelparametre);
-                _ankerLoep = p.AnkerLoep;
-                _offsetDager = p.OffsetDager;
-            }
-            catch (FormatException) { /* ugyldig/tom JSON — la feltene stå på standard */ }
-        }
-
-        _lastet = true;
-    }
-
-    /// <summary>Eksisterende regler som kan brukes som milepæl (anker), dedup per løp og uten
-    /// regelen selv (unngår at en regel peker på seg selv).</summary>
-    private IReadOnlyList<MalRegelDto> Ankerkandidater()
-        => _alleRegler
-            .Where(r => Id is null || r.Id != Id.Value)
-            .GroupBy(r => r.Loep, StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.First())
-            .OrderBy(r => r.Tittel)
-            .ToList();
-
-    private string OffsetTekst() => _offsetDager switch
-    {
-        0 => "på samme dag som",
-        < 0 => $"{-_offsetDager} dager før",
-        _ => $"{_offsetDager} dager etter"
-    };
-
-    private void SettMalParametre()
-    {
-        // Bytt til et fornuftig parameter-utgangspunkt når regeltypen endres. For relativ-til-milepæl
-        // fylles JSON fra nedtrekksvalget ved lagring, så her nullstilles bare de strukturerte feltene.
-        if (_inndata!.Regeltype == Regeltype.RelativTilMilepael)
-        {
-            _ankerLoep = "";
-            _offsetDager = -7;
-            return;
-        }
-
-        _inndata.Regelparametre = _inndata.Regeltype switch
-        {
-            Regeltype.RelativUkedag => "{\"maaned\":3,\"uke\":2,\"ukedag\":\"man\",\"aar_forskyvning\":0}",
-            _ => "{\"maaned\":1,\"dag\":1,\"aar_forskyvning\":0}"
-        };
-    }
-
-    private async Task Lagre()
-    {
-        _feil = null;
-
-        // For relativ-til-milepæl bygges JSON-parameteren fra nedtrekksvalget + offset.
-        if (_inndata!.Regeltype == Regeltype.RelativTilMilepael)
-        {
-            if (string.IsNullOrWhiteSpace(_ankerLoep))
-            {
-                _feil = "Velg en milepæl (eksisterende regel) fristen skal beregnes ut fra.";
-                return;
-            }
-            _inndata.Regelparametre = Regelparser.Serialiser(
-                new RelativTilMilepaelParametre(_ankerLoep, _offsetDager));
-        }
-
-        try
-        {
-            if (Id is null)
-            {
-                await Mal.OpprettAsync(_inndata!);
-            }
-            else
-            {
-                await Mal.OppdaterAsync(Id.Value, _inndata!);
-            }
-            Nav.NavigateTo("/admin/mal");
-        }
-        catch (Valideringsfeil f)
-        {
-            _feil = f.Message;
-        }
-    }
-
-    private static string Hjelpetekst(Regeltype type) => type switch
-    {
-        Regeltype.FastDato => "Fast dato: { \"maaned\": 7, \"dag\": 20, \"aar_forskyvning\": 0 }. aar_forskyvning plasserer fristen i kalenderår = budsjettår + forskyvning.",
-        Regeltype.RelativUkedag => "Relativ ukedag: n-te forekomst { \"maaned\": 3, \"uke\": 2, \"ukedag\": \"man\" } (andre mandag i mars), ELLER første ukedag på/etter en dag { \"maaned\": 7, \"ukedag\": \"man\", \"fra_dag\": 20 } (mandagen i uken 20.–26. juli). Valgfritt aar_forskyvning. ukedag: man/tir/ons/tor/fre/lor/son.",
-        Regeltype.RelativTilMilepael => "Relativ til milepæl: { \"anker_loep\": \"fremleggelse\", \"offset_dager\": -7 }. Fristen flytter seg med ankeret.",
-        _ => ""
-    };
-}
+<dialog @ref="_forlatDialog" class="regel-dialog" aria-labelledby="forlat-tittel"><h2 id="forlat-tittel">Ulagrede endringer</h2><p>Du har et utkast som ikke er lagret. Fortsett å redigere for å beholde feltene, eller forkast endringene og gå videre.</p><div class="regelhandlinger"><button type="button" class="knapp knapp-primær" autofocus @onclick="FortsettAsync">Fortsett å redigere</button><button type="button" class="knapp" @onclick="ForkastAsync">Forkast endringene</button></div></dialog>

@@ -27,6 +27,21 @@ public sealed class MalRegelInndata
 }
 
 /// <summary>
+/// Utkastets beregningsresultat for ett budsjettår. Ved månedspresisjon er <see cref="Dato"/>
+/// bare beregningens referansepunkt; dagen skal ikke presenteres som en fastsatt frist.
+/// </summary>
+public sealed record MalRegelForhaandsvisning(
+    int Budsjettaar,
+    DateOnly? Dato,
+    Datopresisjon Presisjon,
+    bool Tentativ,
+    bool Valgaarsflagg,
+    string? Feil)
+{
+    public bool ErFeil => Feil is not null;
+}
+
+/// <summary>
 /// Forvalter årsmalen (kravdok. 3.3, 5.4): gjentaksreglene «generér neste år» bygger på. Alle
 /// handlinger er administratorhandlinger (policy håndheves i web-laget). Ugyldig regeltype,
 /// manglende parameterfelter og ugyldige parameterverdier gir <see cref="Valideringsfeil"/>
@@ -36,6 +51,17 @@ public interface IMaltjeneste
 {
     Task<IReadOnlyList<MalRegelDto>> HentAlleAsync(CancellationToken ct = default);
     Task<MalRegelInndata?> HentForRedigeringAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Beregner utkastet for fem budsjettår fra <paramref name="foersteBudsjettaar"/> (1–9995)
+    /// sammen med den lagrede malen, uten lagring av regler, forslag eller frister.
+    /// <paramref name="id"/> erstatter samme regel i beregningsgrunnlaget; null prøver en ny regel.
+    /// Ugyldige malfelter eller en ukjent ID gir <see cref="Valideringsfeil"/>. Beregningsfeil
+    /// returneres per år og hindrer ikke lagring av en ellers gyldig mal.
+    /// </summary>
+    Task<IReadOnlyList<MalRegelForhaandsvisning>> ForhaandsvisAsync(
+        MalRegelInndata inndata, int foersteBudsjettaar, Guid? id = null, CancellationToken ct = default);
+
     Task<Guid> OpprettAsync(MalRegelInndata inndata, CancellationToken ct = default);
     Task OppdaterAsync(Guid id, MalRegelInndata inndata, CancellationToken ct = default);
     Task SlettAsync(Guid id, CancellationToken ct = default);

@@ -55,7 +55,7 @@ public sealed class TilgangTester
         foreach (var (omraade, overskrift, lenker) in new[]
         {
             (omraader[0], "Frister", new[] { ("Frister", "Frister"), ("Forslag", "Godkjenningskø"), ("Dokumenter", "Last opp dokument"), ("Generer fra årsmal", "Generér budsjettår") }),
-            (omraader[1], "Årsmal (gjentaksregler)", new[] { ("Gjentaksregler", "Årsmal (gjentaksregler)"), ("Ny gjentaksregel", "Ny malregel") }),
+            (omraader[1], "Eksisterende gjentaksregler", new[] { ("Eksisterende gjentaksregler", "Eksisterende gjentaksregler"), ("Nye gjentaksregler", "Nye gjentaksregler") }),
             (omraader[2], "Synlighetsgrupper", new[] { ("Grupper", "Synlighetsgrupper"), ("Innsyn", "Innsyn") }),
             (omraader[3], "Eksporter frister", new[] { ("Eksporter", "Eksporter frister"), ("Del kalender", "Del kalender (abonnement)"), ("Data", "Eksporter / importer data") }),
             (omraader[4], "Internkalender for SBR", new[] { ("Internrunder", "Internkalender for SBR"), ("Mine gjøremål", "Mine gjøremål"), ("Gjøremålsregler", "Generelle regler") }),

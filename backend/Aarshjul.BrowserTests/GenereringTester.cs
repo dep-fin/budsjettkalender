@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.Json;
 using Microsoft.Playwright;
 using static Microsoft.Playwright.Assertions;
 
@@ -8,26 +10,35 @@ public sealed class GenereringTester
     private static async Task Regel(Nettleser n, string loep, string tittel, string type, string parametre, bool sensitiv = false)
     {
         await n.Gaa("/admin/mal/ny");
-        await n.Side.GetByLabel("Løp (funksjonsnavn)").FillAsync(loep);
+        await n.Side.GetByLabel("Funksjon / løp", new() { Exact = true }).FillAsync(loep);
         await n.Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync(tittel);
-        await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Regeltype", Exact = true }).SelectOptionAsync(type);
         if (type == "RelativTilMilepael")
         {
-            await n.Side.GetByLabel("Milepæl (eksisterende regel)").SelectOptionAsync("ak-fast");
-            await n.Side.GetByLabel("Antall dager", new() { Exact = false }).FillAsync(parametre);
+            var offset = int.Parse(parametre, CultureInfo.InvariantCulture);
+            await n.Side.GetByRole(AriaRole.Radio, new() { Name = "Før eller etter en milepæl", Exact = true }).CheckAsync();
+            await n.Side.GetByLabel("Ankerløp", new() { Exact = true }).FillAsync("ak-fast");
+            await n.Side.GetByLabel("Retning", new() { Exact = true }).SelectOptionAsync(offset < 0 ? "for" : offset > 0 ? "etter" : "samme");
+            if (offset != 0)
+                await n.Side.GetByLabel("Antall kalenderdager", new() { Exact = true }).FillAsync(Math.Abs((long)offset).ToString(CultureInfo.InvariantCulture));
         }
         else
         {
-            var felt = n.Side.GetByLabel("Regelparametre (JSON)");
-            // Regeltypevalget må ha vist nye standardparametre før vi erstatter dem.
-            await Expect(felt).ToHaveValueAsync(type == "RelativUkedag"
-                ? "{\"maaned\":3,\"uke\":2,\"ukedag\":\"man\",\"aar_forskyvning\":0}"
-                : "{\"maaned\":1,\"dag\":1,\"aar_forskyvning\":0}");
-            await felt.FillAsync(parametre);
+            using var json = JsonDocument.Parse(parametre);
+            var p = json.RootElement;
+            if (type == "RelativUkedag")
+            {
+                await n.Side.GetByRole(AriaRole.Radio, new() { Name = "Ukedag i måneden", Exact = true }).CheckAsync();
+                await n.Side.GetByLabel("Forekomst", new() { Exact = true }).SelectOptionAsync(p.GetProperty("uke").ToString());
+                await n.Side.GetByLabel("Ukedag", new() { Exact = true }).SelectOptionAsync(p.GetProperty("ukedag").GetString()!);
+            }
+            else await n.Side.GetByLabel("Dag", new() { Exact = true }).FillAsync(p.GetProperty("dag").ToString());
+            await n.Side.GetByLabel("Måned", new() { Exact = true }).SelectOptionAsync(p.GetProperty("maaned").ToString());
+            if (p.TryGetProperty("aar_forskyvning", out var aar))
+                await n.Side.GetByLabel("Kalenderår i forhold til budsjettåret", new() { Exact = true }).FillAsync(aar.ToString());
         }
         if (sensitiv) await n.Side.GetByLabel("Valgårssensitiv", new() { Exact = true }).CheckAsync();
-        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
-        await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = tittel })).ToBeVisibleAsync();
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre regel", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Article).Filter(new() { HasText = tittel })).ToBeVisibleAsync();
     }
 
     [Fact]
@@ -35,18 +46,23 @@ public sealed class GenereringTester
     {
         await n.LoggInn("demo-admin");
         await n.Gaa("/admin/mal/ny");
-        await n.Side.GetByLabel("Løp (funksjonsnavn)").FillAsync("ak-ugyldig");
+        await n.Side.GetByLabel("Funksjon / løp", new() { Exact = true }).FillAsync("ak-ugyldig");
         await n.Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync("AK ugyldig");
-        await n.Side.GetByLabel("Regelparametre (JSON)").FillAsync("{}");
-        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
-        await Expect(n.Side.Locator(".feil")).ToContainTextAsync("manglende/ugyldige parameterfelter");
+        await n.Side.GetByLabel("Dag", new() { Exact = true }).FillAsync("");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre regel", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Dagen finnes ikke");
+        await n.Side.GetByRole(AriaRole.Link, new() { Name = "Tilbake til regellisten", Exact = true }).ClickAsync();
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Forkast endringene", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Eksisterende gjentaksregler", Exact = true })).ToBeVisibleAsync();
         await Regel(n, "ak-fast", "AK fast", "FastDato", "{\"maaned\":11,\"dag\":20}", sensitiv: true);
         await Regel(n, "ak-uke", "AK ukedag", "RelativUkedag", "{\"maaned\":5,\"uke\":2,\"ukedag\":\"man\"}");
         await Regel(n, "ak-relativ", "AK relativ", "RelativTilMilepael", "-7");
         await Regel(n, "ak-overflyt", "AK overflyt", "FastDato", "{\"maaned\":1,\"dag\":1,\"aar_forskyvning\":2147483647}");
-        await n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "AK ukedag" }).GetByRole(AriaRole.Link, new() { Name = "Rediger" }).ClickAsync();
-        await Expect(n.Side.GetByLabel("Regelparametre (JSON)")).ToHaveValueAsync("{\"maaned\":5,\"uke\":2,\"ukedag\":\"man\"}");
-        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
+        await n.Side.GetByRole(AriaRole.Article).Filter(new() { HasText = "AK ukedag" }).GetByRole(AriaRole.Link, new() { Name = "Rediger" }).ClickAsync();
+        await Expect(n.Side.GetByLabel("Måned", new() { Exact = true })).ToHaveValueAsync("5");
+        await Expect(n.Side.GetByLabel("Forekomst", new() { Exact = true })).ToHaveValueAsync("2");
+        await Expect(n.Side.GetByLabel("Ukedag", new() { Exact = true })).ToHaveValueAsync("man");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre regel", Exact = true }).ClickAsync();
         var publisertFoer = (await n.Frister()).Count;
         await n.Gaa("/admin/generer");
         await n.Side.GetByLabel("Målbudsjettår").FillAsync("2033");

@@ -26,11 +26,12 @@ EF-migrasjonen FellesFasemal. Migrate/Startdata overskriver ikke en redigert fas
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 64 scenarioer starter Kestrel i Development
-med Demo=true, tilfeldig loopback-port og ny SQLite-fil. Ett ytterligere scenario bruker den
+eksisterende app eller database: 74 scenarioer starter Kestrel i Development
+med Demo=true, tilfeldig loopback-port og ny SQLite-fil. 15 ytterligere scenarioer bruker den
 eksisterende HTTP-testverten i Testing med ekte Kestrel, SQLite i minnet og testautentisering.
-Der styres fullføringen av et gruppeoppslag for å prøve initialisering i en interaktiv
-Blazor-krets; øvrige tjenester og generering er reelle. Ingen eksterne tjenester brukes.
+Der styres fullføringen av et gruppeoppslag og malens laste-/preview-/lagringskall for å
+prøve initialisering og rask navigasjon i en interaktiv Blazor-krets. Tjenestenes beregning,
+lagring og generering er reelle. Forsinkelsene finnes bare i testverten. Ingen eksterne tjenester brukes.
 Dialogregresjonen holder et JS-visningskall igjen mens den faktiske DOM-en er synlig,
 og prøver Escape, retur og fokus for leser og begge bidragsytergrupper uten tidsbasert søvn.
 Bare syntetiske personaer og filer benyttes. Kjør fra repo-roten:
@@ -62,7 +63,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 65 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 89 beståtte scenarioer uten hopp.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -71,7 +72,8 @@ og [UX03-prøvene](acceptance/2026-10-27-atelier-ux03.md), samt
 [UX04-prøvene](acceptance/2026-10-27-atelier-ux04.md) og
 [UX05-prøvene](acceptance/2026-10-27-atelier-ux05.md) og
 [UX06-prøvene](acceptance/2026-10-27-atelier-ux06.md) og
-[UX07-prøvene](acceptance/2026-10-27-atelier-ux07.md) og [UX08-prøvene](acceptance/2026-10-27-atelier-ux08.md) for faktisk prøvd scope og eksterne grenser.
+[UX07-prøvene](acceptance/2026-10-27-atelier-ux07.md), [UX08-prøvene](acceptance/2026-10-27-atelier-ux08.md)
+og [UX09-prøvene](acceptance/2026-10-27-atelier-ux09.md) for faktisk prøvd scope og eksterne grenser.
 
 ## Obligatorisk SQL Server-kontroll i CI
 
