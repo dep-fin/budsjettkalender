@@ -62,6 +62,7 @@ public sealed class KalenderperspektivTester
         // Kalenderlisten beholder sin kontekst ved separat historikk i Budsjettår.
         var meny = n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Hovedmeny", Exact = true });
         await meny.GetByRole(AriaRole.Link, new() { Name = "Budsjettår", Exact = true }).ClickAsync();
+        await BudsjettaarTester.VelgKompatibilitet(n);
         await Expect(n.Side.GetByLabel("Vis historikk", new() { Exact = true })).Not.ToBeCheckedAsync();
         await meny.GetByRole(AriaRole.Link, new() { Name = "Kalender", Exact = true }).ClickAsync();
         await Expect(Liste(n)).ToContainTextAsync("Liste for november 2030");

@@ -18,7 +18,9 @@ public sealed class TilgangTester
             await Expect(nav.GetByRole(AriaRole.Link, new() { Name = "Årshjul", Exact = true })).ToHaveCountAsync(0);
             await nav.GetByRole(AriaRole.Link, new() { Name = "Budsjettår", Exact = true }).ClickAsync();
             await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Budsjettår", Exact = true })).ToBeVisibleAsync();
-            await Expect(n.Side.GetByRole(AriaRole.Link, new() { Name = "Fristliste", Exact = true })).ToHaveAttributeAsync("aria-current", "page");
+            await BudsjettaarTester.VelgKompatibilitet(n);
+            await Expect(n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Budsjettårvisning", Exact = true })
+                .GetByRole(AriaRole.Button, new() { Name = "Fristliste", Exact = true })).ToHaveAttributeAsync("aria-pressed", "true");
             await Expect(nav.GetByRole(AriaRole.Link, new() { Name = "Budsjettår", Exact = true })).ToHaveAttributeAsync("aria-current", "page");
             var bidrag = persona is "demo-fa" or "demo-finfag";
             await Expect(nav.GetByRole(AriaRole.Link, new() { Name = "Mine forslag", Exact = true })).ToHaveCountAsync(bidrag ? 1 : 0);

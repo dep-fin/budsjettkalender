@@ -152,6 +152,7 @@ public sealed class KalenderfilterTester
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Meny", Exact = true }).ClickAsync();
         await n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Hovedmeny", Exact = true })
             .GetByRole(AriaRole.Link, new() { Name = "Budsjettår", Exact = true }).ClickAsync();
+        await BudsjettaarTester.VelgKompatibilitet(n);
         await Expect(n.Side.GetByLabel("Budsjett", new() { Exact = true })).ToBeCheckedAsync();
         await Expect(n.Side.GetByLabel("Vis historikk", new() { Exact = true })).Not.ToBeCheckedAsync();
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Meny", Exact = true }).ClickAsync();

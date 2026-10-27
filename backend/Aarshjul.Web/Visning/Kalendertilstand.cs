@@ -1,4 +1,5 @@
 using Aarshjul.Domain;
+using Aarshjul.Application.Frister;
 
 namespace Aarshjul.Web.Visning;
 
@@ -18,6 +19,7 @@ public sealed class Kalendertilstand
     public HashSet<Kategori> Kategorier { get; } = [Kategori.Budsjett, Kategori.Gulbok];
     public HashSet<int> Budsjettaar { get; } = [];
     public string Soek { get; set; } = "";
+    public FristDto? OverfoertFrist { get; set; }
     private bool _aarsvalgInitialisert;
 
     public void InitialiserAar(IReadOnlyList<int> tilgjengeligeAar)

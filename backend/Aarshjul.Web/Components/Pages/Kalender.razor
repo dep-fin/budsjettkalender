@@ -10,7 +10,7 @@
 <PageTitle>Kalender</PageTitle>
 
 <div class="leseskall kalenderskall">
-    <aside class="leserfilter" aria-label="Fristutvalg">
+    <aside class="leserfilter" aria-label="Fristutvalg" tabindex="-1" @ref="_utvalgsfilter">
         <p class="menyoverskrift">Din kalender</p>
         <Minikalender ValgtDato="_valgtDato" Idag="Idag" Frister="Maanedsfrister" DatoValgt="VelgDatoAsync" />
         <h2>Velg utvalg</h2>
@@ -21,6 +21,19 @@
         <p class="menyoverskrift">Kalender</p>
         <h1>Kalender</h1>
         <p class="ingress">Se fristene i kalenderen, og behold oversikten over budsjettårene.</p>
+        @if (Tilstand.OverfoertFrist is { } overfoert)
+        {
+            <section class="kalenderovergang" aria-label="Overgang fra budsjettår">
+                <strong>@overfoert.Tittel</strong>
+                <p>@(overfoert.ErTentativ ? $"Åpnet {Kalendervisning.Maaned(overfoert.Dato)} · {Visningformat.FormatDato(overfoert)} · dato ikke fastsatt." : $"Åpnet {Visningformat.FormatDato(overfoert)}.") Kalenderens søk og kategorier er beholdt.</p>
+                @if (SkjulesAvFiltre(overfoert))
+                {
+                    <p>Fristen skjules av kalenderutvalget: @Filterforklaring(overfoert). Endre utvalget for å vise fristen.</p>
+                    <button class="knapp" @onclick="EndreKalenderutvalgAsync">Endre kalenderutvalg</button>
+                }
+                <button class="knapp-lenke" @onclick="() => Tilstand.OverfoertFrist = null">Lukk meldingen</button>
+            </section>
+        }
         <section class="kalenderutvalg" aria-label="Aktivt kalenderutvalg">
             <span><strong>Periode:</strong> @Periodetekst</span>
             <span><strong>Budsjettår:</strong> @(Tilstand.Budsjettaar.Count == 0 ? "Ingen valgt" : string.Join(", ", Tilstand.Budsjettaar.Order()))</span>
@@ -104,6 +117,7 @@
     private string Periodetekst => Kalendervisning.Periodetekst(_valgtDato, Tilstand.Periode);
     private DateOnly _valgtDato { get => Tilstand.ValgtDato ?? Idag; set => Tilstand.ValgtDato = value; }
     private Fristdialog _fristdialog = default!;
+    private ElementReference _utvalgsfilter;
     private DateOnly Idag => Datohjelp.Idag(Klokke);
     private IReadOnlyList<FristDto> Frister = [];
     private IReadOnlyList<FristDto> Maanedsfrister = [];
@@ -151,9 +165,7 @@
             // Søk på serveren i det allerede autoriserte periodeutvalget. Ingen usynlige
             // titler/notater eller tellinger sendes til nettleseren.
             var soek = Tilstand.Soek.Trim();
-            Maanedsfrister = string.IsNullOrEmpty(soek) ? frister : frister.Where(f =>
-                f.Tittel.Contains(soek, StringComparison.OrdinalIgnoreCase) ||
-                (f.Notat?.Contains(soek, StringComparison.OrdinalIgnoreCase) ?? false)).ToArray();
+            Maanedsfrister = string.IsNullOrEmpty(soek) ? frister : frister.Where(f => TrefferSoek(f, soek)).ToArray();
             Frister = Maanedsfrister.Where(f => f.ErTentativ || (f.Dato >= fra && f.Dato <= til)).ToArray();
             Lastefeil = null;
         }
@@ -208,4 +220,24 @@
         return _fristdialog.VisAgendaAsync(dato, Kalendervisning.Dagsfrister(Frister, dato));
     }
     private Task AapneFristAsync(FristDto frist) => _fristdialog.VisFristAsync(frist);
+
+    private bool SkjulesAvFiltre(FristDto frist) => !Tilstand.Budsjettaar.Contains(frist.Budsjettaar)
+        || !Tilstand.Kategorier.Contains(frist.Kategori) || !TrefferSoek(frist);
+
+    private bool TrefferSoek(FristDto frist) => string.IsNullOrWhiteSpace(Tilstand.Soek)
+        || TrefferSoek(frist, Tilstand.Soek.Trim());
+
+    private static bool TrefferSoek(FristDto frist, string soek) =>
+        frist.Tittel.Contains(soek, StringComparison.OrdinalIgnoreCase)
+        || (frist.Notat?.Contains(soek, StringComparison.OrdinalIgnoreCase) ?? false);
+
+    private string Filterforklaring(FristDto frist)
+    {
+        var grunner = new List<string>();
+        if (!Tilstand.Budsjettaar.Contains(frist.Budsjettaar)) grunner.Add($"budsjettår {frist.Budsjettaar} er ikke valgt");
+        if (!Tilstand.Kategorier.Contains(frist.Kategori)) grunner.Add($"kategorien {Visningformat.KategoriNavn(frist.Kategori)} er ikke valgt");
+        if (!TrefferSoek(frist)) grunner.Add($"søket «{Tilstand.Soek.Trim()}» gir ikke treff");
+        return string.Join("; ", grunner);
+    }
+    private async Task EndreKalenderutvalgAsync() => await _utvalgsfilter.FocusAsync();
 }

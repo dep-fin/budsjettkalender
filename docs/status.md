@@ -23,12 +23,21 @@ Atelier UX03 ([#78](https://github.com/depmartin/Budsjettkalender/issues/78)) er
 periode-/filterkontekst. Kalenderen beholder sin egen tilstand i kretsen; Fristlistens
 historikk og leseportens null/tom=alle består. [Akseptanse](acceptance/2026-10-27-atelier-ux03.md)
 beskriver union, snitt, nulltreff, autoriserte årsvalg og mobilprøvene.
-Atelier UX04 ([#79](https://github.com/depmartin/Budsjettkalender/issues/79)) har en lokal
-kandidat med Uke og Liste på samme kalenderkontekst. Listen følger eksplisitt den sist
+Atelier UX04 ([#79](https://github.com/depmartin/Budsjettkalender/issues/79)) er levert i
+[PR #99](https://github.com/depmartin/Budsjettkalender/pull/99), merget som
+`19d7949d1950d3bc8319430b3d62eacaefd54783`, med Uke og Liste på samme kalenderkontekst. Listen følger eksplisitt den sist
 valgte måned-/ukeperioden. Uken viser heldag og alle klokkeslett hver for seg, samt
 tentative frister fra alle berørte måneder uten oppdiktet dagsdato eller varighet.
 [Akseptanse](acceptance/2026-10-27-atelier-ux04.md) beskriver periode-, detalj-, rolle-,
-mobil- og tastaturprøvene. #80 og senere er ikke implementert her; SQL Server/Chromium kontrolleres i CI.
+mobil- og tastaturprøvene.
+Atelier UX05 ([#80](https://github.com/depmartin/Budsjettkalender/issues/80)) har en lokal
+kandidat med komplett Tidslinje og Fristliste for ett budsjettår, inklusive alle kategorier,
+historikk og frister utenfor standardvinduet. Tette månedsgrupper åpner alle frister;
+tentative måneder beholder presisjon og kvalifikator. Kalenderovergangen bevarer søk,
+kategorier og årsvalg og legger til målets budsjettår ved behov. Det gamle `/aarshjul`
+åpner Flere år og historikk med tidligere filterkontrakt. [Akseptanse](acceptance/2026-10-27-atelier-ux05.md)
+beskriver kilder, roller, Oslo-dato, datogrenser, mobil og tastatur. #81 og senere er
+ikke implementert her; SQL Server/Chromium kontrolleres i CI.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -47,12 +56,13 @@ mobil- og tastaturprøvene. #80 og senere er ikke implementert her; SQL Server/C
 | [#76](https://github.com/depmartin/Budsjettkalender/issues/76) | Atelier-skall, rollebasert navigasjon og bevarte innganger | Merget i [PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), `c1f250e` |
 | [#77](https://github.com/depmartin/Budsjettkalender/issues/77) | Månedskalender, minikalender, dagsagenda og fristdetaljer med gyldig kilde og bevart tilgang | Merget i [PR #97](https://github.com/depmartin/Budsjettkalender/pull/97), `a65ae35`; [akseptanse](acceptance/2026-10-27-atelier-ux02.md) |
 | [#78](https://github.com/depmartin/Budsjettkalender/issues/78) | Eksplisitt flervalg av budsjettår/kategorier, søk, nullstilling og bevart kalenderkontekst | Merget i [PR #98](https://github.com/depmartin/Budsjettkalender/pull/98), `f72b2b7`; [akseptanse](acceptance/2026-10-27-atelier-ux03.md) |
-| [#79](https://github.com/depmartin/Budsjettkalender/issues/79) | Uke og periodeavgrenset Liste med bevart dato/filter/søk, tentative måneder og fullstendige fristdetaljer | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux04.md) |
+| [#79](https://github.com/depmartin/Budsjettkalender/issues/79) | Uke og periodeavgrenset Liste med bevart dato/filter/søk, tentative måneder og fullstendige fristdetaljer | Merget i [PR #99](https://github.com/depmartin/Budsjettkalender/pull/99), `19d7949`; [akseptanse](acceptance/2026-10-27-atelier-ux04.md) |
+| [#80](https://github.com/depmartin/Budsjettkalender/issues/80) | Komplett enkeltårsutvalg i Tidslinje/Fristliste, alle samtidige og tentative frister, bevart kalenderutvalg og eksplisitt eldre flereårs-/historikkvalg | Lokal kandidat; [akseptanse](acceptance/2026-10-27-atelier-ux05.md) |
 
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. Med #79 passerer 41 reelle Playwright-/Edge-scenarioer og 633 ordinære tester
+eksterne miljøporter. Med #80 er testomfanget 47 reelle Playwright-/Edge-scenarioer og 639 ordinære tester som
 passerer lokalt uten feil eller hopp. Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.

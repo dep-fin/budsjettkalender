@@ -76,7 +76,8 @@ public sealed class KalenderTester
         var import = await ventendeImport.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Hovedmeny", Exact = true })
             .GetByRole(AriaRole.Link, new() { Name = "Budsjettår", Exact = true }).ClickAsync();
-        await Expect(n.Side.Locator("dialog[aria-labelledby='fristdialog-tittel']")).ToHaveCountAsync(0);
+        await BudsjettaarTester.VelgKompatibilitet(n);
+        await Expect(n.Side.Locator("dialog[open][aria-labelledby='fristdialog-tittel']")).ToHaveCountAsync(0);
         await import.ContinueAsync();
         await n.Side.UnrouteAsync("**/kalenderdialog*.js");
         await n.Side.EvaluateAsync("() => import('./kalenderdialog.js')");
@@ -97,6 +98,7 @@ public sealed class KalenderTester
         await Expect(Dag(n, "15. januar 2020")).ToBeFocusedAsync();
         await n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Hovedmeny", Exact = true })
             .GetByRole(AriaRole.Link, new() { Name = "Budsjettår", Exact = true }).ClickAsync();
+        await BudsjettaarTester.VelgKompatibilitet(n);
         await Expect(n.Side.GetByLabel("Vis historikk", new() { Exact = true })).Not.ToBeCheckedAsync();
         await Expect(n.Side.Locator("main")).Not.ToContainTextAsync("UX77 historisk kalenderdag");
         await n.Side.GetByLabel("Vis historikk", new() { Exact = true }).CheckAsync();
@@ -339,6 +341,7 @@ public sealed class KalenderTester
             await n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Hovedmeny", Exact = true })
                 .GetByRole(AriaRole.Link, new() { Name = "Budsjettår", Exact = true }).ClickAsync();
             await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Budsjettår", Exact = true })).ToBeVisibleAsync();
+            await BudsjettaarTester.VelgKompatibilitet(n);
             await Expect(n.Side.GetByLabel("Vis historikk", new() { Exact = true })).Not.ToBeCheckedAsync();
             await n.Side.GetByLabel("Vis historikk", new() { Exact = true }).CheckAsync();
             await n.Side.GetByLabel("Regnskap", new() { Exact = true }).CheckAsync();
