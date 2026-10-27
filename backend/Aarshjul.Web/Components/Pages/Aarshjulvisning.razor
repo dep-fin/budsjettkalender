@@ -1,64 +1,197 @@
 @page "/aarshjul"
 @page "/budsjettaar"
 @attribute [Authorize]
-@inherits Visningsside
+@implements IDisposable
+@inject IFristlesing Lesing
+@inject Synlighetskontekstkilde Kontekstkilde
+@inject Visningstilstand Listeutvalg
+@inject Kalendertilstand Kalenderutvalg
+@inject NavigationManager Nav
+@inject TimeProvider Klokke
 
-<PageTitle>Budsjettår – Fristliste</PageTitle>
+<PageTitle>Budsjettår</PageTitle>
 
-<div class="leseskall">
+<div class="leseskall budsjettaarsskall">
     <aside class="leserfilter" aria-label="Fristutvalg">
         <p class="menyoverskrift">Hele budsjettløpet</p>
         <h2>Velg utvalg</h2>
-        <Filterpanel TilgjengeligeAar="TilgjengeligeAar" />
-    </aside>
-    <div class="leseinnhold">
-        <h1>Budsjettår</h1>
-        <p class="ingress">Ett budsjettløp i sin helhet, kronologisk gjennom syklusen.</p>
-
-        <nav class="undernav" aria-label="Budsjettårvisning">
-            <a href="/budsjettaar" class="active" aria-current="page">Fristliste</a>
-        </nav>
-
-        @if (!Lastet)
+        <div class="budsjett-aarsvalg"><label for="budsjett-aarsvalg">Velg budsjettår</label>
+            <select id="budsjett-aarsvalg" value="@ValgtAar" @onchange="ByttAarAsync" disabled="@(TilgjengeligeAar.Count == 0)">
+                @foreach (var aar in TilgjengeligeAar) { <option value="@aar">@aar</option> }
+            </select>
+        </div>
+        @if (FlereAar)
         {
-            <p class="melding">Laster …</p>
-        }
-        else if (Lastefeil is not null)
-        {
-            <div class="feil">@Lastefeil</div>
-        }
-        else if (Frister.Count == 0)
-        {
-            <p class="melding">Ingen frister i utvalget ditt.</p>
+            <h3>Flere år og historikk</h3>
+            <Filterpanel TilgjengeligeAar="Listeaar" />
         }
         else
         {
-            @foreach (var løp in Frister.GroupBy(f => f.Budsjettaar).OrderBy(g => g.Key))
-            {
-                <section class="hjul @Visningformat.FargeklasseForAar(løp.Key)">
-                    <h2>Budsjettår @løp.Key</h2>
-                    <ol class="hjul-spor">
-                        @foreach (var frist in løp.OrderBy(f => f.Sorteringsdag))
-                        {
-                            <li>
-                                <span class="hjul-dato">@Visningformat.FormatDato(frist)</span>
-                                <span class="hjul-tittel">@frist.Tittel</span>
-                                <span class="merke merke-kategori">@Visningformat.KategoriNavn(frist.Kategori)</span>
-                                @if (frist.ErTentativ)
-                                {
-                                    <span class="merke merke-tentativ">tentativ</span>
-                                }
-                            </li>
-                        }
-                    </ol>
-                </section>
-            }
+            <div class="kalenderforklaring"><strong>Ett budsjett, hele løpet</strong><p>Tidslinje og Fristliste viser alle synlige frister for valgt budsjettår, i alle kategorier og med historikk.</p><p>Kalenderens søk og utvalg beholdes separat.</p></div>
         }
-
+    </aside>
+    <div class="leseinnhold">
+        <p class="menyoverskrift">Budsjettår</p>
+        <h1>Budsjettår</h1>
+        <p class="ingress">Forberedelser, fremleggelse, gjennomføring og regnskap i samme løp.</p>
+        <div class="budsjettverktoey">
+            <p class="budsjettperiode">@if (ValgtAar is not null) { <strong>Budsjettåret @ValgtAar</strong><br /> }@Periodetekst</p>
+            <nav class="kalendervisninger" aria-label="Budsjettårvisning">
+                <button aria-pressed="@(!VisListe ? "true" : "false")" @onclick="() => ByttVisningAsync(false)">Tidslinje</button>
+                <button aria-pressed="@(VisListe ? "true" : "false")" @onclick="() => ByttVisningAsync(true)">Fristliste</button>
+            </nav>
+        </div>
+        @if (VisListe)
+        {
+            <div class="budsjett-kompatibilitet">
+                @if (FlereAar)
+                {
+                    <p>Flere år og historikk · tidligere årshjulutvalg med egne kategori- og historikkvalg.</p>
+                    <button class="knapp" @onclick="HeleAaretAsync">Vis hele budsjettåret @ValgtAar</button>
+                }
+                else
+                {
+                    <p>Alle kategorier og hele historikken for budsjettår @ValgtAar.</p>
+                    <button class="knapp" @onclick="AktiverFlereAarAsync">Flere år og historikk</button>
+                }
+            </div>
+        }
+        @if (!Lastet)
+        {
+            <p class="melding" role="status">Laster frister …</p>
+        }
+        else if (Lastefeil is not null)
+        {
+            <div class="feil" role="alert">@Lastefeil <button class="knapp" @onclick="LastInnAsync">Prøv igjen</button></div>
+        }
+        else if (ValgtAar is null)
+        {
+            <p class="melding" role="status">Ingen tilgjengelige budsjettår. Her vises godkjente frister du har tilgang til.</p>
+        }
+        else if (!VisListe)
+        {
+            <Budsjettaarstidslinje Budsjettaar="ValgtAar.Value" Frister="Frister" Idag="Idag" AapneFrist="AapneFristAsync" />
+            @if (Frister.Count == 0) { <p class="melding" role="status">Ingen frister i dette budsjettåret.</p> }
+        }
+        else
+        {
+            <section class="tidslinjeflate" aria-label="@(FlereAar ? "Fristliste med flere år og historikk" : $"Fristliste for budsjettår {ValgtAar}")">
+                <Budsjettaarsliste Frister="Frister" AapneFrist="AapneFristAsync" />
+                <p class="kalenderstatus" role="status">@Frister.Count frister @(FlereAar ? "i utvalget ditt" : $"i budsjettår {ValgtAar} · alle kategorier og historikk")</p>
+                @if (Frister.Count == 0) { <p class="melding">Ingen frister i utvalget ditt.</p> }
+            </section>
+        }
+        <p class="kalenderhint">Kalender, Budsjettår og Fristregister bruker de samme fristene. Fasene er veiledende inndeling og endrer ingen fristdatoer.</p>
     </div>
 </div>
+<Fristdialog @ref="_fristdialog" VisIKalenderen="VisIKalenderenAsync" />
 
 @code {
-    protected override Task<IReadOnlyList<FristDto>> HentAsync(ISynlighetskontekst ctx)
-        => Lesing.HentSynligeAsync(ctx, Tilstand.TilFilter());
+    private DateOnly Idag => Datohjelp.Idag(Klokke);
+    private int? ValgtAar;
+    private bool VisListe;
+    private bool FlereAar;
+    private string? _rute;
+    private IReadOnlyList<int> TilgjengeligeAar = [];
+    private IReadOnlyList<int> Listeaar = [];
+    private IReadOnlyList<FristDto> Frister = [];
+    private bool Lastet;
+    private string? Lastefeil;
+    private int _lasting;
+    private bool _avsluttet;
+    private Fristdialog _fristdialog = default!;
+    private string Periodetekst
+    {
+        get
+        {
+            if (ValgtAar is not { } aar) return "Velg et tilgjengelig budsjettår";
+            var linje = new Budsjettaarslinje(aar, []);
+            return $"{Kalendervisning.Maaned(linje.Fra)} – {Kalendervisning.Maaned(linje.Til)}";
+        }
+    }
+
+    protected override void OnInitialized() => Listeutvalg.Endret += VedListeutvalg;
+    protected override async Task OnParametersSetAsync()
+    {
+        var rute = Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].Trim('/').ToLowerInvariant();
+        if (_rute == rute) return;
+        _rute = rute;
+        FlereAar = rute == "aarshjul";
+        VisListe = FlereAar;
+        await LastInnAsync();
+    }
+
+    private async void VedListeutvalg()
+    {
+        if (FlereAar && !_avsluttet) await InvokeAsync(LastInnAsync);
+    }
+
+    private async Task LastInnAsync()
+    {
+        var lasting = ++_lasting;
+        Lastet = false;
+        Frister = [];
+        try
+        {
+            var ctx = await Kontekstkilde.HentAsync();
+            var aar = await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, inkluderHistorikk: true);
+            if (_avsluttet || lasting != _lasting) return;
+            TilgjengeligeAar = aar;
+            if (ValgtAar is null || !aar.Contains(ValgtAar.Value))
+                ValgtAar = aar.OrderBy(a => Math.Abs((long)a - Idag.Year)).ThenBy(a => a).Cast<int?>().FirstOrDefault();
+            IReadOnlyList<FristDto> frister = [];
+            if (FlereAar || ValgtAar is not null)
+                frister = await Lesing.HentSynligeAsync(ctx, FlereAar ? Listeutvalg.TilFilter() : new FristFilter
+                {
+                    Budsjettaar = [ValgtAar!.Value], InkluderHistorikk = true
+                });
+            // Kompatibilitetsutvalgets årsliste følger fortsatt det opprinnelige historikkvalget.
+            var listeaar = FlereAar
+                ? await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, Listeutvalg.InkluderHistorikk) : aar;
+            if (_avsluttet || lasting != _lasting) return;
+            Frister = frister;
+            Listeaar = listeaar;
+            Lastefeil = null;
+        }
+        catch (Exception)
+        {
+            if (_avsluttet || lasting != _lasting) return;
+            Lastefeil = "Kunne ikke laste frister akkurat nå. Prøv igjen.";
+        }
+        Lastet = true;
+        StateHasChanged();
+    }
+
+    private Task ByttAarAsync(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var aar) || !TilgjengeligeAar.Contains(aar)) return Task.CompletedTask;
+        ValgtAar = aar;
+        FlereAar = false;
+        return LastInnAsync();
+    }
+
+    private Task ByttVisningAsync(bool liste)
+    {
+        VisListe = liste;
+        if (liste || !FlereAar) return Task.CompletedTask;
+        FlereAar = false;
+        return LastInnAsync();
+    }
+    private Task AktiverFlereAarAsync() { FlereAar = true; return LastInnAsync(); }
+    private Task HeleAaretAsync() { FlereAar = false; VisListe = true; return LastInnAsync(); }
+    private Task AapneFristAsync(FristDto frist) => _fristdialog.VisFristAsync(frist);
+
+    private Task VisIKalenderenAsync(FristDto frist)
+    {
+        Kalenderutvalg.InitialiserAar(TilgjengeligeAar);
+        Kalenderutvalg.Budsjettaar.Add(frist.Budsjettaar);
+        Kalenderutvalg.ValgtDato = frist.ErTentativ ? Kalendervisning.FoersteDag(frist.Dato) : frist.Dato;
+        Kalenderutvalg.Visning = Kalenderpresentasjon.Maaned;
+        Kalenderutvalg.Periode = Kalenderperiode.Maaned;
+        Kalenderutvalg.OverfoertFrist = frist;
+        Nav.NavigateTo("/kalender");
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() { _avsluttet = true; Listeutvalg.Endret -= VedListeutvalg; }
 }

@@ -50,6 +50,10 @@
             <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
                 <div class="dialoghandlinger"><a class="knapp" href="@($"/admin/frist/{frist.Id}")">Rediger</a></div>
             </AuthorizeView>
+            @if (VisIKalenderen.HasDelegate)
+            {
+                <div class="dialoghandlinger"><button class="knapp" @onclick="() => TilKalenderAsync(frist)">Vis i kalenderen</button></div>
+            }
             <AuthorizeView Policy="@Autorisasjon.ErBidragsyter">
                 <div class="dialoghandlinger"><a class="knapp" href="@($"/forslag/endre/{frist.Id}")">Foreslå endring</a></div>
             </AuthorizeView>
@@ -84,6 +88,7 @@
 </dialog>
 
 @code {
+    [Parameter] public EventCallback<FristDto> VisIKalenderen { get; set; }
     private ElementReference _dialog;
     private IJSObjectReference? _modul;
     private DotNetObjectReference<Fristdialog>? _referanse;
@@ -140,6 +145,12 @@
     private async Task LukkAsync()
     {
         if (_modul is not null) await _modul.InvokeVoidAsync("lukk", _dialog);
+    }
+
+    private async Task TilKalenderAsync(FristDto frist)
+    {
+        await LukkAsync();
+        if (!_avsluttet) await VisIKalenderen.InvokeAsync(frist);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

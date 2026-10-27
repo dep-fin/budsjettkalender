@@ -1,0 +1,144 @@
+@using System.Globalization
+
+<section aria-label="@($"Tidslinje for budsjettår {Budsjettaar}")" class="budsjettaarstidslinje">
+    @if (Linje.Foer.Count > 0)
+    {
+        <section class="tidslinje-utenfor" aria-label="Frister før tidslinjen">
+            <h3>Før @Kalendervisning.Maaned(Linje.Fra) · @Linje.Foer.Count frister</h3>
+            <p>Disse fristene tilhører samme budsjettår og fortsetter inn i tidslinjen nedenfor.</p>
+            <Budsjettaarsliste Frister="Linje.Foer" AapneFrist="AapneFrist" />
+        </section>
+    }
+    <div class="tidslinjeflate">
+        <div class="tidslinjerulling" tabindex="0" aria-label="Budsjettårets tidslinje, kan rulles vannrett">
+            <div class="budsjettgraf" style="@($"--akse:{Akse}px;--grafhoeyde:{Grafhoeyde}px")">
+                <div class="tidslinje-aar">
+                    @foreach (var baand in Linje.Aarbaand())
+                    {
+                        <div style="@($"flex:{baand.Maaneder}")"><strong>@baand.Aar</strong><small>@Budsjettaarslinje.RelativtAar(baand.Aar, Budsjettaar) · @(baand.Aar == Budsjettaar ? "Budsjettåret" : baand.Aar < Budsjettaar ? "Forberedelse og forslag" : "Regnskap")</small></div>
+                    }
+                </div>
+                <div class="tidslinje-plott">
+                    <div class="tidslinje-akse" aria-hidden="true"></div>
+                    @foreach (var maaned in Linje.Maaneder())
+                    {
+                        <span class="tidslinje-maaned" style="@($"left:{Tall(Linje.Posisjon(maaned, true))}%")">@maaned.ToString("MMM", Norsk)</span>
+                    }
+                    @if (Idag >= Linje.Fra && Idag <= Linje.Til)
+                    {
+                        <div class="tidslinje-idag" style="@($"left:{Tall(Linje.Posisjon(Idag))}%")" aria-hidden="true"></div>
+                        <span class="tidslinje-idagetikett" style="@($"--x:{Tall(Linje.Posisjon(Idag))}%")">I dag · <time datetime="@Idag.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@Kalendervisning.Dato(Idag)</time></span>
+                    }
+                    @foreach (var stasjon in Linje.Stasjoner)
+                    {
+                        var oppe = stasjon.Spor % 2 == 0;
+                        var avstand = 52 + stasjon.Spor / 2 * 104;
+                        var topp = oppe ? Akse - avstand - 88 : Akse + avstand;
+                        <span class="tidslinje-stilk" style="@($"left:{Tall(stasjon.Posisjon)}%;top:{(oppe ? Akse - avstand : Akse)}px;height:{avstand}px")" aria-hidden="true"></span>
+                        @if (!stasjon.Tentativ)
+                        {
+                            <span class="tidslinje-punkt" style="@($"left:{Tall(stasjon.Posisjon)}%")" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            <span class="tidslinje-maanedsbaand" style="@($"left:{Tall(Linje.Posisjon(stasjon.Maaned))}%;width:{Tall(100d / Linje.Maaneder().Count())}%")" aria-hidden="true"></span>
+                        }
+                        @if (stasjon.Frister.Count == 1)
+                        {
+                            var frist = stasjon.Frister[0];
+                            <button class="tidslinje-kort @(stasjon.Tentativ ? "tentativt-kort" : null)" style="@Kortstil(stasjon, topp)" data-frist-id="@frist.Id" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
+                                <small>@Visningformat.FormatDato(frist)</small><strong>@frist.Tittel</strong><span>@(stasjon.Tentativ ? "Dato ikke fastsatt" : Visningformat.KategoriNavn(frist.Kategori))</span>
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="tidslinje-kort tidslinje-gruppe @(stasjon.Tentativ ? "tentativt-kort" : null)" style="@Kortstil(stasjon, topp)" aria-label="@($"Vis {stasjon.Frister.Count} frister i {Kalendervisning.Maaned(stasjon.Maaned)}{(stasjon.Tentativ ? ", dato ikke fastsatt" : "")}")"
+                                    aria-expanded="@(_aapneGrupper.Contains(stasjon.Id) ? "true" : "false")" aria-controls="@stasjon.Id" @onclick="() => VelgGruppe(stasjon.Id)">
+                                <small>@Kalendervisning.Maaned(stasjon.Maaned)</small><strong>@stasjon.Frister.Count @(stasjon.Tentativ ? "tentative frister" : "frister")</strong><span>Åpne alle fristene ↗</span>
+                            </button>
+                        }
+                    }
+                </div>
+                <div class="tidslinje-faser" aria-label="Budsjettårets fem faser">
+                    @foreach (var fase in Budsjettaarslinje.Faser)
+                    {
+                        var plass = Linje.Fase(fase.Fra, fase.Til);
+                        @if (plass.Bredde > 0)
+                        {
+                            <div style="@($"left:{Tall(plass.Venstre)}%;width:{Tall(plass.Bredde)}%")"><strong>@fase.Navn</strong><small>@Fasegrense(fase.Fra) – @Fasegrense(fase.Til - 1)</small></div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="tidslinjefot"><span>@Frister.Count publiserte frister · hele budsjettløpet er tilgjengelig</span><span class="idag-tekst">I dag · <time datetime="@Idag.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@Kalendervisning.Dato(Idag)</time>@if (Idag < Linje.Fra || Idag > Linje.Til) { <span> · utenfor tidslinjen</span> }</span></div>
+    </div>
+    <p class="kalenderhint">Rull tidslinjen vannrett. Åpne et fristkort eller en månedsgruppe for alle detaljer. Tentative måneder vises som bånd uten fast dag.</p>
+    @foreach (var stasjon in Linje.Stasjoner.Where(s => s.Frister.Count > 1))
+    {
+        <section id="@stasjon.Id" class="tidslinje-gruppeinnhold" aria-label="@($"Frister i {Kalendervisning.Maaned(stasjon.Maaned)}{(stasjon.Tentativ ? ", dato ikke fastsatt" : "")}")" hidden="@(!_aapneGrupper.Contains(stasjon.Id))">
+            @if (_fokusGruppeId == stasjon.Id)
+            {
+                <h3 tabindex="-1" @ref="_gruppeoverskrift">@stasjon.Frister.Count frister i @Kalendervisning.Maaned(stasjon.Maaned)</h3>
+            }
+            else
+            {
+                <h3>@stasjon.Frister.Count frister i @Kalendervisning.Maaned(stasjon.Maaned)</h3>
+            }
+            <Budsjettaarsliste Frister="stasjon.Frister" AapneFrist="AapneFrist" />
+        </section>
+    }
+    @if (Linje.Etter.Count > 0)
+    {
+        <section class="tidslinje-utenfor" aria-label="Frister etter tidslinjen">
+            <h3>Etter @Kalendervisning.Maaned(Linje.Til) · @Linje.Etter.Count frister</h3>
+            <p>Budsjettløpet fortsetter her, etter tidslinjens standardvindu.</p>
+            <Budsjettaarsliste Frister="Linje.Etter" AapneFrist="AapneFrist" />
+        </section>
+    }
+</section>
+
+@code {
+    [Parameter] public int Budsjettaar { get; set; }
+    [Parameter] public IReadOnlyList<FristDto> Frister { get; set; } = [];
+    [Parameter] public DateOnly Idag { get; set; }
+    [Parameter] public EventCallback<FristDto> AapneFrist { get; set; }
+    private static readonly CultureInfo Norsk = CultureInfo.GetCultureInfo("nb-NO");
+    private Budsjettaarslinje Linje = default!;
+    private readonly HashSet<string> _aapneGrupper = [];
+    private string? _fokusGruppeId;
+    private IReadOnlyList<FristDto>? _forrigeFrister;
+    private int? _forrigeAar;
+    private int Akse => 94 + (Linje.Spor + 1) / 2 * 104;
+    private int Grafhoeyde => Akse + 58 + Linje.Spor / 2 * 104;
+    private ElementReference _gruppeoverskrift;
+    private bool _fokuserGruppe;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_forrigeFrister, Frister) && _forrigeAar == Budsjettaar) return;
+        _forrigeFrister = Frister;
+        _forrigeAar = Budsjettaar;
+        Linje = new(Budsjettaar, Frister);
+        _aapneGrupper.Clear();
+        _fokusGruppeId = null;
+    }
+
+    private void VelgGruppe(string id) { _aapneGrupper.Add(id); _fokusGruppeId = id; _fokuserGruppe = true; }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_fokuserGruppe) return;
+        _fokuserGruppe = false;
+        // Bare den åpne gruppen får referansen; skjulte søskengrupper deltar ikke i fokus.
+        await _gruppeoverskrift.FocusAsync();
+    }
+    private static string Tall(double tall) => tall.ToString("0.###", CultureInfo.InvariantCulture);
+    private static string Kortstil(Budsjettaarslinje.Stasjon s, int topp) => $"--x:{Tall(s.Posisjon)}%;top:{topp}px";
+    private static string Fasegrense(int relativMaaned)
+    {
+        var aar = (int)Math.Floor(relativMaaned / 12d);
+        var maaned = relativMaaned - aar * 12 + 1;
+        var navn = new DateOnly(2000, maaned, 1).ToString("MMM", Norsk);
+        return $"{navn} {(aar == 0 ? "t" : aar < 0 ? $"t−{-aar}" : $"t+{aar}")}";
+    }
+}
