@@ -228,7 +228,13 @@ public sealed class KalenderTester
         await n.Side.GetByLabel("Gul bok", new() { Exact = true }).UncheckAsync();
         await Expect(Minikalender(n).GetByRole(AriaRole.Button, new() { Name = "Velg 15. november 2030, 1 frist", Exact = true })).ToBeVisibleAsync();
         await Expect(Maanedskalender(n).GetByRole(AriaRole.Button, new() { Name = "UX77 synlig Gul bok", Exact = true })).ToHaveCountAsync(0);
+        // Kalenderen har nå eksplisitt alle år valgt som standard. Velg ett år aktivt.
+        var aarvalg = n.Side.GetByRole(AriaRole.Group, new() { Name = "Budsjettår", Exact = true });
+        await aarvalg.GetByRole(AriaRole.Button, new() { Name = "Fjern alle", Exact = true }).ClickAsync();
+        await Expect(aarvalg.Locator("input[type=checkbox]:checked")).ToHaveCountAsync(0);
         await n.Side.GetByLabel("2032", new() { Exact = true }).CheckAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Region, new() { Name = "Aktivt kalenderutvalg", Exact = true })
+            .GetByText("Budsjettår: 2032", new() { Exact = true })).ToBeVisibleAsync();
         await Expect(Minikalender(n).GetByRole(AriaRole.Button, new() { Name = "Velg 15. november 2030", Exact = true })).ToBeVisibleAsync();
         await n.Side.GetByLabel("Gul bok", new() { Exact = true }).CheckAsync();
         await Expect(Minikalender(n).GetByRole(AriaRole.Button, new() { Name = "Velg 15. november 2030, 1 frist", Exact = true })).ToBeVisibleAsync();
@@ -329,12 +335,13 @@ public sealed class KalenderTester
             var maanedsdata = data.Where(f => ((string)f!["sorteringsdag"]!).StartsWith("2030-11", StringComparison.Ordinal)).ToArray();
             foreach (var f in maanedsdata) await Expect(n.Side.Locator("main")).ToContainTextAsync((string)f!["tittel"]!);
             foreach (var f in data.Except(maanedsdata)) await Expect(n.Side.Locator("main")).Not.ToContainTextAsync((string)f!["tittel"]!);
-            // Intern navigasjon beholder kretsens filtervalg.
+            // Fristlisten beholder sitt eget filter og historikkvalg, atskilt fra kalenderen.
             await n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Hovedmeny", Exact = true })
                 .GetByRole(AriaRole.Link, new() { Name = "Budsjettår", Exact = true }).ClickAsync();
             await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Budsjettår", Exact = true })).ToBeVisibleAsync();
             await Expect(n.Side.GetByLabel("Vis historikk", new() { Exact = true })).Not.ToBeCheckedAsync();
             await n.Side.GetByLabel("Vis historikk", new() { Exact = true }).CheckAsync();
+            await n.Side.GetByLabel("Regnskap", new() { Exact = true }).CheckAsync();
             foreach (var f in data) await Expect(n.Side.Locator("main")).ToContainTextAsync((string)f!["tittel"]!);
             // Det gamle bokmerket er fortsatt den samme virksomme fristlisten.
             await n.Gaa("/aarshjul");
@@ -387,6 +394,8 @@ public sealed class KalenderTester
         await Expect(n.Side.GetByLabel("Vis måned", new() { Exact = true })).ToHaveValueAsync(maaned);
         await Expect(Maanedskalender(n)).ToBeVisibleAsync();
         var dato = DateTime.ParseExact(maaned + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture);
-        await Expect(Maanedskalender(n).GetByRole(AriaRole.Table, new() { Name = dato.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("nb-NO")), Exact = true })).ToBeVisibleAsync();
+        await Expect(Maanedskalender(n).GetByRole(AriaRole.Navigation, new() { Name = "Månedsnavigasjon", Exact = true })
+            .GetByRole(AriaRole.Heading, new() { Name = dato.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("nb-NO")), Exact = true })).ToBeVisibleAsync();
+        await Expect(Maanedskalender(n)).ToHaveAttributeAsync("aria-busy", "false");
     }
 }

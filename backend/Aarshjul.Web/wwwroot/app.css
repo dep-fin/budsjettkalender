@@ -250,6 +250,11 @@ a.knapp { display: inline-block; }
 .kalenderhendelse small { font-size: 9px; color: var(--dempet); }
 .kalender-overflyt { align-self: start; border: 0; background: transparent; color: var(--primaer); font-size: 11px; cursor: pointer; padding: 3px 4px; text-decoration: underline; }
 .kalenderstatus { padding: 12px 18px; border-top: 1px solid var(--kant); color: var(--dempet); font-size: 11px; margin: 0; }
+.kalenderutvalg { display: flex; gap: 6px 20px; flex-wrap: wrap; margin-bottom: 20px; color: var(--dempet); font-size: 12px; }
+.filterhandlinger { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0; }
+.filterhandlinger .knapp-lenke { margin: 0; font-size: 12px; }
+.leserfilter .kalenderfilter > label { flex: initial; }
+.kalenderutvalg span { overflow-wrap: anywhere; }
 .kalenderhint { margin-top: 16px; font-size: 11px; color: var(--dempet); }
 .mobilagenda { display: none; }
 .fristdialog { border: 1px solid var(--kant); border-radius: 16px; padding: 0; width: min(640px, calc(100% - 32px)); max-height: calc(100dvh - 48px); color: var(--tekst); background: white; box-shadow: 0 20px 80px #26353138; }

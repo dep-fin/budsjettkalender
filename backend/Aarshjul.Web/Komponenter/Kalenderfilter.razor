@@ -1,0 +1,57 @@
+<div class="filterpanel kalenderfilter">
+    <label>Søk i tittel og notat<input type="search" @bind="Tilstand.Soek" @bind:event="oninput" @bind:after="Endret.InvokeAsync" /></label>
+    <fieldset>
+        <legend>Kategori</legend>
+        @foreach (var kategori in AlleKategorier)
+        {
+            <label class="filtervalg"><input type="checkbox" checked="@Tilstand.Kategorier.Contains(kategori)"
+                @onchange="e => VekslAsync(Tilstand.Kategorier, kategori, e)" />@Visningformat.KategoriNavn(kategori)</label>
+        }
+        <div class="filterhandlinger">
+            <button class="knapp-lenke" @onclick="() => VelgAsync(Tilstand.Kategorier, AlleKategorier)">Velg alle</button>
+            <button class="knapp-lenke" @onclick="() => VelgAsync(Tilstand.Kategorier, [])">Fjern alle</button>
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>Budsjettår</legend>
+        @foreach (var aar in TilgjengeligeAar)
+        {
+            <label class="filtervalg"><input type="checkbox" checked="@Tilstand.Budsjettaar.Contains(aar)"
+                @onchange="e => VekslAsync(Tilstand.Budsjettaar, aar, e)" />@aar</label>
+        }
+        @if (TilgjengeligeAar.Count == 0) { <p class="hint">Ingen tilgjengelige budsjettår.</p> }
+        <div class="filterhandlinger">
+            <button class="knapp-lenke" @onclick="() => VelgAsync(Tilstand.Budsjettaar, TilgjengeligeAar)">Velg alle</button>
+            <button class="knapp-lenke" @onclick="() => VelgAsync(Tilstand.Budsjettaar, [])">Fjern alle</button>
+        </div>
+        <small class="hint">Ingen valgte år eller kategorier gir ingen treff.</small>
+    </fieldset>
+    <button class="knapp" @onclick="NullstillAsync">Nullstill filtre</button>
+</div>
+
+@code {
+    private static readonly Kategori[] AlleKategorier = [Kategori.Budsjett, Kategori.Gulbok, Kategori.Regnskap];
+    [Parameter, EditorRequired] public Kalendertilstand Tilstand { get; set; } = default!;
+    [Parameter] public IReadOnlyList<int> TilgjengeligeAar { get; set; } = [];
+    [Parameter] public EventCallback Endret { get; set; }
+
+    private Task NullstillAsync()
+    {
+        Tilstand.Nullstill(TilgjengeligeAar);
+        return Endret.InvokeAsync();
+    }
+
+    private Task VekslAsync<T>(HashSet<T> utvalg, T verdi, ChangeEventArgs e)
+    {
+        if (e.Value is true) utvalg.Add(verdi);
+        else utvalg.Remove(verdi);
+        return Endret.InvokeAsync();
+    }
+
+    private Task VelgAsync<T>(HashSet<T> utvalg, IEnumerable<T> verdier)
+    {
+        utvalg.Clear();
+        utvalg.UnionWith(verdier);
+        return Endret.InvokeAsync();
+    }
+}

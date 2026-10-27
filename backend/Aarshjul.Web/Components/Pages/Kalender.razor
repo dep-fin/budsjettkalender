@@ -1,8 +1,11 @@
 @page "/"
 @page "/kalender"
 @attribute [Authorize]
-@inherits Visningsside
+@implements IDisposable
 @inject TimeProvider Klokke
+@inject Kalendertilstand Tilstand
+@inject IFristlesing Lesing
+@inject Synlighetskontekstkilde Kontekstkilde
 
 <PageTitle>Kalender</PageTitle>
 
@@ -11,13 +14,19 @@
         <p class="menyoverskrift">Din kalender</p>
         <Minikalender ValgtDato="_valgtDato" Idag="Idag" Frister="Frister" DatoValgt="VelgDatoAsync" />
         <h2>Velg utvalg</h2>
-        <Filterpanel TilgjengeligeAar="TilgjengeligeAar" VisHistorikk="false" />
+        <Kalenderfilter Tilstand="Tilstand" TilgjengeligeAar="TilgjengeligeAar" Endret="LastInnAsync" />
         <div class="kalenderforklaring"><strong>Samme frister, ulike perspektiver</strong><p>Kalender viser datoene på tvers av valgte budsjettår. Budsjettår samler ett helt løp.</p></div>
     </aside>
     <div class="leseinnhold">
         <p class="menyoverskrift">Kalender</p>
         <h1>Kalender</h1>
         <p class="ingress">Se fristene i kalenderen, og behold oversikten over budsjettårene.</p>
+        <section class="kalenderutvalg" aria-label="Aktivt kalenderutvalg">
+            <span><strong>Periode:</strong> @Kalendervisning.Maaned(_valgtDato)</span>
+            <span><strong>Budsjettår:</strong> @(Tilstand.Budsjettaar.Count == 0 ? "Ingen valgt" : string.Join(", ", Tilstand.Budsjettaar.Order()))</span>
+            <span><strong>Kategorier:</strong> @(Tilstand.Kategorier.Count == 0 ? "Ingen valgt" : string.Join(", ", Tilstand.Kategorier.Order().Select(Visningformat.KategoriNavn)))</span>
+            @if (!string.IsNullOrWhiteSpace(Tilstand.Soek)) { <span><strong>Søk:</strong> «@Tilstand.Soek.Trim()»</span> }
+        </section>
         <section aria-label="Månedskalender" aria-busy="@(!Lastet ? "true" : "false")">
             <nav class="maanedsnavigasjon" aria-label="Månedsnavigasjon">
                 <button class="knapp" @onclick="() => VelgDatoAsync(Idag)">I dag</button>
@@ -58,7 +67,7 @@
                 }
                 <div class="kalenderflate">
                     <Maanedskalender ValgtDato="_valgtDato" Idag="Idag" Frister="Frister" AapneDag="AapneDagAsync" AapneFrist="AapneFristAsync" />
-                    <p class="kalenderstatus" role="status">@Frister.Count frister i måneden · @Frister.Count(f => !f.ErTentativ) med fast dag</p>
+                    <p class="kalenderstatus" role="status">@Frister.Count @(Frister.Count == 1 ? "frist" : "frister") i måneden · @Frister.Count(f => !f.ErTentativ) med fast dag</p>
                 </div>
                 @if (Frister.Count == 0) { <p class="melding">Ingen frister i utvalget ditt denne måneden.</p> }
                 <p class="kalenderhint">Velg en dato for dagsagenda, eller en frist for å lese detaljene.</p>
@@ -69,29 +78,65 @@
 <Fristdialog @ref="_fristdialog" />
 
 @code {
-    private DateOnly _valgtDato;
+    private DateOnly _valgtDato { get => Tilstand.ValgtDato ?? Idag; set => Tilstand.ValgtDato = value; }
     private Fristdialog _fristdialog = default!;
     private DateOnly Idag => Datohjelp.Idag(Klokke);
-    protected override bool InkluderHistorikkForAarsvalg => true;
+    private IReadOnlyList<FristDto> Frister = [];
+    private IReadOnlyList<int> TilgjengeligeAar = [];
+    private bool Lastet;
+    private string? Lastefeil;
+    private int _lasting;
+    private bool _avsluttet;
 
-    protected override void OnInitialized()
+    protected override Task OnInitializedAsync()
     {
-        _valgtDato = Idag;
-        base.OnInitialized();
+        Tilstand.ValgtDato ??= Idag;
+        return LastInnAsync();
     }
 
-    protected override Task<IReadOnlyList<FristDto>> HentAsync(ISynlighetskontekst ctx)
+    private async Task LastInnAsync()
     {
-        var filter = Tilstand.TilFilter();
-        return Lesing.HentSynligeAsync(ctx, new FristFilter
+        var lasting = ++_lasting;
+        Lastet = false;
+        Frister = [];
+        try
         {
-            Kategorier = filter.Kategorier,
-            Budsjettaar = filter.Budsjettaar,
-            FraDato = Kalendervisning.FoersteDag(_valgtDato),
-            TilDato = Kalendervisning.SisteDag(_valgtDato),
-            InkluderHistorikk = true
-        });
+            var ctx = await Kontekstkilde.HentAsync();
+            // Årsvalgene omfatter hele det autoriserte, godkjente utvalget, også historikk.
+            var aar = await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, inkluderHistorikk: true);
+            if (_avsluttet || lasting != _lasting) return;
+            TilgjengeligeAar = aar;
+            Tilstand.InitialiserAar(aar);
+            IReadOnlyList<FristDto> frister = [];
+            // Kalenderens eksplisitte tomme utvalg skal aldri oversettes til leseportens alle.
+            if (Tilstand.Budsjettaar.Count > 0 && Tilstand.Kategorier.Count > 0)
+                frister = await Lesing.HentSynligeAsync(ctx, new FristFilter
+                {
+                    Kategorier = Tilstand.Kategorier.ToArray(),
+                    Budsjettaar = Tilstand.Budsjettaar.ToArray(),
+                    FraDato = Kalendervisning.FoersteDag(_valgtDato),
+                    TilDato = Kalendervisning.SisteDag(_valgtDato),
+                    InkluderHistorikk = true
+                });
+            if (_avsluttet || lasting != _lasting) return;
+            // Søk på serveren i det allerede autoriserte periodeutvalget. Ingen usynlige
+            // titler/notater eller tellinger sendes til nettleseren.
+            var soek = Tilstand.Soek.Trim();
+            Frister = string.IsNullOrEmpty(soek) ? frister : frister.Where(f =>
+                f.Tittel.Contains(soek, StringComparison.OrdinalIgnoreCase) ||
+                (f.Notat?.Contains(soek, StringComparison.OrdinalIgnoreCase) ?? false)).ToArray();
+            Lastefeil = null;
+        }
+        catch (Exception)
+        {
+            if (_avsluttet || lasting != _lasting) return;
+            Frister = [];
+            Lastefeil = "Kunne ikke laste frister akkurat nå. Prøv igjen.";
+        }
+        Lastet = true;
     }
+
+    public void Dispose() => _avsluttet = true;
 
     private Task FlyttAsync(int steg) => VelgDatoAsync(Kalendervisning.FoersteDag(_valgtDato).AddMonths(steg));
 

@@ -49,7 +49,7 @@ public sealed class TilgangTester
         await n.Side.GetByRole(AriaRole.Link, new() { Name = "Administrasjon", Exact = true }).ClickAsync();
         var meny = n.Side.GetByRole(AriaRole.Navigation, new() { Name = "Administrasjonsområder", Exact = true });
         var omraader = new[] { "Budsjettår og frister", "Årsmal", "Grupper og innsyn", "Eksport og deling", "Internkalender", "Administrator-innstillinger" };
-        Assert.Equal(omraader, await meny.GetByRole(AriaRole.Link).AllTextContentsAsync());
+        await Expect(meny.GetByRole(AriaRole.Link)).ToHaveTextAsync(omraader);
         foreach (var (omraade, overskrift, lenker) in new[]
         {
             (omraader[0], "Frister", new[] { ("Fristregister", "Frister"), ("Ny frist", "Ny frist"), ("Kø", "Godkjenningskø"), ("Last opp", "Last opp dokument"), ("Generér", "Generér budsjettår") }),
