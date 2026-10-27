@@ -1,13 +1,11 @@
-// Native dialog gir fokusfelle og Escape. Behold den opprinnelige kalenderknappen
-// også når innholdet skifter mellom dagsagenda og detaljer i samme dialog.
-const utløsere = new WeakMap();
+// Native dialog gir fokusfelle, Escape og fokusretur ved lukking.
+// En egen fokusretur i den køede close-hendelsen kan stjele fokus fra neste utløser.
 const innhold = new WeakMap();
 
 export function vis(dialog, fristId, harAgenda, komponent) {
     innhold.set(dialog, { harAgenda, komponent });
     if (!dialog.open) {
-        utløsere.set(dialog, document.activeElement);
-        if (!dialog.dataset.fokusretur) {
+        if (!dialog.dataset.tastatur) {
             dialog.addEventListener("cancel", event => {
                 const side = innhold.get(dialog);
                 if (side?.harAgenda) {
@@ -15,11 +13,7 @@ export function vis(dialog, fristId, harAgenda, komponent) {
                     side.komponent.invokeMethodAsync("TilbakeFraTastaturAsync");
                 }
             });
-            dialog.addEventListener("close", () => {
-                const utløser = utløsere.get(dialog);
-                if (utløser?.isConnected) utløser.focus({ preventScroll: true });
-            });
-            dialog.dataset.fokusretur = "true";
+            dialog.dataset.tastatur = "true";
         }
         dialog.showModal();
     }
