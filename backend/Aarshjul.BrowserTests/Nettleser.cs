@@ -141,17 +141,21 @@ internal sealed class Nettleser
         return JsonNode.Parse(await svar.TextAsync())!.AsArray();
     }
 
-    public async Task OpprettFrist(string tittel, string gruppe = "FA", string? tid = null, bool tentativ = false)
+    public async Task OpprettFrist(string tittel, string gruppe = "FA", string? tid = null, bool tentativ = false,
+        string dato = "2030-11-20", int budsjettaar = 2031, string? notat = null, string? kategori = null,
+        string kvalifikator = "Medio")
     {
         await Gaa("/admin/frist/ny");
         await Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync(tittel);
-        await Side.GetByLabel("Dato", new() { Exact = true }).FillAsync("2030-11-20");
-        await Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync("2031");
+        await Side.GetByLabel("Dato", new() { Exact = true }).FillAsync(dato);
+        await Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync(budsjettaar.ToString());
+        if (notat is not null) await Side.GetByLabel("Notat", new() { Exact = true }).FillAsync(notat);
+        if (kategori is not null) await Side.GetByRole(AriaRole.Combobox, new() { Name = "Kategori", Exact = true }).SelectOptionAsync(kategori);
         if (tentativ)
         {
             await Expect(Side.GetByRole(AriaRole.Combobox, new() { Name = "Presisjon", Exact = true })).ToBeVisibleAsync();
             await Side.GetByRole(AriaRole.Combobox, new() { Name = "Presisjon", Exact = true }).SelectOptionAsync("Maaned");
-            await Side.GetByRole(AriaRole.Combobox, new() { Name = "Kvalifikator", Exact = true }).SelectOptionAsync("Medio");
+            await Side.GetByRole(AriaRole.Combobox, new() { Name = "Kvalifikator", Exact = true }).SelectOptionAsync(kvalifikator);
         }
         else if (tid is not null) await Side.GetByLabel("Klokkeslett", new() { Exact = false }).FillAsync(tid);
         await Side.GetByRole(AriaRole.Checkbox, new() { NameRegex = new($"\\({gruppe}\\)$") }).CheckAsync();

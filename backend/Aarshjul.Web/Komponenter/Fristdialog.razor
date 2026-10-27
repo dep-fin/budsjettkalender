@@ -1,0 +1,173 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<dialog @ref="_dialog" class="fristdialog" aria-labelledby="fristdialog-tittel">
+    <div class="dialogtopp">
+        @if (_frist is not null && _agendadato is not null)
+        {
+            <button class="knapp" @onclick="TilbakeAsync">‹ Tilbake til dagsagenda</button>
+        }
+        <button class="knapp dialoglukk" @onclick="LukkAsync">Lukk</button>
+    </div>
+    @if (_frist is { } frist)
+    {
+        <div class="dialoginnhold @Visningformat.FargeklasseForAar(frist.Budsjettaar)">
+            <p class="menyoverskrift">Fristdetaljer</p>
+            <h2 id="fristdialog-tittel" tabindex="-1">@frist.Tittel</h2>
+            <dl class="fristdetaljer">
+                <div><dt>Dato og tid</dt><dd>@Visningformat.FormatDato(frist)@if (!frist.ErTentativ && !frist.HarKlokkeslett) { <span> · Heldag</span> }</dd></div>
+                <div><dt>Kategori</dt><dd>@Visningformat.KategoriNavn(frist.Kategori)</dd></div>
+                <div><dt>Budsjettår</dt><dd><span class="aarsprikk" aria-hidden="true"></span>@frist.Budsjettaar</dd></div>
+            </dl>
+            @if (frist.ErTentativ)
+            {
+                <p><span class="merke merke-tentativ">Tentativ måned – dato ikke fastsatt</span></p>
+            }
+            <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
+                @if (frist.VenterEndring)
+                {
+                    <p><span class="merke merke-venter-endring">venter endring</span></p>
+                }
+                @if (frist.Synlighet.Count > 0)
+                {
+                    <p class="fristkort-grupper">Synlig for:
+                        @foreach (var gruppe in frist.Synlighet) { <span class="merke merke-gruppe">@gruppe</span> }
+                    </p>
+                }
+            </AuthorizeView>
+            @if (frist.KildeUrl is { } kildeUrl)
+            {
+                <section class="dialogkilde" aria-label="Kilderundskriv">
+                    <h3>Kilderundskriv</h3>
+                    <a href="@kildeUrl" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Les rundskrivet på regjeringen.no <span>(åpnes i ny fane)</span></a>
+                </section>
+            }
+            <section class="dialognotat" aria-label="Om fristen">
+                <h3>Om fristen</h3>
+                <p>@(string.IsNullOrWhiteSpace(frist.Notat) ? "Ingen merknader til fristen." : frist.Notat)</p>
+            </section>
+            <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
+                <div class="dialoghandlinger"><a class="knapp" href="@($"/admin/frist/{frist.Id}")">Rediger</a></div>
+            </AuthorizeView>
+            <AuthorizeView Policy="@Autorisasjon.ErBidragsyter">
+                <div class="dialoghandlinger"><a class="knapp" href="@($"/forslag/endre/{frist.Id}")">Foreslå endring</a></div>
+            </AuthorizeView>
+        </div>
+    }
+    else if (_agendadato is { } dato)
+    {
+        <div class="dialoginnhold">
+            <p class="menyoverskrift">Dagsagenda</p>
+            <h2 id="fristdialog-tittel" tabindex="-1">Frister @Kalendervisning.Dato(dato)</h2>
+            @if (_dagsfrister.Count == 0)
+            {
+                <p class="melding">Ingen frister denne dagen.</p>
+            }
+            else
+            {
+                <p class="dempet">@_dagsfrister.Count @(_dagsfrister.Count == 1 ? "frist" : "frister") denne dagen</p>
+                <div class="agenda-frister">
+                    @foreach (var dagsfrist in _dagsfrister)
+                    {
+                        <button class="agenda-frist @Visningformat.FargeklasseForAar(dagsfrist.Budsjettaar)" data-frist-id="@dagsfrist.Id"
+                                aria-label="@dagsfrist.Tittel" @onclick="() => VisFraAgendaAsync(dagsfrist)">
+                            <span>@(dagsfrist.Klokkeslett is { } tid ? $"Kl. {tid:HH:mm}" : "Heldag")</span>
+                            <strong>@dagsfrist.Tittel</strong>
+                            <span>@Visningformat.KategoriNavn(dagsfrist.Kategori) · Budsjettår @dagsfrist.Budsjettaar</span>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
+</dialog>
+
+@code {
+    private ElementReference _dialog;
+    private IJSObjectReference? _modul;
+    private DotNetObjectReference<Fristdialog>? _referanse;
+    private DateOnly? _agendadato;
+    private IReadOnlyList<FristDto> _dagsfrister = [];
+    private FristDto? _frist;
+    private bool _vis;
+    private bool _avsluttet;
+    private string? _fokusFrist;
+
+    public Task VisAgendaAsync(DateOnly dato, IReadOnlyList<FristDto> frister)
+    {
+        _agendadato = dato;
+        _dagsfrister = frister;
+        _frist = null;
+        _vis = true;
+        _fokusFrist = null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public Task VisFristAsync(FristDto frist)
+    {
+        _agendadato = null;
+        _frist = frist;
+        _vis = true;
+        _fokusFrist = null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task VisFraAgendaAsync(FristDto frist)
+    {
+        _frist = frist;
+        _vis = true;
+        _fokusFrist = null;
+        return Task.CompletedTask;
+    }
+
+    private Task TilbakeAsync()
+    {
+        _fokusFrist = _frist?.Id.ToString();
+        _frist = null;
+        _vis = true;
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task TilbakeFraTastaturAsync()
+    {
+        if (_frist is null || _agendadato is null) return Task.CompletedTask;
+        TilbakeAsync();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LukkAsync()
+    {
+        if (_modul is not null) await _modul.InvokeVoidAsync("lukk", _dialog);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_vis || _avsluttet) return;
+        _vis = false;
+        if (_modul is null)
+        {
+            var modul = await JS.InvokeAsync<IJSObjectReference>("import", "./kalenderdialog.js");
+            // Navigasjon eller en annen render kan ha fullført mens importen ventet.
+            if (_avsluttet || _modul is not null)
+            {
+                try { await modul.DisposeAsync(); }
+                catch (JSDisconnectedException) { }
+            }
+            else _modul = modul;
+        }
+        if (_avsluttet) return;
+        _referanse ??= DotNetObjectReference.Create(this);
+        await _modul!.InvokeVoidAsync("vis", _dialog, _fokusFrist, _frist is not null && _agendadato is not null, _referanse);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _avsluttet = true;
+        _referanse?.Dispose();
+        if (_modul is null) return;
+        try { await _modul.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+    }
+}

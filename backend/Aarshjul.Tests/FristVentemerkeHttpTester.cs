@@ -69,18 +69,24 @@ public sealed class FristVentemerkeHttpTester : IDisposable
     [InlineData("Administrator", true)]
     [InlineData("Leser", false)]
     [InlineData("Bidragsyter", false)]
-    public async Task Kalenderens_HTTP_viser_merket_bare_for_administrator(string rolle, bool serMerke)
+    public async Task Kalender_og_fristliste_bevarer_publisert_innhold_og_hemmelighold_i_HTTP(string rolle, bool erAdministrator)
     {
         using var klient = Klient(rolle, "FA");
-        var tekst = await klient.GetStringAsync("/kalender");
-        Assert.Contains("HTTP71 publisert FA", tekst);
-        Assert.Equal(serMerke, tekst.Contains("venter endring", StringComparison.Ordinal));
-        IngenForslagmetadata(tekst);
-        if (!serMerke)
+        foreach (var rute in new[] { "/aarshjul", "/kalender" })
         {
-            IngenSkjulteFrister(tekst);
-            Assert.DoesNotContain("HTTP71 eksplisitt POL", tekst);
-            Assert.DoesNotContain(_pol.ToString(), tekst);
+            var tekst = await klient.GetStringAsync(rute);
+            Assert.Contains("HTTP71 publisert FA", tekst);
+            // Kalenderens ventemerke åpnes nå i interaktive detaljer. Synligheten til
+            // selve merket prøves fortsatt for alle roller i VentemerkeTester; denne
+            // HTTP-grensen prøver begge leseflaters returnerte innhold og hemmelighold.
+            Assert.DoesNotContain("venter endring", tekst);
+            IngenForslagmetadata(tekst);
+            if (!erAdministrator)
+            {
+                IngenSkjulteFrister(tekst);
+                Assert.DoesNotContain("HTTP71 eksplisitt POL", tekst);
+                Assert.DoesNotContain(_pol.ToString(), tekst);
+            }
         }
     }
 

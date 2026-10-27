@@ -47,15 +47,21 @@ public sealed class VentemerkeTester
 
         await n.LoggInn("demo-admin");
         await n.Gaa("/kalender");
-        await Expect(Kalenderkort(n.Side, "VENT71 original").GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(1);
-        await Expect(Kalenderkort(n.Side, "VENT71 uten forslag").GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(0);
+        await KalenderTester.VelgMaaned(n, "2030-11");
+        await KalenderTester.AapneFrist(n, "VENT71 original");
+        await Expect(Detaljer(n.Side, "VENT71 original").GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(1);
+        await n.Side.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { Name = "Lukk", Exact = true }).ClickAsync();
+        await KalenderTester.AapneFrist(n, "VENT71 uten forslag");
+        await Expect(Detaljer(n.Side, "VENT71 uten forslag").GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(0);
         IngenForslagmetadata(await n.Side.ContentAsync(), forslagsIder);
 
         foreach (var persona in new[] { "demo-fag", "demo-fa" })
         {
             await n.LoggInn(persona);
             await n.Gaa("/kalender");
-            await Expect(Kalenderkort(n.Side, "VENT71 original")).ToBeVisibleAsync();
+            await KalenderTester.VelgMaaned(n, "2030-11");
+            await KalenderTester.AapneFrist(n, "VENT71 original");
+            await Expect(Detaljer(n.Side, "VENT71 original")).ToBeVisibleAsync();
             await Expect(n.Side.GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(0);
             var dom = await n.Side.ContentAsync();
             IngenForslagmetadata(dom, forslagsIder);
@@ -84,7 +90,9 @@ public sealed class VentemerkeTester
         await Expect(forste).ToHaveCountAsync(0);
         await n.Gaa("/kalender");
         await n.Side.ReloadAsync();
-        await Expect(Kalenderkort(n.Side, "VENT71 første forslag").GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(1);
+        await KalenderTester.VelgMaaned(n, "2030-11");
+        await KalenderTester.AapneFrist(n, "VENT71 første forslag");
+        await Expect(Detaljer(n.Side, "VENT71 første forslag").GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(1);
         Assert.Equal(synlighet, (await n.Frister()).Single(f => (string?)f!["id"] == id)!["synlighet"]!.ToJsonString());
 
         await n.Gaa("/admin/ko");
@@ -94,15 +102,19 @@ public sealed class VentemerkeTester
         await Expect(siste).ToHaveCountAsync(0);
         await n.Gaa("/kalender");
         await n.Side.ReloadAsync();
-        await Expect(Kalenderkort(n.Side, "VENT71 første forslag")).ToBeVisibleAsync();
-        await Expect(Kalenderkort(n.Side, "VENT71 første forslag").GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(0);
+        await KalenderTester.VelgMaaned(n, "2030-11");
+        await KalenderTester.AapneFrist(n, "VENT71 første forslag");
+        await Expect(Detaljer(n.Side, "VENT71 første forslag")).ToBeVisibleAsync();
+        await Expect(Detaljer(n.Side, "VENT71 første forslag").GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(0);
         var ferdig = (await n.Frister()).Single(f => (string?)f!["id"] == id)!;
         Assert.False((bool)ferdig["venterEndring"]!);
         Assert.Equal(synlighet, ferdig["synlighet"]!.ToJsonString());
 
         await n.LoggInn("demo-pol");
         await n.Gaa("/kalender");
-        await Expect(Kalenderkort(n.Side, "VENT71 aktivt valgt POL")).ToBeVisibleAsync();
+        await KalenderTester.VelgMaaned(n, "2030-11");
+        await KalenderTester.AapneFrist(n, "VENT71 aktivt valgt POL");
+        await Expect(Detaljer(n.Side, "VENT71 aktivt valgt POL")).ToBeVisibleAsync();
         var polDom = await n.Side.ContentAsync();
         foreach (var markor in new[] { "VENT71 første forslag", "VENT71 original", id, skjultId })
             Assert.DoesNotContain(markor, polDom, StringComparison.OrdinalIgnoreCase);
@@ -112,6 +124,9 @@ public sealed class VentemerkeTester
 
     private static ILocator Kalenderkort(IPage side, string tittel)
         => side.Locator(".fristkort").Filter(new() { Has = side.GetByText(tittel, new() { Exact = true }) });
+
+    private static ILocator Detaljer(IPage side, string tittel)
+        => side.GetByRole(AriaRole.Dialog, new() { Name = tittel, Exact = true });
 
     private static async Task SendEndring(Nettleser n, string id, string tittel)
     {

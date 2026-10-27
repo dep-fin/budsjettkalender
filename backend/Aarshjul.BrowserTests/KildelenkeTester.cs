@@ -45,8 +45,10 @@ public sealed class KildelenkeTester
         {
             await n.LoggInn(persona);
             await n.Gaa("/kalender");
-            var kort = n.Side.Locator(".fristkort").Filter(new() { HasText = "KILDE69 felles" });
-            var lenke = kort.GetByRole(AriaRole.Link, new() { Name = "Les kildedokument", Exact = true });
+            await KalenderTester.VelgMaaned(n, "2030-11");
+            await KalenderTester.AapneFrist(n, "KILDE69 felles");
+            var kort = n.Side.GetByRole(AriaRole.Dialog, new() { Name = "KILDE69 felles", Exact = true });
+            var lenke = kort.GetByRole(AriaRole.Link, new() { Name = "Les rundskrivet på regjeringen.no (åpnes i ny fane)", Exact = true });
             await Expect(lenke).ToBeVisibleAsync();
             await Expect(lenke).ToHaveAttributeAsync("href", Url);
             await Expect(lenke).ToHaveAttributeAsync("referrerpolicy", "no-referrer");
@@ -55,11 +57,16 @@ public sealed class KildelenkeTester
             Assert.Contains("noopener", rel);
             Assert.Contains("noreferrer", rel);
             Assert.Contains("&amp;tekst=", await lenke.EvaluateAsync<string>("el => el.outerHTML"));
+            Assert.True(await kort.EvaluateAsync<bool>("el => !!(el.querySelector('[aria-label=Kilderundskriv]').compareDocumentPosition(el.querySelector('[aria-label=\"Om fristen\"]')) & Node.DOCUMENT_POSITION_FOLLOWING)"));
+            await n.Side.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { Name = "Lukk", Exact = true }).ClickAsync();
             foreach (var utenKilde in new[] { "manuell", "generert", "lokal PDF", "avvist", "foreldreloes" })
             {
-                var utenKort = n.Side.Locator(".fristkort").Filter(new() { HasText = "KILDE69 " + utenKilde });
+                await KalenderTester.AapneFrist(n, "KILDE69 " + utenKilde);
+                var utenKort = n.Side.GetByRole(AriaRole.Dialog, new() { Name = "KILDE69 " + utenKilde, Exact = true });
                 await Expect(utenKort).ToBeVisibleAsync();
-                await Expect(utenKort.GetByRole(AriaRole.Link, new() { Name = "Les kildedokument", Exact = true })).ToHaveCountAsync(0);
+                await Expect(utenKort.GetByRole(AriaRole.Link, new() { NameRegex = new("Les rundskrivet") })).ToHaveCountAsync(0);
+                await Expect(utenKort.GetByRole(AriaRole.Region, new() { Name = "Kilderundskriv", Exact = true })).ToHaveCountAsync(0);
+                await n.Side.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { Name = "Lukk", Exact = true }).ClickAsync();
             }
             if (persona != "demo-admin")
             {
@@ -71,8 +78,10 @@ public sealed class KildelenkeTester
 
         await n.LoggInn("demo-pol");
         await n.Gaa("/kalender");
-        await Expect(n.Side.Locator(".fristkort").Filter(new() { HasText = "KILDE69 POL aktivt valgt" })
-            .GetByRole(AriaRole.Link, new() { Name = "Les kildedokument", Exact = true }))
+        await KalenderTester.VelgMaaned(n, "2030-11");
+        await KalenderTester.AapneFrist(n, "KILDE69 POL aktivt valgt");
+        await Expect(n.Side.GetByRole(AriaRole.Dialog, new() { Name = "KILDE69 POL aktivt valgt", Exact = true })
+            .GetByRole(AriaRole.Link, new() { Name = "Les rundskrivet på regjeringen.no (åpnes i ny fane)", Exact = true }))
             .ToHaveAttributeAsync("href", "https://regjeringen.no/KILDE69-pol-url");
         var polDom = await n.Side.ContentAsync();
         Assert.DoesNotContain("KILDE69 felles", polDom);

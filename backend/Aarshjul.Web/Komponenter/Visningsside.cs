@@ -22,6 +22,10 @@ public abstract class Visningsside : ComponentBase, IDisposable
     protected bool ErAdministrator { get; private set; }
     protected bool Lastet { get; private set; }
     protected string? Lastefeil { get; private set; }
+    private int _lasting;
+    private bool _avsluttet;
+
+    protected virtual bool InkluderHistorikkForAarsvalg => Tilstand.InkluderHistorikk;
 
     /// <summary>Henter fristene for denne visningen, gitt brukerens synlighetskontekst.</summary>
     protected abstract Task<IReadOnlyList<FristDto>> HentAsync(ISynlighetskontekst ctx);
@@ -36,17 +40,24 @@ public abstract class Visningsside : ComponentBase, IDisposable
 
     protected async Task LastInnAsync()
     {
+        var lasting = ++_lasting;
+        Lastet = false;
+        Frister = [];
         try
         {
             var ctx = await Kontekstkilde.HentAsync();
-            ErAdministrator = ctx.SerAlt;
-            Frister = await HentAsync(ctx);
+            var frister = await HentAsync(ctx);
             // Tilgjengelige år hentes uavhengig av årsvalget, så filteret ikke kollapser.
-            TilgjengeligeAar = await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, Tilstand.InkluderHistorikk);
+            var aar = await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, InkluderHistorikkForAarsvalg);
+            if (_avsluttet || lasting != _lasting) return;
+            ErAdministrator = ctx.SerAlt;
+            Frister = frister;
+            TilgjengeligeAar = aar;
             Lastefeil = null;
         }
         catch (Exception)
         {
+            if (_avsluttet || lasting != _lasting) return;
             Frister = [];
             Lastefeil = "Kunne ikke laste frister akkurat nå. Prøv igjen.";
         }
@@ -54,5 +65,9 @@ public abstract class Visningsside : ComponentBase, IDisposable
         StateHasChanged();
     }
 
-    public void Dispose() => Tilstand.Endret -= VedEndret;
+    public void Dispose()
+    {
+        _avsluttet = true;
+        Tilstand.Endret -= VedEndret;
+    }
 }
