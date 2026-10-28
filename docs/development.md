@@ -26,11 +26,12 @@ EF-migrasjonen FellesFasemal. Migrate/Startdata overskriver ikke en redigert fas
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 88 scenarioer starter Kestrel i Development
-med Demo=true, tilfeldig loopback-port og ny SQLite-fil. 18 ytterligere scenarioer bruker den
+eksisterende app eller database: 112 scenarioer starter Kestrel i Development
+med Demo=true, tilfeldig loopback-port og ny SQLite-fil. 28 ytterligere scenarioer bruker den
 eksisterende HTTP-testverten i Testing med ekte Kestrel, SQLite i minnet og testautentisering.
-Der styres fullføringen av et gruppeoppslag og malens laste-/preview-/lagringskall for å
-prøve initialisering og rask navigasjon i en interaktiv Blazor-krets. Tjenestenes beregning,
+Der styres fullføringen av gruppeoppslag, malens laste-/preview-/lagringskall og
+databaseporten ved generering/godkjenning/avvisning. Dette prøver initialisering, rask navigasjon
+og ventetilstand i en interaktiv Blazor-krets. Tjenestenes beregning,
 lagring og generering er reelle. Forsinkelsene finnes bare i testverten. Ingen eksterne tjenester brukes.
 Dialogregresjonen holder et JS-visningskall igjen mens den faktiske DOM-en er synlig,
 og prøver Escape, retur og fokus for leser og begge bidragsytergrupper uten tidsbasert søvn.
@@ -63,7 +64,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 106 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 144 beståtte scenarioer uten hopp.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -74,7 +75,7 @@ og [UX03-prøvene](acceptance/2026-10-27-atelier-ux03.md), samt
 [UX06-prøvene](acceptance/2026-10-27-atelier-ux06.md) og
 [UX07-prøvene](acceptance/2026-10-27-atelier-ux07.md), [UX08-prøvene](acceptance/2026-10-27-atelier-ux08.md)
 og [UX09-prøvene](acceptance/2026-10-27-atelier-ux09.md), samt
-[UX10-prøvene](acceptance/2026-10-27-atelier-ux10.md) for faktisk prøvd scope og eksterne grenser.
+[UX10-prøvene](acceptance/2026-10-27-atelier-ux10.md) og [UX11-prøvene](acceptance/2026-10-27-atelier-ux11.md) for faktisk prøvd scope og eksterne grenser.
 
 ## Obligatorisk SQL Server-kontroll i CI
 
@@ -92,7 +93,13 @@ innsendingen forblir åpen, uten feil publisering eller ekstra varsel. En separa
 oppgraderer produksjonsskjemaet etter Internkalender med et eksisterende forslag og
 bekrefter at innholdet bevares og kan behandles. Med UX08 kjører prosjektet også 14 delte
 fasemaltilfeller og én reell oppgraderingstest fra siste tidligere migrasjon. SQL-prosjektet
-har dermed 37 testtilfeller.
+har dermed 46 testtilfeller, inklusive ni delte genereringstilfeller fra UX11.
+De nye tilfellene bruker faktisk lagret mal ved sideeffektfri prøve og generering,
+bevarer andre års og behandlede forslag, prøver helt ugyldig og tom erstatning,
+og fremtvinger feil etter observerte DELETE/INSERT eller bare DELETE.
+En ny operasjon på samme tjeneste lykkes etter at feilen er fjernet. Generert
+månedsgodkjenning prøver aktivt POL-valg, serveravvisning av ugyldige grupper,
+én publisert identitet gjennom leseporten og avvisning av en slettet gammel forslag-ID.
 
 Prosjektet ligger bevisst utenfor `backend/Aarshjul.slnx`. De ordinære lokale kommandoene
 krever derfor verken SQL Server eller Docker. SQL-testene krever en disponibel testinstans
@@ -115,7 +122,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 37 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 46 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

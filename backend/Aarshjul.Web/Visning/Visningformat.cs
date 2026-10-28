@@ -15,21 +15,26 @@ public static class Visningformat
     /// <summary>Viser dagspresise frister som dato, tentative som måned (evt. primo/medio/ultimo) — aldri en falsk dag.</summary>
     public static string FormatDato(FristDto f)
     {
-        var maaned = Maaneder[f.Dato.Month - 1];
-        if (f.Datopresisjon == Datopresisjon.Dag)
+        return FormatDato(f.Dato, f.Datopresisjon, f.Datokvalifikator, f.Klokkeslett);
+    }
+
+    public static string FormatDato(DateOnly dato, Datopresisjon presisjon, Datokvalifikator? datokvalifikator = null, TimeOnly? klokkeslett = null)
+    {
+        var maaned = Maaneder[dato.Month - 1];
+        if (presisjon == Datopresisjon.Dag)
         {
-            var klokke = f.Klokkeslett is { } kl ? $" kl. {kl:HH\\:mm}" : "";
-            return $"{f.Dato.Day}. {maaned} {f.Dato.Year}{klokke}";
+            var klokke = klokkeslett is { } kl ? $" kl. {kl:HH\\:mm}" : "";
+            return $"{dato.Day}. {maaned} {dato.Year}{klokke}";
         }
 
-        var kvalifikator = f.Datokvalifikator switch
+        var kvalifikator = datokvalifikator switch
         {
             Datokvalifikator.Primo => "primo ",
             Datokvalifikator.Medio => "medio ",
             Datokvalifikator.Ultimo => "ultimo ",
             _ => ""
         };
-        return $"{kvalifikator}{maaned} {f.Dato.Year}";
+        return $"{kvalifikator}{maaned} {dato.Year}";
     }
 
     /// <summary>CSS-klasse for fargekoding på budsjettår, slik at overlappende løp skilles (kravdok. 7).</summary>

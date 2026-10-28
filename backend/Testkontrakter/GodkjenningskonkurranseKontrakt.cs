@@ -19,10 +19,8 @@ using Xunit;
 namespace Aarshjul.Testkontrakter;
 
 /// <summary>Samme publiseringskontrakt kjøres mot SQLite lokalt og SQL Server i CI.</summary>
-public abstract class GodkjenningskonkurranseKontrakt
+public abstract class GodkjenningskonkurranseKontrakt : Genereringskontrakt
 {
-    protected abstract Task<Godkjenningsdatabase> OpprettDatabaseAsync();
-
     [Theory]
     [InlineData(false, false, false)]
     [InlineData(true, false, false)]

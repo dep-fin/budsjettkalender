@@ -48,7 +48,7 @@ else
     [
         Fristomraade,
         new("Årsmal", "/admin/mal",
-            [new("Eksisterende gjentaksregler", "/admin/mal"), new("Nye gjentaksregler", "/admin/mal/ny")],
+            [new("Eksisterende gjentaksregler", "/admin/mal"), new("Nye gjentaksregler", "/admin/mal/ny"), new("Prøv malen", "/admin/mal/proev")],
             Stier: [], Stiprefiks: "admin/mal"),
         new("Grupper og innsyn", "/admin/grupper",
             [new("Grupper", "/admin/grupper"), new("Innsyn", "/admin/innsyn")],
@@ -75,7 +75,7 @@ else
         "/admin/frister" => Sti == "admin/frister" || (Sti.StartsWith("admin/frist/", StringComparison.Ordinal)
             && Sti != "admin/frist/ny" && !Sti.StartsWith("admin/frist/juster/", StringComparison.Ordinal)),
         "/admin/ko" => Sti == "admin/ko" || Sti.StartsWith("admin/frist/juster/", StringComparison.Ordinal),
-        "/admin/mal" => Sti.StartsWith("admin/mal", StringComparison.Ordinal) && Sti != "admin/mal/ny",
+        "/admin/mal" => Sti.StartsWith("admin/mal", StringComparison.Ordinal) && Sti is not "admin/mal/ny" and not "admin/mal/proev",
         "/internkalender" => Sti == "internkalender" || Sti.StartsWith("internkalender/runde/", StringComparison.Ordinal)
             || Sti.StartsWith("internkalender/gjoeremaal/", StringComparison.Ordinal),
         "/internkalender/regler" => Sti.StartsWith("internkalender/regler", StringComparison.Ordinal),

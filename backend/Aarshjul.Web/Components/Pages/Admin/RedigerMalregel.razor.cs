@@ -19,6 +19,8 @@ public partial class RedigerMalregel : IAsyncDisposable
     [Inject] private Mallistekontekst Listekontekst { get; set; } = default!;
     [Parameter] public Guid? Id { get; set; }
     [SupplyParameterFromQuery(Name = "kopierFra")] public Guid? KopierFra { get; set; }
+    [SupplyParameterFromQuery(Name = "fra")] public string? Fra { get; set; }
+    private string Retursti => Fra == "proev" ? "/admin/mal/proev" : "/admin/mal";
 
     private static readonly (Valg Type, string Navn, string Hjelp)[] Valgene =
     [
@@ -47,7 +49,7 @@ public partial class RedigerMalregel : IAsyncDisposable
 
     protected override async Task OnParametersSetAsync()
     {
-        var noekkel = $"{Id}/{KopierFra}";
+        var noekkel = $"{Id}/{KopierFra}/{Fra}";
         if (_lastenoekkel == noekkel) return;
         _lastenoekkel = noekkel;
         await LastAsync();
@@ -190,7 +192,7 @@ public partial class RedigerMalregel : IAsyncDisposable
             if (!ErGjeldende(versjon)) return;
             Listekontekst.LagretRegel = lagretId;
             _tillatNavigasjon = true;
-            Nav.NavigateTo("/admin/mal");
+            Nav.NavigateTo(Retursti);
         }
         catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
         catch (Valideringsfeil e) { if (ErGjeldende(versjon)) { _feilmelding = e.Message; _fokuserFeil = true; } }

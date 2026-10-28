@@ -380,6 +380,8 @@ public sealed class BudsjettaarTester
         {
             await knapp.ClickAsync();
             await Expect(knapp).ToHaveAttributeAsync("aria-expanded", "true");
+            var id = await knapp.GetAttributeAsync("aria-controls");
+            await Expect(flate.Locator($"[id='{id}'] h3")).ToBeFocusedAsync();
         }
     }
 

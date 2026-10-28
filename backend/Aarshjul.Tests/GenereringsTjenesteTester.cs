@@ -307,5 +307,98 @@ public class GenereringsTjenesteTester : IDisposable
         }));
     }
 
+    [Fact]
+    public async Task Proeve_og_generering_leser_nylig_lagret_redigering_med_samme_regelidentitet()
+    {
+        IMaltjeneste mal = new Maltjeneste(_t.Factory);
+        var id = await mal.OpprettAsync(new()
+        {
+            Loep = "redigert", Tittel = "Før redigering", Regeltype = Regeltype.FastDato,
+            Regelparametre = """{"maaned":3,"dag":20}"""
+        });
+        IGenereringstjeneste tjeneste = Tjeneste();
+        Assert.Equal(new DateOnly(2026, 3, 20), Assert.Single((await tjeneste.ProevAsync(new(2026))).Beregninger).Dato);
+        await mal.OppdaterAsync(id, new()
+        {
+            Loep = "redigert", Tittel = "Nyeste lagrede regel", Kategori = Kategori.Regnskap,
+            Regeltype = Regeltype.RelativUkedag,
+            Regelparametre = """{"maaned":7,"fra_dag":20,"ukedag":"mandag","aar_forskyvning":1}"""
+        });
+
+        var proeve = await tjeneste.ProevAsync(new(2026));
+        Assert.Equal(id, Assert.Single(proeve.Regler).Id);
+        Assert.Equal("Nyeste lagrede regel", proeve.Regler[0].Tittel);
+        Assert.Equal(new DateOnly(2027, 7, 26), Assert.Single(proeve.Beregninger).Dato);
+        await tjeneste.GenererAsync(new(2026));
+        var forslag = Assert.Single(await tjeneste.HentGenererteAsync(2026));
+        Assert.Equal("Nyeste lagrede regel", forslag.Tittel);
+        Assert.Equal(Kategori.Regnskap, forslag.Kategori);
+        Assert.Equal(new DateOnly(2027, 7, 26), forslag.Dato);
+        Assert.Equal(id, Assert.Single(await mal.HentAlleAsync()).Id);
+    }
+
+    [Fact]
+    public async Task Proeve_overstyrer_hele_kjeder_og_mellomledd_og_fjerning_gjenoppretter_feil_uten_aa_endre_malen()
+    {
+        await LeggRegel("C", """{"anker_loep":"B","offset_dager":4}""", type: Regeltype.RelativTilMilepael);
+        await LeggRegel("B", """{"anker_loep":"A","offset_dager":3}""", type: Regeltype.RelativTilMilepael);
+        await LeggRegel("A", """{"anker_loep":"manuelt","offset_dager":2}""", type: Regeltype.RelativTilMilepael);
+        await LeggRegel("D", """{"maaned":4,"dag":20}""");
+        IGenereringstjeneste tjeneste = Tjeneste();
+        var uten = await tjeneste.ProevAsync(new(2026));
+        Assert.Equal(3, uten.Beregninger.Count(r => r.ErFeil));
+        var idFoer = uten.Regler.Select(r => r.Id).ToArray();
+        var proeve = await tjeneste.ProevAsync(new(2026,
+            new Dictionary<string, DateOnly>(StringComparer.OrdinalIgnoreCase) { ["manuelt"] = new(2026, 3, 20) }));
+        Assert.Equal(new DateOnly(2026, 3, 29), DatoFor(proeve, "C"));
+        Assert.Equal(new DateOnly(2026, 3, 25), DatoFor(proeve, "B"));
+        Assert.Equal(new DateOnly(2026, 3, 22), DatoFor(proeve, "A"));
+        var mellomledd = await tjeneste.ProevAsync(new(2026,
+            new Dictionary<string, DateOnly>(StringComparer.OrdinalIgnoreCase)
+            { ["manuelt"] = new(2026, 3, 20), ["b"] = new(2026, 5, 10) }));
+        Assert.Equal(new DateOnly(2026, 5, 14), DatoFor(mellomledd, "C"));
+        Assert.Equal(new DateOnly(2026, 5, 10), DatoFor(mellomledd, "B"));
+        Assert.Equal(new DateOnly(2026, 3, 22), DatoFor(mellomledd, "A"));
+        Assert.Equal(new DateOnly(2026, 4, 20), DatoFor(mellomledd, "D"));
+        var fjernet = await tjeneste.ProevAsync(new(2026));
+        Assert.Equal(uten.Beregninger, fjernet.Beregninger);
+        Assert.Equal(idFoer, fjernet.Regler.Select(r => r.Id));
+        Assert.Empty(await tjeneste.HentGenererteAsync(2026));
+
+        static DateOnly? DatoFor(MalForhaandsvisning proeve, string loep)
+            => proeve.Beregninger[proeve.Regler.ToList().FindIndex(r => r.Loep == loep)].Dato;
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(9999)]
+    public async Task Proeve_stoetter_hele_budsjettaarsomraadet(int aar)
+    {
+        await LeggRegel("gyldig", """{"maaned":3,"dag":20}""");
+        await LeggRegel("overloep", """{"maaned":3,"dag":20,"aar_forskyvning":2147483647}""");
+
+        var proeve = await Tjeneste().ProevAsync(new(aar));
+
+        Assert.Equal(aar, proeve.Budsjettaar);
+        Assert.Equal(2, proeve.Regler.Count);
+        Assert.Single(proeve.Beregninger, r => r.ErFeil);
+        Assert.Equal(aar, Assert.Single(proeve.Beregninger, r => !r.ErFeil).Dato!.Value.Year);
+        Assert.Empty(await Tjeneste().HentAarMedForslagAsync());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(10000)]
+    public async Task Proeve_avviser_ugyldig_budsjettaar_uten_forslag(int aar)
+    {
+        await LeggRegel("gyldig", """{"maaned":3,"dag":20}""");
+        IGenereringstjeneste tjeneste = Tjeneste();
+
+        var feil = await Assert.ThrowsAsync<Aarshjul.Application.Valideringsfeil>(() => tjeneste.ProevAsync(new(aar)));
+
+        Assert.Equal("Budsjettåret må være mellom 1 og 9999.", feil.Message);
+        Assert.Empty(await tjeneste.HentAarMedForslagAsync());
+    }
+
     public void Dispose() => _t.Dispose();
 }

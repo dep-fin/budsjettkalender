@@ -1,0 +1,51 @@
+@using System.Globalization
+@using Aarshjul.Application.Generering
+
+<section class="manuelle-ankre" aria-label="Midlertidige ankerdatoer">
+    <h2>Manuelle ankre</h2>
+    <p>Sett en midlertidig dato for et løp i budsjettår @Aar. Datoen overstyrer beregningen og oppdaterer alle avhengige regler. Årsmalen endres ikke.</p>
+    <p class="hint">Valgår følger datoens kalenderår og regelens lagrede valgårsvalg. En manuell dato er en konkret dag. Fjern datoen for å bruke regelen igjen.</p>
+    @if (Kandidater.Count == 0) { <p>Ingen navngitte løp i malen.</p> }
+    <div class="ankerfelter">
+        @foreach (var kandidat in Kandidater.Select((loep, indeks) => (loep, indeks)))
+        {
+            var id = $"anker-{_id}-{kandidat.indeks}";
+            <div class="ankerfelt" @key="kandidat.loep">
+                <label for="@id">Midlertidig dato for @kandidat.loep</label>
+                <small>@Navn(kandidat.loep)</small>
+                <div><input id="@id" type="date" value="@Verdi(kandidat.loep)" disabled="@Deaktivert" @onchange="e => Endre(kandidat.loep, e)" /><button class="knapp-lenke" type="button" disabled="@(Deaktivert || !Datoer.ContainsKey(kandidat.loep))" @onclick="() => DatoEndret.InvokeAsync((kandidat.loep, (DateOnly?)null))" aria-label="Fjern dato for @kandidat.loep">Fjern</button></div>
+            </div>
+        }
+    </div>
+    <button class="knapp-lenke" type="button" disabled="@(Deaktivert || Datoer.Count == 0)" @onclick="FjernAlle">Fjern alle datoer for @Aar</button>
+    <p class="ankersammendrag" role="status">@Sammendrag</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public int Aar { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<MalRegelDto> Regler { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyDictionary<string, DateOnly> Datoer { get; set; } = new Dictionary<string, DateOnly>();
+    [Parameter] public bool Deaktivert { get; set; }
+    [Parameter] public EventCallback<(string Loep, DateOnly? Dato)> DatoEndret { get; set; }
+    [Parameter] public EventCallback FjernAlle { get; set; }
+    private readonly string _id = Guid.NewGuid().ToString("N");
+    private IReadOnlyList<string> Kandidater => Regler.Select(r => r.Loep).Concat(Ankerloep())
+        .Concat(Datoer.Keys).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList();
+    private IEnumerable<string> Ankerloep()
+    {
+        foreach (var regel in Regler.Where(r => r.Regeltype == Regeltype.RelativTilMilepael))
+        {
+            string? loep = null;
+            try { loep = Regelparser.RelativTilMilepael(regel.Regelparametre).AnkerLoep; }
+            catch (FormatException) { }
+            if (loep is not null) yield return loep;
+        }
+    }
+    private string Navn(string loep) => Regler.FirstOrDefault(r => string.Equals(r.Loep, loep, StringComparison.OrdinalIgnoreCase)) is { } regel
+        ? Mallistevisning.Navn(regel) : "Manuelt navngitt anker uten egen regel";
+    private string Verdi(string loep) => Datoer.TryGetValue(loep, out var dato) ? dato.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "";
+    private string Sammendrag => Datoer.Count == 0 ? $"Ingen midlertidige datoer for {Aar}."
+        : $"Midlertidige datoer for {Aar}: " + string.Join(" · ", Datoer.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase).Select(x => $"{x.Key}: {x.Value:dd.MM.yyyy}"));
+    private Task Endre(string loep, ChangeEventArgs e) => DatoEndret.InvokeAsync((loep,
+        DateOnly.TryParseExact(e.Value?.ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dato) ? dato : null));
+}

@@ -1,0 +1,31 @@
+.proevetopp, .resultattopp { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.proevetopp h1 { margin-bottom: 0; }
+.proevemerke { background: var(--myk); color: var(--primaer); border-radius: 5px; padding: 6px 10px; font-size: 12px; font-weight: 600; }
+.proevevalg { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 24px; margin: 24px 0; background: var(--papir); border: 1px solid var(--kant); border-radius: 12px; }
+.proevevalg label, .proevevalg small { display: block; }
+.proevevalg label { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.proevevalg input { padding: 9px 11px; min-height: 40px; width: 150px; border: 1px solid var(--kant); border-radius: 6px; color: var(--tekst); background: var(--papir); font: inherit; }
+.proevevalg small, .proevevalg p { font-size: 12px; color: var(--dempet); }
+.proevevalg p { flex-basis: 100%; margin: 0; }
+.proevevalg input[aria-invalid=true] { border-color: #9b3232; }
+.proevevalg .feltfeil, .beregningsfeil { color: #9b3232; }
+.proeveresultater { border: 1px solid var(--kant); border-radius: 12px; background: var(--papir); overflow: hidden; }
+.resultattopp { padding: 20px 24px; border-bottom: 1px solid var(--kant); }
+.resultattopp h2 { font-size: 18px; margin: 0; }
+.resultattopp p { font-size: 12px; color: var(--dempet); margin: 0; }
+.proeverad { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto; align-items: center; gap: 24px; padding: 22px 24px; border-bottom: 1px solid var(--kant); overflow-wrap: anywhere; }
+.proeverad:last-child { border-bottom: 0; }
+.proeverad h3 { margin: 7px 0; font-size: 16px; }
+.proeverad p { font-size: 13px; margin: 6px 0; }
+.proeverad small { display: block; font-size: 11px; color: var(--dempet); }
+.proevedato time { font-weight: 600; font-size: 14px; }
+.proevemerker { display: flex; gap: 12px; color: var(--primaer); font-size: 11px; }
+.genereringsovergang { margin: 24px 0; padding: 24px; border-radius: 12px; background: var(--myk); display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+.genereringsovergang h2 { margin: 0 0 8px; font-size: 18px; }
+.genereringsovergang p { margin: 0; font-size: 13px; }
+.genereringsovergang button { flex-shrink: 0; max-width: 100%; white-space: normal; }
+.tomproeve { padding: 28px; }
+.tomproeve h3 { margin-top: 0; }
+.proevestatus { padding: 16px; background: var(--myk); border-left: 3px solid var(--primaer); }
+@media (max-width: 800px) { .proeverad { grid-template-columns: minmax(0, 1fr); gap: 14px; } .proeverad .knapp { justify-self: start; } .genereringsovergang { flex-direction: column; align-items: flex-start; } }
+@media (max-width: 600px) { .proevevalg, .resultattopp, .proeverad, .genereringsovergang { padding: 18px; } .proevevalg > div, .proevevalg input { width: 100%; } }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Aarshjul.Application;
 using Aarshjul.Application.Generering;
 using Aarshjul.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -14,13 +15,25 @@ namespace Aarshjul.Infrastructure.Generering;
 /// </summary>
 public class GenereringsTjeneste(IDbContextFactory<AppDbContext> dbFactory, ISynlighetsregel synlighetsregel) : IGenereringstjeneste
 {
+    public async Task<MalForhaandsvisning> ProevAsync(GenereringsForespoersel forespoersel, CancellationToken ct = default)
+    {
+        if (forespoersel.Maalbudsjettaar is < 1 or > 9999)
+            throw new Valideringsfeil("Budsjettåret må være mellom 1 og 9999.");
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var beregnet = await BeregnAsync(db, forespoersel, ct);
+        return new MalForhaandsvisning(forespoersel.Maalbudsjettaar,
+            beregnet.Select(r => new MalRegelDto(r.Regel.Id, r.Regel.Loep, r.Regel.Tittel,
+                r.Regel.Kategori, r.Regel.Regeltype, r.Regel.Regelparametre, r.Regel.Valgaarssensitiv)).ToList(),
+            beregnet.Select(r => new MalRegelForhaandsvisning(forespoersel.Maalbudsjettaar,
+                r.Dato, r.Presisjon, r.Tentativ, r.Valgaarsflagg, r.Feil)).ToList());
+    }
+
     public async Task<GenereringsResultat> GenererAsync(GenereringsForespoersel forespoersel, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var maalaar = forespoersel.Maalbudsjettaar;
-        var regler = await db.Gjentaksregler.AsNoTracking().ToListAsync(ct);
-
-        var beregnet = Genereringsberegning.Beregn(maalaar, regler, forespoersel.ManuelleAnkre);
+        var beregnet = await BeregnAsync(db, forespoersel, ct);
 
         // Fjorårets godkjente frister per løp, for videreføring av synlighet.
         var fjoraar = await db.Frister
@@ -97,9 +110,9 @@ public class GenereringsTjeneste(IDbContextFactory<AppDbContext> dbFactory, ISyn
             .AsNoTracking()
             .Where(f => f.Budsjettaar == maalbudsjettaar - 1 && f.Status == FristStatus.Godkjent && f.Loep != null)
             .ToListAsync(ct);
-        var fjoraarDato = fjoraar
+        var fjoraarPerLoep = fjoraar
             .GroupBy(f => f.Loep!, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First().Dato, StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var valgaarssensitive = await db.Gjentaksregler
             .AsNoTracking()
@@ -109,21 +122,28 @@ public class GenereringsTjeneste(IDbContextFactory<AppDbContext> dbFactory, ISyn
         var valgaarssensitivSet = valgaarssensitive.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return forslag
-            .Select(f => new GenerertForslagDto
+            .Select(f =>
             {
-                ForslagId = f.Id,
-                Tittel = f.Tittel,
-                Loep = f.Loep,
-                Kategori = f.Kategori,
-                Dato = f.Dato,
-                Datopresisjon = f.Datopresisjon,
-                Tentativ = f.Datopresisjon != Datopresisjon.Dag,
-                Valgaarsflagg = f.Loep is not null
-                                && valgaarssensitivSet.Contains(f.Loep)
-                                && f.Dato is { } d
-                                && Valgaar.Type(d.Year) != Valgtype.Ingen,
-                ForeslaattSynlighet = LesSynlighet(f.ForeslaattSynlighet),
-                FjoraarDato = f.Loep is not null && fjoraarDato.TryGetValue(f.Loep, out var fd) ? fd : null
+                var fjor = f.Loep is not null && fjoraarPerLoep.TryGetValue(f.Loep, out var match) ? match : null;
+                return new GenerertForslagDto
+                {
+                    ForslagId = f.Id,
+                    Tittel = f.Tittel,
+                    Loep = f.Loep,
+                    Kategori = f.Kategori,
+                    Dato = f.Dato,
+                    Datopresisjon = f.Datopresisjon,
+                    Datokvalifikator = f.Datokvalifikator,
+                    Tentativ = f.Datopresisjon != Datopresisjon.Dag,
+                    Valgaarsflagg = f.Loep is not null
+                                    && valgaarssensitivSet.Contains(f.Loep)
+                                    && f.Dato is { } d
+                                    && Valgaar.Type(d.Year) != Valgtype.Ingen,
+                    ForeslaattSynlighet = LesSynlighet(f.ForeslaattSynlighet),
+                    FjoraarDato = fjor?.Dato,
+                    FjoraarDatopresisjon = fjor?.Datopresisjon,
+                    FjoraarDatokvalifikator = fjor?.Datokvalifikator
+                };
             })
             .OrderBy(d => d.Dato ?? DateOnly.MaxValue)
             .ThenBy(d => d.Tittel)
@@ -159,6 +179,15 @@ public class GenereringsTjeneste(IDbContextFactory<AppDbContext> dbFactory, ISyn
 
     private static string Visningsnavn(Gjentaksregel regel)
         => string.IsNullOrWhiteSpace(regel.Tittel) ? regel.Loep : regel.Tittel;
+
+    private static async Task<IReadOnlyList<BeregnetRegel>> BeregnAsync(
+        AppDbContext db, GenereringsForespoersel forespoersel, CancellationToken ct)
+    {
+        // Første regel per løp er ankerrepresentant. Visningssortering må aldri endre dette.
+        var regler = await db.Gjentaksregler.AsNoTracking().ToListAsync(ct);
+        ct.ThrowIfCancellationRequested();
+        return Genereringsberegning.Beregn(forespoersel.Maalbudsjettaar, regler, forespoersel.ManuelleAnkre);
+    }
 
     private static IReadOnlyList<string> LesSynlighet(string json)
     {
