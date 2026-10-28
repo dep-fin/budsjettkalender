@@ -10,6 +10,33 @@ namespace Aarshjul.BrowserTests;
 public sealed class DokumentTester
 {
     [Fact]
+    public Task Dokumentkvittering_aapner_arbeidsaarets_eksakte_kildeutvalg_uten_publisering() => Nettleser.Kjor(async n =>
+    {
+        await n.LoggInn("demo-admin");
+        await n.Gaa("/admin/frister?aar=2031");
+        await n.Side.GetByRole(AriaRole.Link, new() { Name = "Dokumenter", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Arbeidsår", Exact = true })).ToHaveValueAsync("2031");
+        const string navn = "UX13 rammer + utvalg & test.pdf";
+        const string tittel = "UX13 rammefordeling 20. november 2030";
+        await n.Side.GetByLabel("Dokument (PDF)").SetInputFilesAsync(new FilePayload
+        {
+            Name = navn, MimeType = "application/pdf", Buffer = Pdf(tittel)
+        });
+        Assert.DoesNotContain(await n.Frister(), f => ((string?)f!["tittel"])?.StartsWith("UX13 ") == true);
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Les inn dokument", Exact = true }).ClickAsync();
+        await Expect(n.Side.Locator("main")).ToContainTextAsync("laget 1 forslag");
+        var lenke = n.Side.GetByRole(AriaRole.Link, new() { Name = "Kontroller forslagene", Exact = true });
+        await Expect(lenke).ToHaveAttributeAsync("href", "/admin/ko?aar=2031&kilde=" + Uri.EscapeDataString("Opplastet: " + navn));
+        await lenke.ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Kilde eller innsender", Exact = true })).ToHaveValueAsync("Opplastet: " + navn);
+        await Expect(n.Side.GetByRole(AriaRole.Article)).ToHaveCountAsync(1);
+        await Expect(n.Side.GetByRole(AriaRole.Article)).ToContainTextAsync(tittel);
+        await Expect(n.Side.GetByRole(AriaRole.Article)).ToContainTextAsync("2031");
+        Assert.DoesNotContain(await n.Frister(), f => ((string?)f!["tittel"])?.StartsWith("UX13 ") == true);
+        n.BekreftIngenKretsfeil();
+    });
+
+    [Fact]
     public Task PDF_opplasting_validerer_filtype_lager_uttrekksbevis_og_publiserer_ikke() => Nettleser.Kjor(async n =>
     {
         await n.LoggInn("demo-admin");
@@ -146,7 +173,7 @@ public sealed class DokumentTester
     private static FilePayload JsonFil(string navn, string json)
         => new() { Name = navn, MimeType = "application/json", Buffer = Encoding.UTF8.GetBytes(json) };
 
-    private static byte[] Pdf(string tekst)
+    internal static byte[] Pdf(string tekst)
     {
         var innhold = $"BT /F1 12 Tf 40 750 Td ({tekst}) Tj ET\n";
         var objekter = new[] { "<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",

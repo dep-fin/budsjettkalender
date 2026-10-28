@@ -111,8 +111,9 @@ etterkontrollert uten åpne funn. 731 ordinære og 144 Edge/Kestrel-scenarioer p
 [CI 40618906003](https://github.com/depmartin/Budsjettkalender/actions/runs/40618906003)
 passerte alle tre porter, inklusive 46 ekte SQL Server-prøver og 144 Chromium-scenarioer.
 [UX11-akseptansen](acceptance/2026-10-27-atelier-ux11.md) bevarer detaljene.
-Atelier UX12 ([#87](https://github.com/depmartin/Budsjettkalender/issues/87)) har en lokal
-kandidat med Overfør mal under Årsmal og kontekstuell inngang fra gamle `/admin/data`.
+Atelier UX12 ([#87](https://github.com/depmartin/Budsjettkalender/issues/87)) er levert i
+[PR #107](https://github.com/depmartin/Budsjettkalender/pull/107), merget som
+`092b22b5f5bea2a5920e731207635c26cabc76b0`, med Overfør mal under Årsmal og kontekstuell inngang fra gamle `/admin/data`.
 Hele versjon-1-malen lastes ned uavhengig av listefiltre. Filvalg viser gyldige/utelatte
 regler og erstatt-alt-konsekvens før eksplisitt native bekreftelse; null gyldige og tom
 liste krever egen tømmingsbekreftelse. Eldre titler/parametre, alle eksportfelter og
@@ -127,7 +128,24 @@ Samlet Standards-review og separat sikkerhetsaudit hadde ingen funn. Spec-review
 ene P3 om en foreldet navigasjonsventestatus er rettet med reell rød/grønn-regresjon
 etter både suksess og lagringsfeil/nytt forsøk. Fil/preview, kvittering/feil og alle
 ventelåser består. Seks nye desktop-/mobilbilder er inspisert uten nye visuelle funn.
-[UX12-akseptansen](acceptance/2026-10-28-atelier-ux12.md) beskriver bevis og gjenstående porter.
+[CI 40626361976](https://github.com/depmartin/Budsjettkalender/actions/runs/40626361976)
+passerte ordinære tester, alle 46 ekte SQL Server-prøver og 172 Chromium-scenarioer.
+[UX12-akseptansen](acceptance/2026-10-28-atelier-ux12.md) beskriver de leverte bevisene.
+Atelier UX13 ([#88](https://github.com/depmartin/Budsjettkalender/issues/88)) har en lokal
+kandidat med dokumentinnlesing under arbeidsåret, eksakt kildeutvalg i køen og originale
+uttrekksbevis også ved justering. Filvalg behandler ingenting; innlesing lager forslag,
+og administrator godkjenner før publisering. Tekst-, dato- og 40-kandidatgrensene vises
+før handling og ved resultat. Lokal PDF har dokumentkobling uten oppdiktet offentlig URL.
+Den forhåndsdefinerte prototypen ble vist før produksjonsarbeidet og er bevart separat.
+766 ordinære og 197 reelle Edge/Kestrel-scenarioer passerer lokalt uten feil/hopp;
+alle tidligere 751/181 navn og 46 SQL-navn er bevart. 42 tidligere og seks nye faktiske
+desktop-/mobilbilder er inspisert. Samlet Standards-/Spec-review hadde ingen funn.
+Separat audit fant to P2 som nå er rettet med rød/grønn: fristskjemaets sene svar er
+bundet til lastet målidentitet, og gruppelesing skjuler administrativ opplastingsetikett
+med filnavn. Fullt administratorinnsyn og faktisk kontrollert offentlig URL er beholdt.
+Fokusert sikkerhets-/Spec-etterkontroll og kandidat-CI gjenstår.
+[UX13-akseptansen](acceptance/2026-10-28-atelier-ux13.md) skiller prototype, faktisk PDF-flyt
+og verifikasjonens grenser.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -154,13 +172,14 @@ ventelåser består. Seks nye desktop-/mobilbilder er inspisert uten nye visuell
 | [#84](https://github.com/depmartin/Budsjettkalender/issues/84) | Fire kodefrie regelvalg, femårsvisning, bevart parser-/anker-/valgårskontrakt, redigering/kopi/slettekonsekvens og vern av ulagret arbeid | Merget i [PR #104](https://github.com/depmartin/Budsjettkalender/pull/104), `ec8588b`; [akseptanse](acceptance/2026-10-27-atelier-ux09.md) |
 | [#85](https://github.com/depmartin/Budsjettkalender/issues/85) | Kategori-/sammenhengs-/søkesnitt, avledet milepæl, målårsberegning, stabil norsk/kronologisk sortering, bevart retur og uendrede data ved visning | Merget i [PR #105](https://github.com/depmartin/Budsjettkalender/pull/105), `54c30b1`; [akseptanse](acceptance/2026-10-27-atelier-ux10.md) |
 | [#86](https://github.com/depmartin/Budsjettkalender/issues/86) | Hel sideeffektfri prøve, midlertidige ankre, samme lagrede mal ved konkret generering, presisjonsriktig fjorår, bekreftet atomisk erstatning og enkeltgodkjenning | Merget i [PR #106](https://github.com/depmartin/Budsjettkalender/pull/106), `75b579a`; [akseptanse](acceptance/2026-10-27-atelier-ux11.md) |
-| [#87](https://github.com/depmartin/Budsjettkalender/issues/87) | Hel maleksport, sideeffektfri importpreview, kompatibilitet, eksplisitt erstatning/tømming og atomisk gjenoppretting | Lokal kandidat; [akseptanse](acceptance/2026-10-28-atelier-ux12.md) |
+| [#87](https://github.com/depmartin/Budsjettkalender/issues/87) | Hel maleksport, sideeffektfri importpreview, kompatibilitet, eksplisitt erstatning/tømming og atomisk gjenoppretting | Merget i [PR #107](https://github.com/depmartin/Budsjettkalender/pull/107), `092b22b`; [akseptanse](acceptance/2026-10-28-atelier-ux12.md) |
+| [#88](https://github.com/depmartin/Budsjettkalender/issues/88) | Dokumentvalg, reelt uttrekk, arbeidsår/kilde i kø, bevis og aktiv godkjenning til én publisert frist | Lokal kandidat; [akseptanse](acceptance/2026-10-28-atelier-ux13.md) |
 
 ## Samlet akseptanse
 
 [Akseptanserapporten](acceptance/2026-10-20.md) skiller faktisk UI, HTTP/tjenestebevis og
-eksterne miljøporter. UX12 utvider testomfanget til 172 reelle Playwright-/Edge-scenarioer
-og 747 ordinære tester, alle bestått lokalt uten feil eller hopp. Sluttkjøringen dokumenteres i UX12-akseptansen.
+eksterne miljøporter. UX13 utvider testomfanget til 197 reelle Playwright-/Edge-scenarioer
+og 766 ordinære tester, alle bestått lokalt uten feil eller hopp. Sluttkjøringen dokumenteres i UX13-akseptansen.
 Egen obligatorisk Chromium-jobb er lagt til i CI;
 deploy venter på ordinære tester, SQL Server og nettlesertester. Kandidaten skal ha alle
 tre jobber grønne samt Standards-/Spec-review og separat sikkerhetsaudit før merge.
@@ -428,23 +447,30 @@ innføres. Datooperasjoner for feed, lister og internoppgaver er utenfor denne r
 ## Verifikasjon
 
 SDK 10.0.402: alle tre låste restore og Release-bygg (ordinær løsning, BrowserTests og
-SqlServerTests) passerer etter siste UX12-kildeendring med 0 feil/advarsler. Alle
-747 ordinære tester og 172 reelle Edge/Kestrel-scenarioer passerer uten feil eller hopp.
-Hele nettlesersuiten etter P3-rettingen tok 14 minutter og 10 sekunder. Alle kandidatens
-tidligere 747/172 navn er bevart; scenarioantallet er uendret. UX11s 731 ordinære og
-144 nettlesernavn består, med UX12s 16/28 tillegg. SQL-prosjektets 46 navn er bygget,
-oppdaget og bevart. Nye TRX og kilde-/binærmanifest ligger i `TestResults/87-p3/`,
-med 0 drift etter full kjøring; `TestResults/87-final/` bevarer tidligere bevis.
+SqlServerTests) passerer etter siste UX13-kildeendring med 0 feil/advarsler. Alle
+766 ordinære tester og 197 reelle Edge/Kestrel-scenarioer passerer uten feil eller hopp.
+Hele nettlesersuiten tok 17 minutter og 27 sekunder. Alle første kandidats 751/181 navn
+er bevart, med 15 og 16 tillegg; også mergede UX12s 747/172 navn består.
+SQL-prosjektets 46 navn er bygget, oppdaget og bevart. TRX, navneinventar, direkte
+restore-/bygglogg og manifest av 332 kildefiler/fem binær-/stilfiler ligger i
+`TestResults/88-security-final-2/`, med 0 drift etter full kjøring og ekstra kontroll
+av 22 avhengighetsbinærer. Første forsøk etter sikkerhetsretting fikk én eksisterende
+kalenderprøves WebSocket-feil `ERR_NO_BUFFER_SPACE` og bestod 196/197. Samme prøve
+passerte fem isolerte forsøk og den nye fulle kjøringen på uendret kilde/binær.
+Bare egne inaktive SDK-byggeprosesser ble frigjort; ingen produktkode, test eller
+tidsgrense ble endret for dette. Nøyaktig årsak er ikke fastslått. Bevis finnes i
+`88-security-final/` og `88-socket-recheck/`. Første kandidats eldre readiness-avvik
+og grønne omkjøring er fortsatt bevart i `88-final/`, `88-readiness/` og `88-final-2/`.
 Ingen auditkontroll er deaktivert; låst restore har ingen NU1900.
 
-UX12 endrer ikke EF-modell eller migrasjoner. SQL Server-grensen er fortsatt 46;
-ingen SQL-tilfeller er fjernet. UX11s leverte CI40618906003 passerte alle 46 ekte
-SQL Server-prøver og 144 Chromium-scenarioer. Den lokale UX12-kandidaten er samlet
-gjennomgått og separat sikkerhetsauditert. Spec-reviewets P3 er rettet; fokusert
-etterkontroll og fersk ordinær/SQL Server-/Chromium-CI kreves før merge.
+UX13 endrer ikke EF-modell eller migrasjoner. SQL Server-grensen er fortsatt 46;
+ingen SQL-tilfeller er fjernet. UX12s leverte CI40626361976 passerte alle 46 ekte
+SQL Server-prøver og 172 Chromium-scenarioer. Den lokale UX13-kandidaten krever fokusert
+sikkerhets-/Spec-etterkontroll av de to rettede P2-funnene og fersk ordinær/SQL Server-/Chromium-CI før merge.
 Lokalt SQLite-/Edge-bevis gjelder ikke produksjonens Azure
-SQL, Entra, Key Vault, Outlook eller M365. Ingen deploy eller arbeid med #88 er utført.
-Se [UX12-akseptansen](acceptance/2026-10-28-atelier-ux12.md) og
+SQL, Entra, Key Vault, Outlook eller M365, OCR eller komplett PDF-kandidatbehandling.
+Ingen deploy eller arbeid med #89 er utført.
+Se [UX13-akseptansen](acceptance/2026-10-28-atelier-ux13.md) og
 [utviklingsveiledningen](development.md).
 ## Gjenstående grenser
 

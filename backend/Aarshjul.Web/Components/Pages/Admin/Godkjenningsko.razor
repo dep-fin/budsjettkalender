@@ -1,4 +1,5 @@
 @page "/admin/ko"
+@using Microsoft.AspNetCore.WebUtilities
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
 @inject IGodkjenningsko Ko
 @inject IGruppetjeneste Grupper
@@ -130,34 +131,7 @@ else
                         </div>
                     }
 
-                    @if (e.Bevis.Count > 0)
-                    {
-                        <table class="bevis">
-                            <thead><tr><th>Felt</th><th>Tolket verdi og usikkerhet</th><th>Kildeutdrag</th><th>Konfidens</th></tr></thead>
-                            <tbody>
-                                @foreach (var b in e.Bevis)
-                                {
-                                    <tr class="@(b.Flagg.Count > 0 ? "usikkert-felt" : "")">
-                                        <td>@b.Felt</td>
-                                        <td>
-                                            @b.TolketVerdi
-                                            @if (b.Flagg.Count > 0)
-                                            {
-                                                <ul class="usikkerhetsflagg">
-                                                    @foreach (var flagg in b.Flagg)
-                                                    {
-                                                        <li>@flagg.Forklaring</li>
-                                                    }
-                                                </ul>
-                                            }
-                                        </td>
-                                        <td class="utdrag">@b.Kildeutdrag</td>
-                                        <td>@b.Konfidens.ToString("0.00")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
+                    <Uttrekksbevis Bevis="e.Bevis" />
 
                     @if (t.Feil is not null)
                     {
@@ -222,6 +196,7 @@ else
 
 @code {
     [SupplyParameterFromQuery(Name = "aar")] public string? AarQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "kilde")] public string? KildeQuery { get; set; }
     [SupplyParameterFromQuery(Name = "lagretAar")] public int? LagretAar { get; set; }
     private const string Pol = "POL";
 
@@ -230,6 +205,8 @@ else
     private IReadOnlyList<GruppeDto> _grupper = [];
     private readonly Dictionary<Guid, Korttilstand> _tilstand = new();
     private bool _lastet;
+    private bool _harJusteringsretur, _queryLastet;
+    private string? _sisteKildeQuery;
     private int? _arbeidsaar;
     private int _versjon;
     private IReadOnlyList<(int Aar, int Antall)> _andreAar = [];
@@ -245,6 +222,7 @@ else
     {
         if (Justeringsretur.Hent() is { } retur)
         {
+            _harJusteringsretur = true;
             _kilde = retur.Kilde ?? "";
             _opphav = retur.Opphav?.ToString() ?? "";
             _type = retur.ForslagType?.ToString() ?? "";
@@ -256,6 +234,15 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
+        // Engangsreturen bevarer også øvrige køfiltre. En ny URL kan avgrense på
+        // eksakt kilde uten å endre tjenestens eksisterende snittsemantikk.
+        if (!_queryLastet || !string.Equals(KildeQuery, _sisteKildeQuery, StringComparison.Ordinal))
+        {
+            if (!_harJusteringsretur) _kilde = KildeQuery ?? "";
+            _sisteKildeQuery = KildeQuery;
+            _queryLastet = true;
+        }
+        _harJusteringsretur = false;
         _arbeidsaar = Arbeidsaarkontekst.Les(AarQuery, Klokke);
         _elementer = [];
         _tilstand.Clear();
@@ -296,7 +283,11 @@ else
         UkjentType = _kunUkjent ? true : null
     };
 
-    private void ByttAar(int? aar) => Nav.NavigateTo(Arbeidsaarkontekst.Lenke("/admin/ko", aar));
+    private void ByttAar(int? aar)
+    {
+        var lenke = Arbeidsaarkontekst.Lenke("/admin/ko", aar);
+        Nav.NavigateTo(string.IsNullOrEmpty(_kilde) ? lenke : QueryHelpers.AddQueryString(lenke, "kilde", _kilde));
+    }
 
     private void AapneAnnetAar(int aar)
     {

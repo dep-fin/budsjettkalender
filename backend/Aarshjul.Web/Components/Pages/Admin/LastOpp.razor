@@ -1,84 +1,129 @@
 @page "/admin/last-opp"
 @using Aarshjul.Application.Opplasting
+@using Microsoft.AspNetCore.WebUtilities
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+@implements IDisposable
 @inject IDokumentopplasting Opplasting
 @inject NavigationManager Nav
 @inject TimeProvider Klokke
+@inject ILogger<LastOpp> Logg
 
 <PageTitle>Last opp dokument</PageTitle>
-
-<Arbeidsaarvelger Aar="_arbeidsaar" AarChanged="ByttAar" />
-
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" ConfirmExternalNavigation="_arbeider" />
+<Arbeidsaarvelger Aar="_arbeidsaar" AarChanged="ByttAar" Deaktivert="_arbeider" />
 <h1>Last opp dokument</h1>
-
-<p class="melding">
-    Last opp et dokument (PDF), så leser løsningen gjennom det og finner mulige frister — med
-    samme uttrekk og klassifisering som den automatiske innhentingen fra regjeringen.no.
-    Det som finnes, legges som forslag i <a href="@Kolenke">godkjenningskøen</a> for gjennomgang.
-    Ingenting publiseres før du godkjenner det.
-</p>
-
-<div class="skjema">
-    <label>Budsjettår
-        <input type="number" min="1" max="9999" @bind="_budsjettaar" @bind:after="ByttInnlesingsaar" disabled="@_arbeider" />
-    </label>
-
-    <label>Dokument (PDF)
-        <InputFile @key="_filvalg" OnChange="VelgFil" accept=".pdf" disabled="@_arbeider" />
-    </label>
-
-    @if (_valgtNavn is not null)
-    {
-        <p class="melding">Valgt fil: <strong>@_valgtNavn</strong> (@_valgtStr)</p>
-    }
-
-    @if (_feil is not null)
-    {
-        <div class="feil" role="alert">@_feil</div>
-    }
-
-    @if (_resultat is { } r)
-    {
-        <div class="melding" role="status">
-            @if (r.AlleredeBehandlet)
-            {
-                <text>Dokumentet er allerede lest inn tidligere — ingen nye forslag laget.</text>
-            }
-            else if (r.AntallForslag > 0)
-            {
-                <text>Leste inn dokumentet og laget <strong>@r.AntallForslag</strong> forslag.
-                Gå til <a href="@Kolenke">godkjenningskøen</a> for å gjennomgå dem.</text>
-            }
-            else
-            {
-                <text>@(r.Melding ?? "Fant ingen frister i dokumentet.")</text>
-            }
+<p class="ingress">Fra PDF til forslag du kan kontrollere. Du godkjenner før en frist blir publisert.</p>
+<ol class="dokumenttrinn" aria-label="Fra dokument til frist">
+    <li><span>1</span><div><strong>Velg dokument</strong><small>Kontroller fil og budsjettår</small></div></li>
+    <li><span>2</span><div><strong>Les inn</strong><small>Mulige frister blir forslag</small></div></li>
+    <li><span>3</span><div><strong>Kontroller og godkjenn</strong><small>Les kildeutdrag og usikkerhet</small></div></li>
+</ol>
+<div class="dokumentflate">
+    <section class="dokumentvalg" aria-labelledby="velg-dokument" aria-busy="@(_arbeider ? "true" : "false")">
+        <p class="menyoverskrift">Dokumentinnlesing</p>
+        <h2 id="velg-dokument">Velg en PDF</h2>
+        <p>Filvalget viser bare filopplysninger. Innlesingen starter når du velger «Les inn dokument».</p>
+        <div class="dokumentfelter">
+            <label>Budsjettår
+                <input type="number" min="1" max="9999" @bind="_budsjettaar" @bind:after="ByttInnlesingsaar" disabled="@_arbeider" />
+            </label>
+            <label for="dokumentfil">Dokument (PDF)</label>
+            <InputFile @key="_filvalg" id="dokumentfil" OnChange="VelgFil" accept=".pdf" disabled="@_arbeider" aria-describedby="dokumentfil-hjelp" />
+            <small id="dokumentfil-hjelp">PDF med tekst, maks 15 MiB (15 728 640 byte).</small>
         </div>
-    }
-
-    <div class="skjemarad">
-        <button class="knapp knapp-primær" @onclick="LesInn" disabled="@(_fil is null || _arbeider)">
-            @(_arbeider ? "Leser …" : "Les inn dokument")
-        </button>
-    </div>
+        @if (_valgtNavn is not null)
+        {
+            <dl class="dokumentmetadata">
+                <div><dt>Valgt fil</dt><dd>@_valgtNavn</dd></div>
+                <div><dt>Filstørrelse</dt><dd>@_valgtStr</dd></div>
+                <div><dt>Forslagene gjelder</dt><dd>Budsjettår @_budsjettaar</dd></div>
+            </dl>
+        }
+        <div class="dokumenthandlinger">
+            <button class="knapp knapp-primær" @onclick="LesInn" disabled="@(_fil is null || _arbeider || _budsjettaar is < 1 or > 9999)">
+                @(_arbeider ? "Leser …" : "Les inn dokument")
+            </button>
+        </div>
+        @if (_arbeider)
+        {
+            <div class="dokumentstatus" role="status">
+                <strong>Leser dokumentet …</strong>
+                <p>@_valgtNavn · budsjettår @_budsjettaar. Vent til innlesingen er ferdig.</p>
+                @if (_navigasjonBlokkert) { <p>Innlesingen pågår. Du kan bytte side eller arbeidsår når den er ferdig.</p> }
+            </div>
+        }
+    </section>
+    <aside class="dokumentgrenser" aria-labelledby="dokumentgrenser">
+        <h2 id="dokumentgrenser">Dette bør du kontrollere</h2>
+        <ul>
+            <li>PDF-en må inneholde tekst. Skannede bildesider leses ikke med OCR.</li>
+            <li>Høyst 40 kandidatsetninger med gjenkjennelig dato behandles.</li>
+            <li>Relative eller utolkelige datoer kan falle bort. Innlesingen kan overse frister.</li>
+        </ul>
+        <p>Kontroller alltid mot originaldokumentet. Uttrekksbevis, tolket verdi og usikkerhet følger forslagene i <a href="@Kolenke">godkjenningskøen</a>.</p>
+        <a href="@NyFristLenke">Legg inn en frist manuelt</a>
+    </aside>
 </div>
+@if (_feil is not null)
+{
+    <div class="feil dokumentfeil" role="alert" tabindex="-1" @ref="_feilfelt">
+        <h2>Dokumentet kunne ikke leses inn</h2>
+        <p>@_feil</p>
+        <p>Velg en annen fil, eller prøv «Les inn dokument» igjen. <a href="@NyFristLenke">Ny frist i budsjettår @_budsjettaar</a>.</p>
+    </div>
+}
+@if (_resultat is { } r)
+{
+    <section class="dokumentkvittering" role="status" tabindex="-1" @ref="_resultatfelt" aria-labelledby="dokumentresultat">
+        <p class="menyoverskrift">Innlesingen er ferdig · budsjettår @_budsjettaar</p>
+        @if (r.AlleredeBehandlet)
+        {
+            <h2 id="dokumentresultat">Dokumentet er allerede lest inn</h2>
+            <p>Dokumentet er allerede lest inn tidligere — ingen nye forslag laget. Dette gjelder også om du har valgt et annet budsjettår.</p>
+        }
+        else if (r.AntallForslag > 0)
+        {
+            <h2 id="dokumentresultat">@r.AntallForslag @(r.AntallForslag == 1 ? "forslag er klart" : "forslag er klare") til kontroll</h2>
+            <p>Leste inn dokumentet og laget <strong>@r.AntallForslag</strong> forslag.</p>
+        }
+        else
+        {
+            <h2 id="dokumentresultat">Ingen nye forslag</h2>
+            <p>@(r.Melding ?? "Ingen datoer kunne tolkes til forslag.")</p>
+            <p>Dette betyr ikke at dokumentet er uten frister. Kontroller originalen og legg eventuelt inn fristen manuelt.</p>
+        }
+        <p class="dokumentnavn">@_valgtNavn</p>
+        <p><strong>Ingen frister er publisert.</strong> Innlesingen er begrenset til tekst og høyst 40 kandidatsetninger; frister kan være utelatt.</p>
+        <div class="dokumenthandlinger">
+            @if (r.AntallForslag > 0 || r.AlleredeBehandlet)
+            {
+                <a class="knapp knapp-primær" href="@KildekoLenke">Kontroller forslagene</a>
+            }
+            <a class="knapp" href="@NyFristLenke">Ny frist i budsjettår @_budsjettaar</a>
+        </div>
+        @if (r.AntallForslag > 0 || r.AlleredeBehandlet)
+        {
+            <p class="dokumenthint">Køen viser åpne forslag i budsjettår @_budsjettaar med kilden «Opplastet: @_valgtNavn». Tidligere forslag fra samme filnavn kan også være med.</p>
+        }
+    </section>
+}
 
 @code {
     [SupplyParameterFromQuery(Name = "aar")] public string? AarQuery { get; set; }
-    private const long MaksStorrelse = 15 * 1024 * 1024; // 15 MB
-
+    private const long MaksStorrelse = 15 * 1024 * 1024;
+    private readonly CancellationTokenSource _levetid = new();
     private int _budsjettaar;
     private int? _arbeidsaar;
     private int _versjon;
     private Guid _filvalg = Guid.NewGuid();
     private string Kolenke => Arbeidsaarkontekst.Lenke("/admin/ko", _budsjettaar);
+    private string KildekoLenke => QueryHelpers.AddQueryString(Kolenke, "kilde", $"Opplastet: {_valgtNavn}");
+    private string NyFristLenke => Arbeidsaarkontekst.Lenke("/admin/frist/ny", _budsjettaar);
     private IBrowserFile? _fil;
-    private string? _valgtNavn;
-    private string? _valgtStr;
+    private string? _valgtNavn, _valgtStr, _feil;
     private OpplastingsResultat? _resultat;
-    private string? _feil;
-    private bool _arbeider;
-
+    private bool _arbeider, _navigasjonBlokkert, _fokuserFeil, _fokuserResultat;
+    private ElementReference _feilfelt, _resultatfelt;
     protected override void OnParametersSet()
     {
         _arbeidsaar = Arbeidsaarkontekst.Les(AarQuery, Klokke);
@@ -88,40 +133,43 @@
         _fil = null;
         _valgtNavn = _valgtStr = _feil = null;
         _resultat = null;
-        _arbeider = false;
+        _arbeider = _navigasjonBlokkert = _fokuserFeil = _fokuserResultat = false;
     }
-
-    private void ByttAar(int? aar) => Nav.NavigateTo(Arbeidsaarkontekst.Lenke("/admin/last-opp", aar));
+    private void ByttAar(int? aar) { if (!_arbeider) Nav.NavigateTo(Arbeidsaarkontekst.Lenke("/admin/last-opp", aar)); }
     private void ByttInnlesingsaar() { if (_budsjettaar is >= 1 and <= 9999) ByttAar(_budsjettaar); }
-
+    private Task FoerNavigasjon(LocationChangingContext kontekst)
+    {
+        if (!_arbeider) return Task.CompletedTask;
+        kontekst.PreventNavigation();
+        _navigasjonBlokkert = true;
+        return InvokeAsync(StateHasChanged);
+    }
     private void VelgFil(InputFileChangeEventArgs e)
     {
+        if (_arbeider) return;
         _resultat = null;
         _feil = null;
+        _fokuserResultat = false;
         _fil = e.File;
         _valgtNavn = e.File.Name;
-        _valgtStr = $"{e.File.Size / 1024} kB";
-
+        _valgtStr = $"{e.File.Size:N0} byte";
         if (e.File.Size > MaksStorrelse)
         {
-            _feil = "Filen er for stor (maks 15 MB).";
+            _feil = "Filen er for stor. Maksimal størrelse er 15 MiB (15 728 640 byte).";
             _fil = null;
         }
         else if (!e.File.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
         {
-            _feil = "Kun PDF-filer støttes i denne omgang.";
+            _feil = "Kun PDF-filer støttes. Velg en PDF med tekst.";
             _fil = null;
         }
+        _fokuserFeil = _feil is not null;
     }
-
     private async Task LesInn()
     {
-        if (_fil is null || _arbeider)
-        {
-            return;
-        }
-
+        if (_fil is null || _arbeider || _budsjettaar is < 1 or > 9999) return;
         _arbeider = true;
+        _navigasjonBlokkert = false;
         _feil = null;
         _resultat = null;
         var fil = _fil;
@@ -130,19 +178,30 @@
         try
         {
             using var ms = new MemoryStream();
-            await fil.OpenReadStream(MaksStorrelse).CopyToAsync(ms);
-            var dokument = new OpplastetDokument(fil.Name, ms.ToArray());
-            var resultat = await Opplasting.LesOgLagForslagAsync(dokument, aar);
-            if (versjon == _versjon) _resultat = resultat;
+            await fil.OpenReadStream(MaksStorrelse, _levetid.Token).CopyToAsync(ms, _levetid.Token);
+            var resultat = await Opplasting.LesOgLagForslagAsync(new(fil.Name, ms.ToArray()), aar, _levetid.Token);
+            if (versjon == _versjon) { _resultat = resultat; _fokuserResultat = true; }
         }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            // Ulesbar/korrupt PDF e.l. — vis en tydelig melding framfor å feile stille.
-            if (versjon == _versjon) _feil = $"Klarte ikke lese dokumentet: {ex.Message}";
+            // Behold en diagnostisk feiltype, uten PDF-innhold, filnavn eller rå leverandørfeil.
+            Logg.LogWarning("Dokumentinnlesing feilet ({Feiltype}).", ex.GetType().Name);
+            if (versjon == _versjon)
+            {
+                _feil = "Klarte ikke lese dokumentet. Kontroller at filen er en gyldig PDF med tekst, og prøv igjen.";
+                _fokuserFeil = true;
+            }
         }
         finally
         {
-            if (versjon == _versjon) _arbeider = false;
+            if (versjon == _versjon) { _arbeider = false; _navigasjonBlokkert = false; }
         }
     }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_fokuserFeil && _feil is not null) { _fokuserFeil = false; await _feilfelt.FocusAsync(); }
+        if (_fokuserResultat && _resultat is not null) { _fokuserResultat = false; await _resultatfelt.FocusAsync(); }
+    }
+    public void Dispose() { _versjon++; _levetid.Cancel(); _levetid.Dispose(); }
 }
