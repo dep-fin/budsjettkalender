@@ -20,28 +20,35 @@ etterprøver. Den leverte EV02-integrasjonen inneholder UX15 fra main `31bfddb`,
 ordinære tester og oppdaget samlet inventar på 269 nettleser- og 62 SQL Server-tilfeller.
 De tidligere 823/226/62 navnene er bevart; alle UX15-testklasser er beholdt.
 Målrettet Edge/Kestrel bestod 49/49 EV02-/UX15-forløp uten feil/hopp.
+Den senere UX16-integrasjonen er levert i PR #129 med grønn kandidat-CI som beskrevet nedenfor.
 [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md) inneholder de konkrete bevisene.
 
 EV03 ([#113](https://github.com/depmartin/Budsjettkalender/issues/113)) er kandidat i
-utkast-[PR #130](https://github.com/depmartin/Budsjettkalender/pull/130) for daglig oppsummering av nye direkte manuelt publiserte frister.
-Publisering og hendelse er atomiske. Varig dagsplan, uttrykkelige hendelseskoblinger,
-fersk kontrollert mottakertilgang og nåværende synlighetsfilter begrenser hver melding.
-Bekreftede overleveringer gjentas ikke etter omstart; uavklart utfall krever avklaring.
-To reproduserte P2-funn fra samlet review/audit er rettet: databaseordnet grense
-mellom aktivering og vellykket publisering, og avvisning av en faktisk innlest
-UnderSending/Uavklart-plan med forventet status og versjon ved overgang.
-Før integrasjon med levert UX16 var 897 ordinære og 8 EV02/EV03-Edge/Kestrel-forløp
-grønne; samlet review og separat audit er fullført med etterkontroll av begge P2.
-Main `ffef7ab` er nå flettet lokalt ved faktisk modell-/migrasjons-/testoverlapp.
-Begge EV03-målmodellene er generert på nytt med levert internvern; faktiske Up/Down
-er uendret. Modellregresjon og additiv SQLite-oppgradering er grønne 5/5.
-Full ordinær suite passerer 938/938 uten hopp. Oppdaget samlet inventar er 938
-ordinære, 130 SQL Server- og 315 nettlesertilfeller; alle navn fra begge grener består.
-Målrettet Edge/Kestrel er grønn 52/52 for EV02/EV03 og alle interne UX16-forløp,
-med 417 backend-/SDK-filer og 1564 runtimefiler uendret gjennom sluttprøvene.
-CI-tellekontrollene er avstemt med uendrede tidsgrenser og artefaktvern.
-Nye ekte SQL Server-/Chromium-porter og relevant etterkontroll av integrasjonens
-endrede forutsetninger gjenstår før leveranseporten. Ingen EV03-merge er autorisert.
+[PR #130](https://github.com/depmartin/Budsjettkalender/pull/130) for daglig oppsummering
+av nye direkte manuelt publiserte frister. Publisering og hendelse er atomiske.
+Varig dagsplan, uttrykkelige hendelseskoblinger, fersk kontrollert mottakertilgang og
+nåværende synlighetsfilter begrenser hver melding. Bekreftede overleveringer gjentas
+ikke etter omstart; uavklart utfall krever avklaring. De to P2-funnene om databaseordnet
+aktiveringsgrense og faktisk innlest planstatus/versjon er rettet og etterprøvd.
+Samlet review, separat sikkerhetsaudit og integrasjonens etterkontroll er fullført.
+Head `e4292caaa7cc7b41ff0592f800ded7649905f64f` bestod
+[CI 40715203714](https://github.com/depmartin/Budsjettkalender/actions/runs/40715203714):
+938 ordinære, 130 ekte SQL Server- og 315 Chromium-tilfeller uten feil/hopp.
+
+Etter levert UX17/PR #131 oppstod faktiske mergekonflikter i CI og dokumentasjon.
+Main `959060c898048da5ebd26bfb2cd5cdb68a1c2271` er nå flettet lokalt uten commit.
+Begge DI-/autorisasjonssett, alle testnavn og EV03s modell/snapshot/migrasjoner er
+bevart. Program har bare de to leverte UX17-registreringene i tillegg til EV03.
+Oppdaget samlet inventar er 956 ordinære, 130 SQL Server- og 322 nettlesertilfeller;
+alle EV03s 938/130/315 og UX17s 901/79/319 navn består uten dubletter.
+Låst restore med aktiv audit og tre Release-bygg har 0 advarsler/feil.
+Full ordinær suite passerer 956/956; målrettet oppstart/autorisasjon/modell 118/118,
+og reelle EV02/EV03/UX17 Edge/Kestrel-forløp 15/15 uten feil/hopp.
+EF-kontrollen finner ingen ventende modellendringer og bekrefter begge kronologiske
+målmodeller og snapshot. Up/Down er uendret. CI krever 130 SQL Server og 322 Chromium
+med uendrede tidsgrenser og artefaktvern. Ny publisert kandidat-CI gjenstår.
+Eier har autorisert merge etter grønn CI; den er ennå ikke utført.
+Konfliktoppfølgingen har ingen ny review eller sikkerhetsaudit.
 [EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) beskriver konkrete bevis og
 grenser. Produksjon sender ingen e-post.
 
@@ -545,7 +552,7 @@ Manuell oppretting, oppdatering og import beholder hele int-området for forskyv
 gyldige store forskyvninger beregnes også etter import. Ingen vilkårlig parametergrense
 innføres. Datooperasjoner for feed, lister og internoppgaver er utenfor denne rettingen.
 
-## Verifikasjon
+## Historiske UX16-kjøringer før EV02-integrasjonen
 
 UX16s samlede kontroll før reviewrettingen bruker SDK 10.0.402, låst restore med aktiv audit og
 Release-bygg for ordinary, BrowserTests og SqlServerTests med 0 advarsler og 0 feil.
@@ -589,17 +596,19 @@ Begge kontrakter, kommandoer og e-post-/internmodell er bevart. Siste migrasjons
 er avstemt mot sammensatt snapshot etter en rød/grønn modellregresjon; faktisk
 modellkontroll viser ingen ventende endringer. Up/Down er uendret. SQL-prøvene
 dekker nå EV02 → UnikeInternrunder med bevart aktiv/ventende påmelding og eksisterende
-interndata; faktisk SQL-kjøring gjenstår i kandidat-CI.
+interndata; alle 79 SQL-tilfeller passerte faktisk SQL Server i kandidat-CI før merge.
 Ny full sluttkjøring gir **883/883 ordinære** og **312/312 faktiske Edge/Kestrel**,
 uten feil/hopp; **79 SQL-tilfeller** er bygget/oppdaget. Alle gamle navn fra begge
 grener er bevart. Låst restore, aktiv audit og alle tre Release-bygg gir null
-advarsler/feil. CI krever 312/79 og beholder mains 45-minutters nettleserbudsjett.
+advarsler/feil. UX16-CI krevde 312/79 og beholdt mains 45-minutters nettleserbudsjett.
 `TestResults/91-main-integration/` binder TRX og navneinventar til 395
 kildefiler og 1393 runtimefiler uten drift. Alle 94 tidligere inspiserte bilder
 og 3686 bevisfiler er hashbevart; 6 nye desktop-/mobilbilder av
 faktiske interne flater med mains felles topptekst er inspisert uten funn.
-Root håndterer sluttgjennomgang, publisering og kandidat-CI. Lokal Edge/SQLite og
-modellkontroll erstatter ikke faktisk SQL Server/Chromium eller eksterne driftsporter.
+Samlet sluttgjennomgang og separat audit er fullført. PR #129 er merget som
+`ffef7ab2c671a520635bae73fd71b7486eee58cd` etter grønn ordinær, ekte SQL Server- og
+Chromium-kjøring i [CI 40705737234](https://github.com/depmartin/Budsjettkalender/actions/runs/40705737234).
+De eksterne driftsportene består.
 Ingen EV-utvidelser, PR #128 eller deploy inngår. Se
 [UX16-akseptansen](acceptance/2026-10-28-atelier-ux16.md).
 
@@ -608,6 +617,28 @@ funn. Alle tre jobber i [CI 40705737234](https://github.com/depmartin/Budsjettka
 er grønne på `fd5548f50a793fc8dc245e9b59f68d4f16bb405b`, med 883 ordinære,
 79 ekte SQL Server- og 312 Chromium-tilfeller. Merge `ffef7ab` inngår i main.
 EV03/PR #130 er fortsatt en egen kandidat og krever egne integrasjonsbevis og ny CI.
+
+## UX17 – administratoroversikt
+
+Atelier UX17 ([#92](https://github.com/depmartin/Budsjettkalender/issues/92)) er levert i
+[PR #131](https://github.com/depmartin/Budsjettkalender/pull/131), merget som
+`959060c898048da5ebd26bfb2cd5cdb68a1c2271` fra levert UX16.
+Administrator-innstillinger viser bare appkjente administratorer,
+med Manuelt tildelt / Forvaltes i Entra og Deg fra stabil autentisert identitet.
+Den nye smale lesespørringen endrer ingen brukere; serverkommandoen håndhever
+ErAdministrator ved hvert kall. Ingen Graph, manuell rolleutnevnelse/-fjerning,
+ny policy eller migrasjon er lagt til. Faseinndeling og Dataforvaltning består.
+Lasting, tomt resultat, trygg feil, nytt forsøk, fulle kodede navn og mobil/tastatur
+er prøvd i faktisk Kestrel/Blazor. Alle tidligere 883/312/79 testnavn er beholdt;
+18 ordinære og sju nettlesertilfeller er lagt til. Samlet kandidatverifikasjon og
+visuelle bevis står i [UX17-akseptansen](acceptance/2026-10-28-atelier-ux17.md).
+901/901 ordinære og hele den faktiske Edge/Kestrel-kjøringen på 319/319 passerer
+uten feil/hopp. Alle tre låste restore/Release-bygg har null advarsler/feil med
+aktiv NuGet-audit. Samlet review og separat audit er fullført. Alle tre jobber i
+[CI 40717209832](https://github.com/depmartin/Budsjettkalender/actions/runs/40717209832)
+er grønne med 901 ordinære, 79 ekte SQL Server- og 319 Chromium-tilfeller.
+16 tokenfrie sluttbilder på 1440/390 er visuelt inspisert. Ingen deploy er utført.
+
 ## Gjenstående grenser
 
 - Azure SQL/Entra, feed-/M365-policy og tokenvern, SQL-brannmur, migrering og Data Protection

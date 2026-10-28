@@ -140,11 +140,11 @@ SQLite og ekte SQL Server deler 49 oppsummeringskontrakttilfeller. SQLite prøve
 normal demooppgradering fra UX16-/EV02-modellen; SQL Server prøver både EV02→EV03
 og særskilt levert UX16→EV03 med autentiske migrasjoner. Ordinær suite har i tillegg to prøver av vertsjobb og
 testoppstart. [EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) skiller lokale
-bevis fra kandidatens kommende SQL Server-/Chromium-CI.
+bevis fra kandidatens SQL Server-/Chromium-CI og senere konfliktoppfølging.
 
 ## Levert UX16/EV02-verifikasjon
 
-Sluttinventaret er 883 ordinære, 312 nettleser- og 79 SQL Server-tilfeller.
+UX16/EV02 ble levert med 883 ordinære, 312 nettleser- og 79 SQL Server-tilfeller.
 Den nye ordinære modellregresjonen kommer i tillegg til begge greners bevarte navn.
 Full lokal Edge/Kestrel og ordinær suite er grønne; SQL Server er bare bygget/oppdaget
 lokalt. UX16 fullførte senere 79 ekte SQL Server- og 312 Chromium-tilfeller i
@@ -154,7 +154,7 @@ Kommandoer, TRX, navn, kilde-/runtimebinding og ny topptekstinspeksjon finnes i
 `TestResults/91-main-integration/` og [UX16-akseptansen](acceptance/2026-10-28-atelier-ux16.md).
 De historiske kjøringene i tidligere bevismapper beholdes uendret.
 
-## Samlet EV03/UX16-verifikasjon
+## Historisk EV03/UX16-verifikasjon
 
 EV03/PR #130 integrerer levert UX16/main `ffef7ab` lokalt. Faktisk oppdagelse gir
 938 ordinære, 130 SQL Server- og 315 nettlesertilfeller, uten tap av navn fra noen
@@ -165,16 +165,53 @@ er generert på nytt med riktig kronologi og hele internvernet; Up/Down er uendr
 Målrettet EV02/EV03/UX16 med Edge/Kestrel passerer 52/52 uten feil/hopp. 417
 backend-/SDK-kildefiler og 1564 runtimefiler er uendret gjennom sluttprøvene.
 `TestResults/113-integration/verify.ps1` og `suites.ps1` gir konkrete lokale
-kommandoer og bevis. Ny kandidat-CI må kjøre alle 130 mot ekte SQL Server og
-315 med Chromium; lokal oppdagelse og Edge er ikke slike kjørebevis.
-[EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) beskriver grenser og
-endrede reviewforutsetninger. EV03 er fortsatt kandidat, uten merge/deploy.
+kommandoer og bevis. Samlet etterkontroll ble fullført; head `e4292caaa` bestod
+[CI 40715203714](https://github.com/depmartin/Budsjettkalender/actions/runs/40715203714)
+med 938 ordinære, 130 ekte SQL Server- og 315 Chromium-tilfeller. Disse resultatene
+gjelder denne historiske kandidaten før levert UX17. Se
+[EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) for bevisgrenser.
+
+## UX17 – lesende administratoroversikt
+
+Den smale `IAdministratoroversikt` leser bare appkjente administratorer og lagret
+`AdminViaEntra`. `AdministratoroversiktKommando` håndhever ErAdministrator ved hvert
+kall og bestemmer Deg fra stabil autentisert claim. Leseoperasjonen bruker aldri
+det muterende brukeroppslaget. Ingen Graph eller ny rolleforvaltning inngår.
+18 nye ordinære tilfeller og sju reelle Kestrel/Blazor-scenarioer kommer i tillegg
+til de bevarte 883/312/79 navnene. Sluttinventar er 901/319/79. Hele den ordinære
+suiten og alle 319 faktiske Edge/Kestrel-scenarioer passerer uten feil/hopp etter
+siste kodeendring. Browser-TRX måler 1422,795 sekunder, prosessen 1423,884 sekunder.
+SQL var bare bygget/oppdaget lokalt. Levert UX17 bestod deretter alle tre jobber i
+[CI 40717209832](https://github.com/depmartin/Budsjettkalender/actions/runs/40717209832)
+med 901 ordinære, 79 ekte SQL Server- og 319 Chromium-tilfeller før PR #131 ble merget.
+TRX, navneinventar og SHA-256-manifest ligger i `TestResults/92-final/`.
+Se [UX17-akseptansen](acceptance/2026-10-28-atelier-ux17.md) for faktisk kjøreresultat,
+tokenfrie 1440-/390-bilder og verifikasjonsgrenser. Jobbgrensen på 45 minutter er uendret.
+403 kildefiler og 1518 runtimefiler har ingen drift mellom manifestopptakene;
+hele kandidaten på 471 filer og 16 visuelt inspiserte sluttbilder har SHA-256-bevis.
+
+## EV03 etter levert UX17
+
+Mergekonflikten i PR #130 er avstemt mot levert main `959060c` uten nye
+produktendringer. Program bevarer hele EV03-oppsettet og legger bare til de to
+UX17-registreringene. Alle øvrige backendfiler er identiske med en av de to grenene;
+modell, snapshot, migrasjonenes Up/Down, testassertions og tidsgrenser er uendret.
+Faktisk inventar er 956 ordinære, 130 SQL Server- og 322 nettlesertilfeller.
+Alle tidligere EV03-navn (938/130/315) og UX17-navn (901/79/319) består uten dubletter.
+Låst restore med aktiv NuGet-audit og Release-bygg for alle tre prosjekter passerer
+med 0 advarsler/feil og SDK 10.0.402. Ordinær suite er grønn 956/956;
+oppstart/autorisasjon/modell 118/118 og reell EV02/EV03/UX17 Edge/Kestrel 15/15.
+EF rapporterer ingen ventende SQL Server-modellendringer uten databaseforbindelse.
+Kommandoer, TRX, navneinventar, blobbevaring og SHA-256-manifester finnes i
+`TestResults/113-ux17-merge/`. Ny publisert kandidat-CI skal faktisk kjøre alle
+130 SQL Server- og 322 Chromium-tilfeller. Ingen full lokal nettleserport gjentas.
+Konfliktoppfølgingen følger CI-løkken uten ny review eller sikkerhetsaudit.
 
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 315 scenarioer bruker disponible Kestrel-verter,
-inklusive fem fra EV02 og tre fra EV03.
+eksisterende app eller database: 322 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02, tre fra EV03 og sju fra UX17. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
 Kestrel, SQLite i minnet og testautentisering.
@@ -251,8 +288,8 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 315 beståtte scenarioer uten hopp.
-Den samlede EV03/UX16-kandidaten beholder merget mains jobbgrense på 45 minutter.
+installerer systemavhengigheter og krever nøyaktig 322 beståtte scenarioer uten hopp.
+Den samlede EV03/UX16/UX17-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
 De lokale tidene begrunner rom for testene og oppsettet, men måler ikke Chromium.
@@ -262,7 +299,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny EV03-kandidat-CI må fullføre alle 315; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny EV03-kandidat-CI må fullføre alle 322; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
