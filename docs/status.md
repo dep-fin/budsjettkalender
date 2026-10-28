@@ -20,7 +20,7 @@ etterprøver. Før merge ble UX15 fra main `31bfddb` integrert, med 845 bestått
 ordinære tester og oppdaget samlet inventar på 269 nettleser- og 62 SQL Server-tilfeller.
 De tidligere 823/226/62 navnene er bevart; alle UX15-testklasser er beholdt.
 Målrettet Edge/Kestrel bestod 49/49 EV02-/UX15-forløp uten feil/hopp.
-Den senere UX16-integrasjonens bevis og gjenstående kandidat-CI står nedenfor.
+Den senere UX16-integrasjonen er levert i PR #129 med grønn kandidat-CI som beskrevet nedenfor.
 [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md) inneholder de konkrete bevisene.
 
 Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) er levert i
@@ -198,8 +198,10 @@ Etter den dokumenterte 15-minutters CI-avbrytelsen ble nettleserbudsjettet satt 
 er grønn før merge. [UX15-akseptansen](acceptance/2026-10-28-atelier-ux15.md) bevarer
 filrundturen, tokenvernet, feilbeviset og de eksterne portene. Ingen deploy er utført.
 
-Atelier UX16 ([#91](https://github.com/depmartin/Budsjettkalender/issues/91)) er en lokal
-kandidat fra merget UX15. Alle ni interne ruter bruker Atelier og uendret ErSbr-policy.
+Atelier UX16 ([#91](https://github.com/depmartin/Budsjettkalender/issues/91)) er levert i
+[PR #129](https://github.com/depmartin/Budsjettkalender/pull/129), merget som
+`ffef7ab2c671a520635bae73fd71b7486eee58cd`, inklusive EV02-integrasjonen.
+Alle ni interne ruter bruker Atelier og uendret ErSbr-policy.
 Runder, hurtiginnlegging, komplette oppgave-/regelskjemaer, Mine på tvers av runder,
 flere ID-/fritekstansvarlige, fullføring/gjenåpning og alle fem tidfestingstyper består.
 Hvem/når vises i Oslo-tid. Native bekreftelser, feltfeil, trygg lagringsfeil og fokus
@@ -216,8 +218,8 @@ UI leser forslagene på nytt etter lagring.
 [UX16-akseptansen](acceptance/2026-10-28-atelier-ux16.md) beskriver rød/grønn, konkrete
 prøvegrenser og migrasjonen. Endelig fullverifikasjon etter ansvarligrettingen passerer
 841/841 ordinære tester og 307/307 faktiske Edge/Kestrel-scenarioer, uten feil eller hopp.
-SQL-prosjektets 63 navn er bygget og oppdaget; faktisk SQL Server-kjøring gjenstår i
-kandidat-CI. De tidligere 804/264/46 og 841/301/63 navnene er bevart; seks nettleserprøver er lagt til.
+Dette er historiske lokale resultater før EV02-integrasjonen. De tidligere
+804/264/46 og 841/301/63 navnene er bevart; seks nettleserprøver er lagt til.
 Første feilede fullkjøring og fokuserte 7/7 er bevart separat. Alle 88 bilder og to
 tastaturbilder har uendrede hashverdier og eksisterende visuell inspeksjon uten funn.
 Samlet Standards-/Spec-review fant samme P2 om native reload etter bare endret
@@ -226,8 +228,10 @@ etter bruker-ID, friteksttillegg og fjerning oppdaterer nå forelderens Navigati
 Seks nye faktiske Edge-regresjoner er røde før rettingen og grønne etterpå; de
 prøver beholdte felt ved avvist reload/Escape, uttrykkelig forkasting og lagring.
 Fire nye desktop-/mobilbilder er inspisert uten funn. Oppdatert samlet verifikasjon
-ligger i `TestResults/91-responsible-final/`. Root håndterer relevant etterkontroll
-og kandidat-CI før leveranseporten.
+ligger i `TestResults/91-responsible-final/`. Endelig integrert kandidat bestod
+883 ordinære, 312 Chromium- og alle 79 ekte SQL Server-tilfeller i
+[CI 40705737234](https://github.com/depmartin/Budsjettkalender/actions/runs/40705737234)
+etter samlet Standards-/Spec-review og separat sikkerhetsaudit. Ingen deploy er utført.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -529,7 +533,7 @@ Manuell oppretting, oppdatering og import beholder hele int-området for forskyv
 gyldige store forskyvninger beregnes også etter import. Ingen vilkårlig parametergrense
 innføres. Datooperasjoner for feed, lister og internoppgaver er utenfor denne rettingen.
 
-## Verifikasjon
+## Historiske UX16-kjøringer før EV02-integrasjonen
 
 UX16s samlede kontroll før reviewrettingen bruker SDK 10.0.402, låst restore med aktiv audit og
 Release-bygg for ordinary, BrowserTests og SqlServerTests med 0 advarsler og 0 feil.
@@ -573,19 +577,39 @@ Begge kontrakter, kommandoer og e-post-/internmodell er bevart. Siste migrasjons
 er avstemt mot sammensatt snapshot etter en rød/grønn modellregresjon; faktisk
 modellkontroll viser ingen ventende endringer. Up/Down er uendret. SQL-prøvene
 dekker nå EV02 → UnikeInternrunder med bevart aktiv/ventende påmelding og eksisterende
-interndata; faktisk SQL-kjøring gjenstår i kandidat-CI.
+interndata; alle 79 SQL-tilfeller passerte faktisk SQL Server i kandidat-CI før merge.
 Ny full sluttkjøring gir **883/883 ordinære** og **312/312 faktiske Edge/Kestrel**,
 uten feil/hopp; **79 SQL-tilfeller** er bygget/oppdaget. Alle gamle navn fra begge
 grener er bevart. Låst restore, aktiv audit og alle tre Release-bygg gir null
-advarsler/feil. CI krever 312/79 og beholder mains 45-minutters nettleserbudsjett.
+advarsler/feil. UX16-CI krevde 312/79 og beholdt mains 45-minutters nettleserbudsjett.
 `TestResults/91-main-integration/` binder TRX og navneinventar til 395
 kildefiler og 1393 runtimefiler uten drift. Alle 94 tidligere inspiserte bilder
 og 3686 bevisfiler er hashbevart; 6 nye desktop-/mobilbilder av
 faktiske interne flater med mains felles topptekst er inspisert uten funn.
-Root håndterer sluttgjennomgang, publisering og kandidat-CI. Lokal Edge/SQLite og
-modellkontroll erstatter ikke faktisk SQL Server/Chromium eller eksterne driftsporter.
+Samlet sluttgjennomgang og separat audit er fullført. PR #129 er merget som
+`ffef7ab2c671a520635bae73fd71b7486eee58cd` etter grønn ordinær, ekte SQL Server- og
+Chromium-kjøring i [CI 40705737234](https://github.com/depmartin/Budsjettkalender/actions/runs/40705737234).
+De eksterne driftsportene består.
 Ingen EV-utvidelser, PR #128 eller deploy inngår. Se
 [UX16-akseptansen](acceptance/2026-10-28-atelier-ux16.md).
+
+## UX17 – administratoroversikt
+
+Atelier UX17 ([#92](https://github.com/depmartin/Budsjettkalender/issues/92)) er en lokal
+kandidat fra merget UX16. Administrator-innstillinger viser bare appkjente administratorer,
+med Manuelt tildelt / Forvaltes i Entra og Deg fra stabil autentisert identitet.
+Den nye smale lesespørringen endrer ingen brukere; serverkommandoen håndhever
+ErAdministrator ved hvert kall. Ingen Graph, manuell rolleutnevnelse/-fjerning,
+ny policy eller migrasjon er lagt til. Faseinndeling og Dataforvaltning består.
+Lasting, tomt resultat, trygg feil, nytt forsøk, fulle kodede navn og mobil/tastatur
+er prøvd i faktisk Kestrel/Blazor. Alle tidligere 883/312/79 testnavn er beholdt;
+18 ordinære og sju nettlesertilfeller er lagt til. Samlet kandidatverifikasjon og
+visuelle bevis står i [UX17-akseptansen](acceptance/2026-10-28-atelier-ux17.md).
+901/901 ordinære og hele den faktiske Edge/Kestrel-kjøringen på 319/319 passerer
+uten feil/hopp. Alle tre låste restore/Release-bygg har null advarsler/feil med
+aktiv NuGet-audit. 79 SQL-tilfeller er bygget/oppdaget; faktisk SQL Server gjenstår
+i kandidat-CI. 16 tokenfrie sluttbilder på 1440/390 er visuelt inspisert.
+Samlet review, separat audit og kandidat-CI håndteres av root før levering.
 
 ## Gjenstående grenser
 

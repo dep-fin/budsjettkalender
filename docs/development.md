@@ -61,19 +61,38 @@ bekreftelsestransporten utilgjengelig; EV02 setter ingen e-posttjeneste i drift.
 
 ## Samlet UX16/EV02-verifikasjon
 
-Sluttinventaret er 883 ordinære, 312 nettleser- og 79 SQL Server-tilfeller.
+UX16/EV02 ble levert med 883 ordinære, 312 nettleser- og 79 SQL Server-tilfeller.
 Den nye ordinære modellregresjonen kommer i tillegg til begge greners bevarte navn.
 Full lokal Edge/Kestrel og ordinær suite er grønne; SQL Server er bare bygget/oppdaget
-lokalt. Faktisk SQL Server og Chromium kreves fortsatt i kandidat-CI.
+lokalt. Faktisk SQL Server og Chromium passerte også i
+[CI 40705737234](https://github.com/depmartin/Budsjettkalender/actions/runs/40705737234)
+før UX16 ble merget i PR #129 som `ffef7ab2c671a520635bae73fd71b7486eee58cd`.
 Kommandoer, TRX, navn, kilde-/runtimebinding og ny topptekstinspeksjon finnes i
 `TestResults/91-main-integration/` og [UX16-akseptansen](acceptance/2026-10-28-atelier-ux16.md).
 De historiske kjøringene i tidligere bevismapper beholdes uendret.
 
+## UX17 – lesende administratoroversikt
+
+Den smale `IAdministratoroversikt` leser bare appkjente administratorer og lagret
+`AdminViaEntra`. `AdministratoroversiktKommando` håndhever ErAdministrator ved hvert
+kall og bestemmer Deg fra stabil autentisert claim. Leseoperasjonen bruker aldri
+det muterende brukeroppslaget. Ingen Graph eller ny rolleforvaltning inngår.
+18 nye ordinære tilfeller og sju reelle Kestrel/Blazor-scenarioer kommer i tillegg
+til de bevarte 883/312/79 navnene. Sluttinventar er 901/319/79. Hele den ordinære
+suiten og alle 319 faktiske Edge/Kestrel-scenarioer passerer uten feil/hopp etter
+siste kodeendring. Browser-TRX måler 1422,795 sekunder, prosessen 1423,884 sekunder.
+SQL er bare bygget/oppdaget lokalt; faktisk SQL Server og Chromium kreves på denne kandidaten i CI.
+TRX, navneinventar og SHA-256-manifest ligger i `TestResults/92-final/`.
+Se [UX17-akseptansen](acceptance/2026-10-28-atelier-ux17.md) for faktisk kjøreresultat,
+tokenfrie 1440-/390-bilder og verifikasjonsgrenser. Jobbgrensen på 45 minutter er uendret.
+403 kildefiler og 1518 runtimefiler har ingen drift mellom manifestopptakene;
+hele kandidaten på 471 filer og 16 visuelt inspiserte sluttbilder har SHA-256-bevis.
+
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 312 scenarioer bruker disponible Kestrel-verter,
-inklusive de fem fra EV02.
+eksisterende app eller database: 319 scenarioer bruker disponible Kestrel-verter,
+inklusive de fem fra EV02 og sju fra UX17. De 312 tidligere navnene er beholdt.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
 Kestrel, SQLite i minnet og testautentisering.
@@ -150,7 +169,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 312 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 319 beståtte scenarioer uten hopp.
 Den samlede UX16/EV02-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -161,7 +180,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 312; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 319; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
