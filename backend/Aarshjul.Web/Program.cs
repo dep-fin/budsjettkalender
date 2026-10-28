@@ -130,6 +130,8 @@ public partial class Program
         // Internkalender for SBR (SBR-intern arbeidsliste).
         builder.Services.AddScoped<IInternkalender, InternkalenderTjeneste>();
         builder.Services.AddScoped<IGjoeremaalRegler, GjoeremaalRegelTjeneste>();
+        builder.Services.AddScoped<InternkalenderKommando>();
+        builder.Services.AddScoped<InternkalenderRetur>();
         // Datouttrekk + manuell dokumentopplasting (samme uttrekksledd som automatisk innhenting).
         // Heuristisk (offline) uttrekk nå; Claude-API-implementasjonen plugges inn bak IDatouttrekk (Steg E).
         builder.Services.AddSingleton<IPdftekst, PdftekstLeser>();

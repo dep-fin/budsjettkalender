@@ -63,6 +63,8 @@ public static class Tidfestingsformat
 
             case Tidfestingstype.AnkerRelativ:
                 var relasjon = AnkerRelasjon(ankerOffset, ankerLoep);
+                if (!venterPaaAnker && presisjon == Datopresisjon.Maaned && dato is not null)
+                    return $"Tentativt anker ({relasjon}; ingen sikker dagsdato)";
                 return venterPaaAnker
                     ? $"Venter på ankerdato ({relasjon})"
                     : dato is { } a ? $"{a:dd.MM.yyyy} ({relasjon})" : relasjon;
@@ -117,7 +119,7 @@ public static class Tidfestingsformat
         {
             return $"samme dag som {loep}";
         }
-        var dager = Math.Abs(offset);
+        var dager = Math.Abs((long)offset);
         var enhet = dager == 1 ? "dag" : "dager";
         return offset < 0 ? $"{dager} {enhet} før {loep}" : $"{dager} {enhet} etter {loep}";
     }

@@ -1,266 +1,137 @@
 @page "/internkalender/runde/{Id:guid}"
 @using Aarshjul.Application.Internkalender
+@inherits Internside
 @attribute [Authorize(Policy = Autorisasjon.ErSbr)]
 @inject IInternkalender Kalender
+@inject InternkalenderKommando Kommando
 @inject Gjeldendebrukerkilde Brukerkilde
 @inject NavigationManager Nav
+@inject InternkalenderRetur Retur
 
-<PageTitle>@(_runde?.Etikett ?? "Runde")</PageTitle>
-
-@if (!_lastet)
-{
-    <p class="melding">Laster …</p>
-}
-else if (_runde is null)
-{
-    <p class="melding">Runden finnes ikke.</p>
-}
+<PageTitle>@(_runde?.Etikett ?? "Internrunde")</PageTitle>
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" />
+<InternkalenderOmraade>
+@if (!_lastet) { <h1>Internrunde</h1><p class="melding" role="status">Laster runden …</p> }
+else if (_lastfeil is not null) { <h1>Internrunde</h1><div class="feil" role="alert"><p>@_lastfeil</p><button class="knapp" @onclick="Last">Prøv igjen</button></div> }
+else if (_runde is null) { <h1>Runden finnes ikke</h1><p class="melding">Runden kan ha blitt slettet.</p><a href="/internkalender">Til oversikten</a> }
 else
 {
     <div class="admintopp">
-        <h1>@_runde.Etikett</h1>
-        <div>
-            @if (_runde.Rundetype != Rundetype.Ovrig)
-            {
-                <button class="knapp" @onclick='() => Nav.NavigateTo($"/internkalender/runde/{Id}/synk")'>Synkroniser mot regler</button>
-            }
-            <button class="knapp" @onclick='() => Nav.NavigateTo("/internkalender")'>Til oversikten</button>
+        <div><h1>@_runde.Etikett</h1><p class="ingress">Følg opp interne gjøremål, ansvarlige og fullføring.</p></div>
+        <div class="internhandlinger">
+            @if (_runde.Rundetype != Rundetype.Ovrig) { <button class="knapp" disabled="@_arbeider" @onclick='() => Nav.NavigateTo($"/internkalender/runde/{_runde.Id}/synk")'>Synkroniser mot regler</button> }
+            <a href="/internkalender">Til oversikten</a>
         </div>
     </div>
-
-    <div class="skjemarad" style="align-items:end">
-        <label style="flex:1;max-width:26rem">Hurtiginnlegging (tittel er nok – fyll ut resten senere)
-            <input @bind="_hurtigTittel" @bind:event="oninput"
-                   @onkeydown="HurtigTast" placeholder="Nytt gjøremål …" />
-        </label>
-        <button class="knapp knapp-primær" @onclick="Hurtiglegg" disabled="@string.IsNullOrWhiteSpace(_hurtigTittel)">Legg til</button>
-        <button class="knapp" @onclick='() => Nav.NavigateTo($"/internkalender/gjoeremaal/ny/{Id}")'>Nytt gjøremål (fullt skjema)</button>
-    </div>
-
-    <div class="skjemarad" style="align-items:end">
-        <label>Vis ansvarlig
-            <select @bind="_filterBrukerId" @bind:after="Last">
-                <option value="">Alle</option>
-                @if (_megId is not null)
-                {
-                    <option value="@_megId">Kun mine</option>
-                }
-                @foreach (var a in _ansvarlige.Where(a => a.BrukerId is not null && a.BrukerId != _megId))
-                {
-                    <option value="@a.BrukerId">@a.Navn</option>
-                }
-            </select>
-        </label>
-    </div>
-
-    @if (_feil is not null)
-    {
-        <div class="feil">@_feil</div>
-    }
-
+    @if (_melding is not null) { <p class="internstatus" role="status">@_melding</p> }
+    @if (_feil is not null && _fullfoer is null && _slett is null) { <p class="feil" role="alert">@_feil</p> }
+    <section class="internkort" aria-labelledby="hurtiginnlegging">
+        <h2 id="hurtiginnlegging">Legg til et gjøremål</h2>
+        <form @onsubmit="Hurtiglegg" @onsubmit:preventDefault="true">
+            <div class="skjemarad">
+                <label>Hurtiginnlegging (tittel er nok – fyll ut resten senere)<input @bind="_hurtigTittel" @bind:event="oninput" placeholder="Nytt gjøremål …" disabled="@_arbeider" /></label>
+                <button type="submit" class="knapp knapp-primær" disabled="@(_arbeider || string.IsNullOrWhiteSpace(_hurtigTittel))">Legg til</button>
+                <button type="button" class="knapp" disabled="@_arbeider" @onclick='() => Nav.NavigateTo($"/internkalender/gjoeremaal/ny/{_runde.Id}")'>Nytt gjøremål (fullt skjema)</button>
+            </div>
+        </form>
+    </section>
+    <div class="skjemarad"><label>Vis ansvarlig<select @bind="_filterBrukerId" @bind:after="Last" disabled="@_arbeider"><option value="">Alle</option>@if (_megId is not null) { <option value="@_megId">Kun mine</option> }@foreach (var a in _ansvarlige.Where(a => a.BrukerId is not null && a.BrukerId != _megId)) { <option value="@a.BrukerId">@a.Navn</option> }</select></label></div>
     <h2>Aktive (@_aktive.Count)</h2>
-    @if (_aktive.Count == 0)
-    {
-        <p class="melding">Ingen aktive gjøremål@(string.IsNullOrEmpty(_filterBrukerId) ? "" : " for valgt ansvarlig").</p>
-    }
+    @if (_aktive.Count == 0) { <p class="internkort">Ingen aktive gjøremål@(string.IsNullOrEmpty(_filterBrukerId) ? "" : " for valgt ansvarlig").</p> }
     else
     {
-        <table class="tabell">
-            <thead>
-                <tr><th></th><th>Gjøremål</th><th>Tidspunkt</th><th>Ansvarlig</th><th></th></tr>
-            </thead>
-            <tbody>
-                @foreach (var g in _aktive)
-                {
-                    <tr>
-                        <td><input type="checkbox" @onchange="() => StartFullfoer(g)" title="Merk som fullført" /></td>
-                        <td>
-                            <strong>@g.Tittel</strong>
-                            @if (g.Opphav == GjoeremaalOpphav.Generert)
-                            {
-                                <span class="merke merke-kategori" title="Generert fra en generell regel">generert</span>
-                            }
-                            @if (g.VenterPaaAnker)
-                            {
-                                <span class="merke merke-tentativ">venter på anker</span>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(g.Notat))
-                            {
-                                <div class="dempet">@g.Notat</div>
-                            }
-                        </td>
-                        <td>@g.Tidsangivelse</td>
-                        <td>@AnsvarligTekst(g)</td>
-                        <td>
-                            <a href="@($"/internkalender/gjoeremaal/{g.Id}")">Rediger</a>
-                            <button class="knapp-lenke" @onclick="() => Slett(g.Id, g.Tittel)">Slett</button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <table class="tabell"><thead><tr><th scope="col" class="avhuking">Fullfør</th><th scope="col">Gjøremål</th><th scope="col">Tidspunkt</th><th scope="col">Ansvarlige</th><th scope="col">Handlinger</th></tr></thead><tbody>
+        @foreach (var g in _aktive)
+        {
+            <tr @key="g.Id">
+                <td class="avhuking"><input type="checkbox" @bind:get="@(_fullfoer?.Id == g.Id)" @bind:set="(bool valgt) => valgt ? StartFullfoer(g) : Task.CompletedTask" aria-label="@($"Fullfør {g.Tittel}")" disabled="@_arbeider" /></td>
+                <td data-label="Gjøremål"><strong class="oppgavetittel">@g.Tittel</strong>@if (g.Opphav == GjoeremaalOpphav.Generert) { <span class="internvern">@(g.ManueltEndret ? "Generert · manuelt endret, vernet ved synk" : "Generert fra gjøremålsregel")</span> }@if (!string.IsNullOrWhiteSpace(g.Notat)) { <div class="oppgavenotat">@g.Notat</div> }</td>
+                <td data-label="Tidspunkt">@g.Tidsangivelse</td><td data-label="Ansvarlige">@AnsvarligTekst(g)</td>
+                <td data-label="Handlinger"><div class="internhandlinger"><a href="@($"/internkalender/gjoeremaal/{g.Id}")" aria-label="@($"Rediger {g.Tittel}")">Rediger</a><button class="knapp-lenke" aria-label="@($"Slett {g.Tittel}")" disabled="@_arbeider" @onclick="() => VelgSlett(g)">Slett</button></div></td>
+            </tr>
+        }
+        </tbody></table>
     }
-
     <h2>Ferdig (@_ferdige.Count)</h2>
-    @if (_ferdige.Count == 0)
-    {
-        <p class="melding">Ingen fullførte gjøremål ennå.</p>
-    }
+    @if (_ferdige.Count == 0) { <p class="melding">Ingen fullførte gjøremål ennå.</p> }
     else
     {
-        <table class="tabell">
-            <thead>
-                <tr><th>Gjøremål</th><th>Tidspunkt</th><th>Fullført av</th><th></th></tr>
-            </thead>
-            <tbody>
-                @foreach (var g in _ferdige)
-                {
-                    <tr class="ferdig">
-                        <td>@g.Tittel</td>
-                        <td>@g.Tidsangivelse</td>
-                        <td>@g.FullfoertAvNavn @(g.FullfoertTid is { } t ? $"({t.LocalDateTime:dd.MM.yyyy})" : "")</td>
-                        <td><button class="knapp-lenke" @onclick="() => Gjenaapne(g.Id)">Åpne igjen</button></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <table class="tabell"><thead><tr><th scope="col">Gjøremål</th><th scope="col">Tidspunkt</th><th scope="col">Ansvarlige</th><th scope="col">Fullført av og når</th><th scope="col">Handlinger</th></tr></thead><tbody>
+        @foreach (var g in _ferdige)
+        {
+            <tr class="ferdig" @key="g.Id"><td data-label="Gjøremål"><strong class="oppgavetittel">@g.Tittel</strong>@if (!string.IsNullOrWhiteSpace(g.Notat)) { <div class="oppgavenotat">@g.Notat</div> }</td><td data-label="Tidspunkt">@g.Tidsangivelse</td><td data-label="Ansvarlige">@AnsvarligTekst(g)</td><td data-label="Fullført av og når">@g.FullfoertAvNavn<br />@Internformat.Tid(g.FullfoertTid)</td><td data-label="Handlinger"><button class="knapp-lenke" aria-label="@($"Gjenåpne {g.Tittel}")" disabled="@_arbeider" @onclick="() => Gjenaapne(g)">Åpne igjen</button></td></tr>
+        }
+        </tbody></table>
     }
 }
-
-@if (_bekreftFullfoer is not null)
-{
-    <div class="bekreftboks">
-        <p>Du er ikke ansvarlig for «@_bekreftFullfoer.Tittel». Melde den som fullført likevel?</p>
-        <button class="knapp knapp-primær" @onclick="BekreftFullfoer">Ja, meld fullført</button>
-        <button class="knapp" @onclick="AvbrytFullfoer">Avbryt</button>
-    </div>
-}
-
-@if (_bekreftSlett is not null)
-{
-    <div class="bekreftboks">
-        <p>Slette gjøremålet «@_bekreftSlettTittel»?</p>
-        <button class="knapp knapp-primær" @onclick="BekreftSlett">Ja, slett</button>
-        <button class="knapp" @onclick="() => _bekreftSlett = null">Avbryt</button>
-    </div>
-}
+</InternkalenderOmraade>
+<InternBekreftelse Aapen="@(_fullfoer is not null || _slett is not null)" Valg="@_valg" Tittel="@(_slett is not null ? "Slett gjøremål" : "Fullfør annens gjøremål")" Tekst="@Dialogtekst" Bekrefttekst="@(_slett is not null ? "Ja, slett" : "Ja, meld fullført")" Arbeider="@_arbeider" Feil="@_feil" Bekreft="Bekreft" Avbryt="Avbryt" />
 
 @code {
     [Parameter] public Guid Id { get; set; }
-
+    private Guid? _ruteId;
     private RundeDto? _runde;
-    private List<GjoeremaalDto> _aktive = [];
-    private List<GjoeremaalDto> _ferdige = [];
+    private List<GjoeremaalDto> _aktive = [], _ferdige = [];
     private IReadOnlyList<AnsvarligDto> _ansvarlige = [];
-    private bool _lastet;
-    private string _hurtigTittel = "";
-    private string _filterBrukerId = "";
-    private string? _megId;
-    private string _megNavn = "";
-    private string? _feil;
-    private GjoeremaalDto? _bekreftFullfoer;
-    private Guid? _bekreftSlett;
-    private string _bekreftSlettTittel = "";
-
-    protected override async Task OnInitializedAsync()
+    private bool _lastet, _arbeider;
+    private string _hurtigTittel = "", _filterBrukerId = "";
+    private string? _megId, _feil, _lastfeil, _melding;
+    private GjoeremaalDto? _fullfoer, _slett;
+    private int _valg;
+    private string Dialogtekst => _slett is { } s ? $"Slette gjøremålet «{s.Tittel}»? Dette kan ikke angres." : $"Du er ikke ansvarlig for «{_fullfoer?.Tittel}». Melde den som fullført likevel?";
+    protected override async Task OnParametersSetAsync()
     {
-        var bruker = await Brukerkilde.HentAsync();
-        _megId = bruker.Id;
-        _megNavn = bruker.Navn;
-        _ansvarlige = await Kalender.HentMuligeAnsvarligeAsync();
+        if (_ruteId == Id) return;
+        _ruteId = Id; _runde = null; _hurtigTittel = ""; _filterBrukerId = ""; _melding = Retur.Hent($"/internkalender/runde/{Id}"); _feil = null; _fullfoer = null; _slett = null;
         await Last();
     }
-
     private async Task Last()
     {
-        _runde = await Kalender.HentRundeAsync(Id);
-        if (_runde is null)
+        var id = Id; var filter = _filterBrukerId; var visning = ++Visning; _lastet = false; _lastfeil = null;
+        try
         {
-            _lastet = true;
-            return;
+            var bruger = await Brukerkilde.HentAsync(Levetid.Token);
+            var ansvarlige = await Kalender.HentMuligeAnsvarligeAsync(Levetid.Token);
+            var runde = await Kalender.HentRundeAsync(id, Levetid.Token);
+            var alle = runde is null ? [] : await Kalender.HentGjoeremaalAsync(id, string.IsNullOrEmpty(filter) ? null : filter, Levetid.Token);
+            if (!ErGjeldende(visning)) return;
+            _megId = bruger.Id; _ansvarlige = ansvarlige; _runde = runde;
+            _aktive = alle.Where(g => g.Status == GjoeremaalStatus.Aktiv).ToList(); _ferdige = alle.Where(g => g.Status == GjoeremaalStatus.Fullfoert).ToList();
         }
-        var alle = await Kalender.HentGjoeremaalAsync(Id, string.IsNullOrEmpty(_filterBrukerId) ? null : _filterBrukerId);
-        _aktive = alle.Where(g => g.Status == GjoeremaalStatus.Aktiv).ToList();
-        _ferdige = alle.Where(g => g.Status == GjoeremaalStatus.Fullfoert).ToList();
-        _lastet = true;
+        catch (OperationCanceledException) when (Levetid.IsCancellationRequested) { }
+        catch (Exception e) { if (ErGjeldende(visning)) _lastfeil = Feiltekst(e, "Kunne ikke laste runden. Prøv igjen."); }
+        finally { if (ErGjeldende(visning)) _lastet = true; }
     }
-
-    private async Task HurtigTast(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            await Hurtiglegg();
-        }
-    }
-
     private async Task Hurtiglegg()
     {
-        if (string.IsNullOrWhiteSpace(_hurtigTittel))
-        {
-            return;
-        }
-        await Kalender.HurtiglaggAsync(Id, _hurtigTittel);
-        _hurtigTittel = "";
-        await Last();
+        if (_arbeider || !_lastet || _runde is null || string.IsNullOrWhiteSpace(_hurtigTittel)) return;
+        var tittel = _hurtigTittel; var id = _runde.Id;
+        await Utfoer(() => Kommando.HurtiglaggAsync(id, tittel, Levetid.Token), $"Gjøremålet «{tittel.Trim()}» er lagt til.", () => _hurtigTittel = "");
     }
-
-    private static string AnsvarligTekst(GjoeremaalDto g)
-        => g.Ansvarlige.Count == 0 ? "—" : string.Join(", ", g.Ansvarlige.Select(a => a.Navn));
-
+    private static string AnsvarligTekst(GjoeremaalDto g) => g.Ansvarlige.Count == 0 ? "Ingen ansvarlige" : string.Join(", ", g.Ansvarlige.Select(a => a.Navn + (a.BrukerId is null ? " (fritekst)" : "")));
     private async Task StartFullfoer(GjoeremaalDto g)
     {
-        // Krev bekreftelse hvis den som huker av ikke selv er ansvarlig.
-        var erAnsvarlig = _megId is not null && g.Ansvarlige.Any(a => a.BrukerId == _megId);
-        if (erAnsvarlig)
-        {
-            await Fullfoer(g);
-        }
-        else
-        {
-            _bekreftFullfoer = g;
-        }
+        if (_arbeider) return;
+        if (_megId is not null && g.Ansvarlige.Any(a => a.BrukerId == _megId)) await Fullfoer(g);
+        else { _fullfoer = g; _valg++; _feil = null; }
     }
-
-    private async Task BekreftFullfoer()
+    private void VelgSlett(GjoeremaalDto g) { if (_arbeider) return; _slett = g; _valg++; _feil = null; }
+    private void Avbryt() { if (_arbeider) return; _fullfoer = null; _slett = null; _feil = null; }
+    private async Task Bekreft()
     {
-        if (_bekreftFullfoer is { } g)
-        {
-            _bekreftFullfoer = null;
-            await Fullfoer(g);
-        }
+        if (_arbeider) return;
+        if (_fullfoer is { } f) await Fullfoer(f);
+        else if (_slett is { } s) await Utfoer(() => Kommando.SlettGjoeremaalAsync(s.Id, Levetid.Token), $"Gjøremålet «{s.Tittel}» er slettet.");
     }
-
-    private async Task AvbrytFullfoer()
+    private Task Fullfoer(GjoeremaalDto g) => Utfoer(() => Kommando.FullfoerAsync(g.Id, Levetid.Token), $"Gjøremålet «{g.Tittel}» er fullført.");
+    private Task Gjenaapne(GjoeremaalDto g) => Utfoer(() => Kommando.GjenaapneAsync(g.Id, Levetid.Token), $"Gjøremålet «{g.Tittel}» er åpnet igjen.");
+    private async Task Utfoer(Func<Task> handling, string melding, Action? etterLagring = null)
     {
-        _bekreftFullfoer = null;
-        await Last(); // tilbakestill avkryssingen i UI
+        if (_arbeider) return; _arbeider = true; _feil = null; var visning = Visning;
+        try { await handling(); if (!ErGjeldende(visning)) return; etterLagring?.Invoke(); _fullfoer = null; _slett = null; _melding = melding; await Last(); }
+        catch (OperationCanceledException) when (Levetid.IsCancellationRequested) { }
+        catch (Exception e) { if (ErGjeldende(visning)) _feil = Feiltekst(e, "Kunne ikke lagre endringen. Verdiene er beholdt. Prøv igjen."); }
+        finally { _arbeider = false; }
     }
-
-    private async Task Fullfoer(GjoeremaalDto g)
-    {
-        await Kalender.FullfoerAsync(g.Id, _megId ?? "", _megNavn);
-        await Last();
-    }
-
-    private async Task Gjenaapne(Guid id)
-    {
-        await Kalender.GjenaapneAsync(id);
-        await Last();
-    }
-
-    private void Slett(Guid id, string tittel)
-    {
-        _bekreftSlett = id;
-        _bekreftSlettTittel = tittel;
-    }
-
-    private async Task BekreftSlett()
-    {
-        if (_bekreftSlett is { } id)
-        {
-            await Kalender.SlettGjoeremaalAsync(id);
-            _bekreftSlett = null;
-            await Last();
-        }
-    }
+    private void FoerNavigasjon(LocationChangingContext context) { if (_arbeider) context.PreventNavigation(); }
 }

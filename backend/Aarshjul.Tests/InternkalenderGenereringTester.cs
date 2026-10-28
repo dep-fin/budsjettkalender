@@ -140,5 +140,70 @@ public class InternkalenderGenereringTester : IDisposable
         Assert.Equal(new DateOnly(2027, 3, 27), g.Sorteringsdag);
     }
 
+    [Fact]
+    public async Task Tentativt_anker_gir_ikke_en_sikker_dagsfrist()
+    {
+        _t.Db.Frister.Add(new Frist
+        {
+            Tittel = "Tentativ rammefordeling", Dato = new DateOnly(2027, 3, 1), Budsjettaar = 2027,
+            Loep = "rammefordeling", Status = FristStatus.Godkjent,
+            Datopresisjon = Datopresisjon.Maaned, Datokvalifikator = Datokvalifikator.Medio
+        });
+        await _t.Db.SaveChangesAsync();
+        var runde = await _kal.OpprettRundeAsync(Rundetype.Marsrunden, 2027, "Anna");
+        var id = await _kal.OpprettGjoeremaalAsync(runde, new GjoeremaalInndata
+        {
+            Tittel = "Følge opp", Tidfestingstype = Tidfestingstype.AnkerRelativ,
+            AnkerLoep = "rammefordeling", AnkerOffsetDager = 7
+        });
+        var g = Assert.Single(await _kal.HentGjoeremaalAsync(runde, null));
+        Assert.False(g.VenterPaaAnker);
+        Assert.Equal(new DateOnly(2027, 3, 22), g.Sorteringsdag);
+        Assert.Equal(Datopresisjon.Maaned, (await _kal.HentForRedigeringAsync(id))!.Datopresisjon);
+        Assert.Contains("tentativ", g.Tidsangivelse, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("22.03.2027", g.Tidsangivelse);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(10000)]
+    [InlineData(int.MaxValue)]
+    public async Task Ugyldig_rundeaar_avvises_uten_lagring(int aar)
+    {
+        await Assert.ThrowsAsync<Valideringsfeil>(() => _kal.OpprettRundeAsync(Rundetype.Rnb, aar, "Anna"));
+        await Assert.ThrowsAsync<Valideringsfeil>(() => _kal.GenererRundeAsync(Rundetype.Rnb, aar, "Anna"));
+        Assert.Empty(await _kal.HentRunderAsync());
+    }
+
+    [Theory]
+    [InlineData(int.MinValue)]
+    [InlineData(int.MaxValue)]
+    public async Task Ankerforskyvning_utenfor_kalenderen_gir_valideringsfeil_uten_tapt_oppgave(int offset)
+    {
+        _t.Db.Frister.Add(new Frist
+        {
+            Tittel = "Ramme", Dato = new DateOnly(2027, 3, 20), Budsjettaar = 2027,
+            Loep = "ramme", Status = FristStatus.Godkjent
+        });
+        await _t.Db.SaveChangesAsync();
+        var runde = await _kal.OpprettRundeAsync(Rundetype.Rnb, 2027, "Anna");
+        var id = await _kal.HurtiglaggAsync(runde, "Behold denne");
+        await Assert.ThrowsAsync<Valideringsfeil>(() => _kal.OppdaterGjoeremaalAsync(id, new GjoeremaalInndata
+        {
+            Tittel = "Nytt utkast", Tidfestingstype = Tidfestingstype.AnkerRelativ,
+            AnkerLoep = "ramme", AnkerOffsetDager = offset
+        }));
+        Assert.Equal("Behold denne", Assert.Single(await _kal.HentGjoeremaalAsync(runde, null)).Tittel);
+    }
+
+    [Fact]
+    public async Task Hurtiginnlegging_i_slettet_runde_gir_forstaaelig_valideringsfeil()
+    {
+        var runde = await _kal.OpprettRundeAsync(Rundetype.Rnb, 2027, "Anna");
+        await _kal.SlettRundeAsync(runde);
+        var feil = await Assert.ThrowsAsync<Valideringsfeil>(() => _kal.HurtiglaggAsync(runde, "Oppgave"));
+        Assert.Contains("Runden finnes ikke", feil.Message);
+    }
+
     public void Dispose() => _t.Dispose();
 }
