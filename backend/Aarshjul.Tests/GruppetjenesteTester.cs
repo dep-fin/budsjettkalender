@@ -190,5 +190,52 @@ public sealed class GruppetjenesteTester : IDisposable
         Kategori = Kategori.Budsjett, Synlighetskoder = koder.ToList()
     };
 
+    [Theory]
+    [InlineData("FA")]
+    [InlineData("FIN-FAG")]
+    [InlineData("FAG")]
+    [InlineData("POL")]
+    [InlineData("SKOK")]
+    public async Task Navn_og_aktivitet_bevarer_alle_identiteter_historiske_delinger_og_medlemskapskilder(string kode)
+    {
+        await Grupper.OpprettAsync("SKOK", "Egendefinert");
+        var skriving = new FristskrivingTjeneste(_t.Factory);
+        foreach (var aar in new[] { 2020, 2031 })
+        {
+            var inndata = Frist(kode);
+            inndata.Dato = new DateOnly(aar - 1, 11, 20);
+            inndata.Budsjettaar = aar;
+            await skriving.OpprettAsync(inndata);
+        }
+        await using (var db = await _t.Factory.CreateDbContextAsync())
+        {
+            db.Brukere.AddRange(
+                new Bruker { Id = "entra", Navn = "Entra", ErFin = true, Grupper = [new() { BrukerId = "entra", GruppeKode = kode, Kilde = GruppeMedlemskapKilde.Entra }] },
+                new Bruker { Id = "manuell", Navn = "Manuell", ErFin = true, Grupper = [new() { BrukerId = "manuell", GruppeKode = kode, Kilde = GruppeMedlemskapKilde.Manuell }] });
+            await db.SaveChangesAsync();
+        }
+        await using var foerDb = await _t.Factory.CreateDbContextAsync();
+        var grupper = await foerDb.Synlighetsgrupper.AsNoTracking().OrderBy(g => g.Kode)
+            .Select(g => new { g.Id, g.Kode, g.ErStandard }).ToArrayAsync();
+        var delinger = await foerDb.FristSynlighet.AsNoTracking().OrderBy(s => s.FristId).ThenBy(s => s.GruppeKode)
+            .Select(s => new { s.FristId, s.GruppeKode }).ToArrayAsync();
+        var medlemskap = await foerDb.BrukerGrupper.AsNoTracking().OrderBy(b => b.BrukerId).ThenBy(b => b.GruppeKode)
+            .Select(b => new { b.BrukerId, b.GruppeKode, b.Kilde }).ToArrayAsync();
+        foreach (var aktiv in new[] { false, true })
+        {
+            await Grupper.OppdaterAsync(kode, " Nytt navn <bevart> ", aktiv);
+            Assert.Equal(aktiv, (await Grupper.HentAktiveAsync()).Any(g => g.Kode == kode));
+            await using var etter = await _t.Factory.CreateDbContextAsync();
+            Assert.Equal(grupper, await etter.Synlighetsgrupper.OrderBy(g => g.Kode).Select(g => new { g.Id, g.Kode, g.ErStandard }).ToArrayAsync());
+            Assert.Equal(delinger, await etter.FristSynlighet.OrderBy(s => s.FristId).ThenBy(s => s.GruppeKode).Select(s => new { s.FristId, s.GruppeKode }).ToArrayAsync());
+            Assert.Equal(medlemskap, await etter.BrukerGrupper.OrderBy(b => b.BrukerId).ThenBy(b => b.GruppeKode).Select(b => new { b.BrukerId, b.GruppeKode, b.Kilde }).ToArrayAsync());
+            var synlige = await new FristTjeneste(_t.Factory, new FastKlokke(new DateOnly(2026, 1, 1)))
+                .HentSynligeAsync(Synlighetskontekst.ForGruppe(kode), new() { InkluderHistorikk = true });
+            Assert.Equal(2, synlige.Count);
+            Assert.Equal(new[] { 2020, 2031 }, synlige.Select(f => f.Budsjettaar));
+            Assert.All(synlige, f => Assert.Equal(new[] { kode }, f.Synlighet));
+        }
+    }
+
     public void Dispose() => _t.Dispose();
 }

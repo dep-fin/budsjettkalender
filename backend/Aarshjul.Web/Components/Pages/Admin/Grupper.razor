@@ -1,132 +1,70 @@
 @page "/admin/grupper"
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
-@inject IGruppetjeneste Gruppetjeneste
 
-<PageTitle>Synlighetsgrupper</PageTitle>
-<h1>Synlighetsgrupper</h1>
-
-<p class="ingress">
-    Opprett grupper og vedlikehold visningsnavn og status. Koden er fast etter oppretting.
-    Inaktive grupper tilbys ikke i nye valg; eksisterende frister beholder synligheten sin.
-</p>
-
-@if (_feil is not null)
+<PageTitle>Grupper</PageTitle>
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" />
+<p class="menyoverskrift">Grupper og innsyn</p>
+<div class="gruppetopp">
+    <div><h1>Grupper</h1><p class="ingress">Vedlikehold hvem fristene kan deles med. Kontroller det publiserte innholdet under Innsyn.</p></div>
+    <button type="button" class="knapp knapp-primær" @onclick="NyGruppe" disabled="@(_laster || _arbeider)">Ny gruppe</button>
+</div>
+@if (_melding is not null) { <p class="gruppestatus" role="status">@_melding</p> }
+@if (_lastfeil is not null)
 {
-    <div class="feil" role="alert">@_feil</div>
+    <div class="feil" role="alert"><p>@_lastfeil</p><button class="knapp" disabled="@_laster" @onclick="LastAsync">Prøv igjen</button></div>
 }
-@if (_melding is not null)
+@if (_laster) { <p class="melding" role="status">Laster grupper …</p> }
+else if (_lastfeil is null)
 {
-    <p class="melding" role="status">@_melding</p>
+    <section class="gruppeoversikt" aria-labelledby="alle-grupper">
+        <div class="gruppeliste-topp"><h2 id="alle-grupper">Synlighetsgrupper</h2><span>@_grupper.Count grupper</span></div>
+        <table class="tabell gruppetabell">
+            <thead><tr><th scope="col">Kode</th><th scope="col">Visningsnavn</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col">Handling</th></tr></thead>
+            <tbody>
+                @foreach (var gruppe in _grupper)
+                {
+                    <tr @key="gruppe.Kode">
+                        <td data-label="Kode"><strong class="gruppekode">@gruppe.Kode</strong></td>
+                        <td data-label="Visningsnavn"><span>@gruppe.Navn</span></td>
+                        <td data-label="Type"><span>@(gruppe.ErStandard ? "Innebygd" : "Egendefinert")</span></td>
+                        <td data-label="Status"><span class="gruppemerke @(gruppe.Aktiv ? "aktiv" : "inaktiv")">@(gruppe.Aktiv ? "Aktiv" : "Inaktiv")</span></td>
+                        <td data-label="Handling"><button type="button" class="knapp" @onclick="() => Rediger(gruppe)" disabled="@_arbeider">Rediger</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (_grupper.Count == 0) { <p class="melding">Ingen synlighetsgrupper er opprettet.</p> }
+    </section>
+    <p class="gruppeforklaring">Gruppekoden er fast etter oppretting. Inaktive grupper tilbys ikke i nye valg; eksisterende frister og medlemskap beholder referansene sine.</p>
 }
-
-<form class="skjema" aria-label="Ny synlighetsgruppe" @onsubmit="Opprett" @onsubmit:preventDefault="true">
-    <h2>Ny gruppe</h2>
-    <label>Kode
-        <input @bind="_nyKode" maxlength="64" aria-describedby="kodehjelp" disabled="@_arbeider" />
-    </label>
-    <small id="kodehjelp" class="hint">1–64 tegn: A–Z, 0–9 og bindestrek. Begynn med en bokstav. Lagres med store bokstaver.</small>
-    <label>Visningsnavn
-        <input @bind="_nyttNavn" maxlength="256" disabled="@_arbeider" />
-    </label>
-    <button type="submit" class="knapp knapp-primær" disabled="@_arbeider">Opprett gruppe</button>
-</form>
-
-@if (_redigerKode is not null)
-{
-    <form class="skjema" aria-label="Rediger synlighetsgruppe" @onsubmit="Lagre" @onsubmit:preventDefault="true">
-        <h2>Rediger gruppe</h2>
-        <p>Kode: <strong>@_redigerKode</strong> (kan ikke endres)</p>
-        <label>Visningsnavn
-            <input @bind="_redigerNavn" maxlength="256" disabled="@_arbeider" />
-        </label>
-        <label class="filtervalg">
-            <input type="checkbox" @bind="_redigerAktiv" disabled="@_arbeider" /> Aktiv
-        </label>
-        <div class="skjemarad">
-            <button type="submit" class="knapp knapp-primær" disabled="@_arbeider">Lagre endringer</button>
-            <button type="button" class="knapp" @onclick="Avbryt" disabled="@_arbeider">Avbryt</button>
-        </div>
-    </form>
-}
-
-<h2>Alle grupper</h2>
-<table class="tabell">
-    <thead><tr><th>Kode</th><th>Visningsnavn</th><th>Type</th><th>Status</th><th>Handling</th></tr></thead>
-    <tbody>
-        @foreach (var gruppe in _grupper)
-        {
-            <tr @key="gruppe.Kode">
-                <td>@gruppe.Kode</td>
-                <td>@gruppe.Navn</td>
-                <td>@(gruppe.ErStandard ? "Innebygd" : "Egendefinert")</td>
-                <td>@(gruppe.Aktiv ? "Aktiv" : "Inaktiv")</td>
-                <td><button type="button" class="knapp" @onclick="() => Rediger(gruppe)" disabled="@_arbeider">Rediger</button></td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-@code {
-    private IReadOnlyList<GruppeadministrasjonDto> _grupper = [];
-    private string _nyKode = "";
-    private string _nyttNavn = "";
-    private string? _redigerKode;
-    private string _redigerNavn = "";
-    private bool _redigerAktiv;
-    private bool _arbeider;
-    private string? _feil;
-    private string? _melding;
-
-    protected override async Task OnInitializedAsync() => await Last();
-    private async Task Last() => _grupper = await Gruppetjeneste.HentAlleAsync();
-
-    private void Rediger(GruppeadministrasjonDto gruppe)
+<dialog @ref="_dialog" class="gruppedialog" aria-labelledby="gruppedialog-tittel" data-visning="@_visning" data-redigerer="@(_redigerer ? "true" : "false")" data-arbeider="@(_arbeider ? "true" : "false")">
+    @if (_redigerer)
     {
-        _feil = null;
-        _melding = null;
-        _redigerKode = gruppe.Kode;
-        _redigerNavn = gruppe.Navn;
-        _redigerAktiv = gruppe.Aktiv;
+        <form class="skjema gruppeskjema" aria-label="@(_oppretter ? "Ny synlighetsgruppe" : "Rediger synlighetsgruppe")" @onsubmit="LagreAsync" @onsubmit:preventDefault="true" novalidate>
+            <div><p class="menyoverskrift">Synlighetsgruppe</p><h2 id="gruppedialog-tittel" tabindex="-1">@(_oppretter ? "Ny gruppe" : "Rediger gruppe")</h2></div>
+            @if (_feil is not null)
+            {
+                <div class="feil" role="alert" tabindex="-1" @ref="_feilfelt"><strong>@_feil</strong>
+                    @if (_feltfeil.Count > 0) { <ul>@foreach (var feil in _feltfeil) { <li><a href="@($"#gruppe-{feil.Key}")">@feil.Value</a></li> }</ul> }
+                </div>
+            }
+            @if (_oppretter)
+            {
+                <div><label for="gruppe-kode">Kode</label><input id="gruppe-kode" @bind="_kode" @bind:event="oninput" maxlength="64" aria-describedby="@Beskrivelse("kode", "gruppe-kodehjelp")" aria-invalid="@Ugyldig("kode")" disabled="@_arbeider" />
+                    <small id="gruppe-kodehjelp" class="hint">1–64 tegn: A–Z, 0–9 og bindestrek. Begynn med en bokstav. Lagres med store bokstaver.</small>
+                    @if (_feltfeil.TryGetValue("kode", out var kodefeil)) { <small id="gruppe-kodefeil" class="gruppefeltfeil">@kodefeil</small> }
+                </div>
+            }
+            else { <div class="fastgruppekode"><span>Kode</span><strong>@_kode</strong><small>Kan ikke endres.</small></div> }
+            <div><label for="gruppe-navn">Visningsnavn</label><input id="gruppe-navn" @bind="_navn" @bind:event="oninput" maxlength="256" aria-describedby="@Beskrivelse("navn", "gruppe-navnhjelp")" aria-invalid="@Ugyldig("navn")" disabled="@_arbeider" />
+                <small id="gruppe-navnhjelp" class="hint">1–256 tegn. Bruk et navn som er lett å kjenne igjen.</small>
+                @if (_feltfeil.TryGetValue("navn", out var navnfeil)) { <small id="gruppe-navnfeil" class="gruppefeltfeil">@navnfeil</small> }
+            </div>
+            @if (!_oppretter)
+            {
+                <div><label class="filtervalg" for="gruppe-aktiv"><input id="gruppe-aktiv" type="checkbox" @bind="_aktiv" disabled="@_arbeider" aria-describedby="gruppe-aktivhjelp" />Aktiv</label><p id="gruppe-aktivhjelp" class="hint">En inaktiv gruppe kan ikke velges ved ny deling. Eksisterende referanser beholdes.</p></div>
+            }
+            <div class="gruppehandlinger"><button type="submit" class="knapp knapp-primær" disabled="@_arbeider">@(_arbeider ? "Lagrer …" : _oppretter ? "Opprett gruppe" : "Lagre endringer")</button><button type="button" class="knapp" @onclick="AvbrytAsync" disabled="@_arbeider">Avbryt</button></div>
+        </form>
     }
-
-    private void Avbryt()
-    {
-        _redigerKode = null;
-        _feil = null;
-    }
-
-    private async Task Opprett()
-    {
-        if (_arbeider) return;
-        _arbeider = true;
-        _feil = null;
-        _melding = null;
-        try
-        {
-            await Gruppetjeneste.OpprettAsync(_nyKode, _nyttNavn);
-            await Last();
-            _melding = "Gruppen er opprettet.";
-            _nyKode = "";
-            _nyttNavn = "";
-        }
-        catch (Valideringsfeil f) { _feil = f.Message; }
-        finally { _arbeider = false; }
-    }
-
-    private async Task Lagre()
-    {
-        if (_arbeider || _redigerKode is null) return;
-        _arbeider = true;
-        _feil = null;
-        _melding = null;
-        try
-        {
-            await Gruppetjeneste.OppdaterAsync(_redigerKode, _redigerNavn, _redigerAktiv);
-            await Last();
-            _redigerKode = null;
-            _melding = "Endringene er lagret.";
-        }
-        catch (Valideringsfeil f) { _feil = f.Message; }
-        finally { _arbeider = false; }
-    }
-}
+</dialog>

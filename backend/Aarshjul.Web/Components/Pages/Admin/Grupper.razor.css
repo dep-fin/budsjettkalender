@@ -1,0 +1,47 @@
+.gruppetopp { display: flex; justify-content: space-between; align-items: start; gap: 24px; }
+.gruppetopp .knapp { flex-shrink: 0; }
+.gruppetopp .ingress { max-width: 640px; }
+.gruppeoversikt { border: 1px solid var(--kant); border-radius: 12px; background: var(--papir); overflow: hidden; }
+.gruppeliste-topp { padding: 22px 24px 8px; display: flex; gap: 16px; align-items: baseline; justify-content: space-between; }
+.gruppeliste-topp h2 { font-size: 17px; margin: 0; }
+.gruppeliste-topp span { color: var(--dempet); font-size: 12px; }
+.gruppetabell { border: 0; border-radius: 0; margin: 12px 0 0; table-layout: fixed; }
+.gruppetabell th:first-child { width: 20%; }
+.gruppetabell th:nth-child(2) { width: 35%; }
+.gruppetabell th:last-child { width: 98px; }
+.gruppetabell td { vertical-align: middle; overflow-wrap: anywhere; }
+.gruppetabell .knapp { min-height: 34px; padding: 5px 12px; font-size: 12px; }
+.gruppekode { font-weight: 600; letter-spacing: .02em; }
+.gruppemerke { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 5px; }
+.gruppemerke.aktiv { background: var(--myk); color: var(--primaer); }
+.gruppemerke.inaktiv { background: #f0eeeb; color: #69625a; }
+.gruppeforklaring { color: var(--dempet); font-size: 12px; max-width: 780px; margin: 18px 0; }
+.gruppestatus { background: var(--myk); padding: 15px 20px; border: 1px solid #c7d9d0; border-radius: 8px; color: var(--primaer); }
+.gruppedialog { border: 1px solid var(--kant); border-radius: 14px; padding: 0; max-width: min(560px, calc(100vw - 32px)); width: 560px; max-height: calc(100dvh - 32px); box-shadow: 0 20px 80px #26353126; }
+.gruppedialog::backdrop { background: #26353166; }
+.gruppeskjema { border: 0; border-radius: 0; margin: 0; padding: 28px; gap: 22px; }
+.gruppeskjema h2 { font-size: 25px; margin: 0; letter-spacing: -.5px; }
+.gruppeskjema .menyoverskrift { margin-bottom: 6px; }
+.gruppeskjema input:not([type=checkbox]) { width: 100%; margin-top: 6px; }
+.gruppeskjema [aria-invalid=true] { border-color: #b04141; }
+.gruppefeltfeil { display: block; font-size: 12px; color: #8a1f1f; margin-top: 6px; }
+.gruppeskjema .feil { margin: 0; font-size: 13px; }
+.gruppeskjema .feil ul { margin: 8px 0 0; padding-left: 18px; }
+.gruppeskjema .feil a { color: inherit; }
+.fastgruppekode { display: grid; gap: 3px; padding: 14px 16px; background: var(--flate); border-radius: 8px; overflow-wrap: anywhere; }
+.fastgruppekode span, .fastgruppekode small { font-size: 12px; color: var(--dempet); }
+.gruppehandlinger { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 6px; }
+@media (max-width: 650px) {
+    .gruppetopp { flex-direction: column; gap: 0; margin-bottom: 22px; }
+    .gruppetopp .ingress { margin-bottom: 18px; }
+    .gruppeliste-topp { padding: 18px 18px 10px; flex-wrap: wrap; }
+    .gruppetabell thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+    .gruppetabell, .gruppetabell tbody { display: block; width: 100%; max-width: 100%; min-width: 0; }
+    .gruppetabell tr { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--kant); padding: 12px 18px; width: 100%; max-width: 100%; min-width: 0; }
+    .gruppetabell td { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; padding: 7px 0; border: 0; align-items: baseline; min-width: 0; width: 100%; max-width: 100%; }
+    .gruppetabell td > * { min-width: 0; overflow-wrap: anywhere; }
+    .gruppetabell td::before { content: attr(data-label); color: var(--dempet); font-size: 11px; font-weight: 400; }
+    .gruppetabell td .knapp, .gruppetabell td .gruppemerke { justify-self: start; }
+    .gruppeskjema { padding: 22px; }
+    .gruppehandlinger { flex-direction: column; }
+}
