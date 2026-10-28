@@ -4,25 +4,49 @@ Datert 28. oktober 2026. [UX18-rapporten](2026-10-28-atelier-ux18.md) er
 kravkartet og bevisregisteret. [Gjeldende status](../status.md) er dagens livsløp.
 Historiske kjøringer er datert i de enkelte akseptanserapportene.
 
-## Kandidat og arbeidstilstand
+## Publisert kandidat og gjeldende livsløp
 
 UX01–UX17 / #76–#92 er merget. UX17/PR #131 er `959060c898048da5ebd26bfb2cd5cdb68a1c2271`,
 med grønn [CI 40717209832](https://github.com/depmartin/Budsjettkalender/actions/runs/40717209832).
-Faktisk main er senere `93b1aea3f0953535e3144d22b36991e88ead7852`, EV03/PR #130,
+Main før UX18-publisering er `93b1aea3f0953535e3144d22b36991e88ead7852`, EV03/PR #130,
 merget 28. oktober 2026 kl. 17.33.10 +01:00 av en annen chat. Den er nødvendig
 integrert i UX18 før review, med EV02/EV03-kode/modell/adaptervern og alle tester bevart.
 PR #128 er ikke integrert; ingen ny EV-ticket er bestilt.
-UX18 er en lokal kandidat på `codex/93-atelier-sluttakseptanse`, i
-`work/Budsjettkalender-93` relativt til den opprinnelige checkouten.
+UX18 er publisert i [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132).
+[Publiseringsregisteret](2026-10-28-atelier-ux18.md#publisering-og-gjeldende-livsløp)
+oppgir det faste, gjennomgåtte kildegrunnlaget, identisk første publiserte tree
+og de tre fullførte gjennomgangene med 0 funn. Lokal arbeidsgren er
+`codex/93-atelier-sluttakseptanse`, i `work/Budsjettkalender-93` relativt til den
+opprinnelige checkouten. Den upubliserte lokale kandidatstatusen er historikk fra
+28. oktober 2026 før PR #132.
 `TestResults/93-main-integration/` er ignorert lokalt sluttbevis og følger ikke en
 ny klon. Tidligere 907/325-bevis i `TestResults/93-final/` er bevart som historikk.
-Root dokumenterer publisert kandidat/PR, identisk tree, review/audit, kandidat-CI,
-mergecommit og verifisert main etter sine porter. Lokale tester foregriper ikke dette.
+PR #132 og kommentarene i [#75](https://github.com/depmartin/Budsjettkalender/issues/75)
+og [#93](https://github.com/depmartin/Budsjettkalender/issues/93) er autoriteten for
+siste publiserte head, faktisk CI, mergecommit og verifisert main. De lokale
+962/328-resultatene og 130 oppdagede SQL-prøvene beholder sitt faste revisjonsgrunnlag.
 Arbeidet stopper etter #93. Ingen deploy eller oppstart av neste ticket inngår.
 
 Andre uferdige checkouter, draft-PR #65, prototype-/plangrenene og eksisterende
 demoprosesser/databaser er beholdt. Port 5076 (UX01), 5077 (UX02) og 5088
 (separat dokumentprototype) må ikke gjenbrukes eller stoppes av denne demoen.
+
+## Oppstart fra main etter bekreftet merge
+
+Kontroller at PR #132 viser merget og sammenhold mergecommit og verifisert main
+med #93. Bruk deretter en ny klon av [main](https://github.com/depmartin/Budsjettkalender/tree/main),
+eller oppdater en ren main-checkout med `git pull --ff-only`. En ny klon fra en
+foreldremappe med ledig mappenavn kan opprettes slik:
+
+```powershell
+git clone --branch main --single-branch https://github.com/depmartin/Budsjettkalender.git Budsjettkalender-atelier
+Set-Location Budsjettkalender-atelier
+git rev-parse HEAD
+```
+
+Sammenhold HEAD med det bekreftede main-grunnlaget før demoen startes. Les den
+[gjeldende overleveringen på main](https://github.com/depmartin/Budsjettkalender/blob/main/docs/acceptance/2026-10-28-atelier-overlevering.md)
+ved senere videreføring.
 
 ## Lokal demo med ny database
 
@@ -68,8 +92,11 @@ audit passerer med null advarsler/feil. 427 kilde- og 1518 runtimefiler har null
 fokusbilder supplerer dem på integrert runtime. Alle 89 historier er kartlagt.
 De 88 app-/kompatibilitetshistoriene har bestått bevis fra 63 navngitte metoder
 i siste TRX; historie 86 er prototype. Resultater, modell-/blobbevaring og SHA-256 står i
-UX18-rapporten og `TestResults/93-main-integration/`. Samlet review, separat audit,
-publisert kandidat-CI og faktisk UX18-merge gjenstår hos root.
+UX18-rapporten og `TestResults/93-main-integration/`. Full Standards-review,
+full Spec-review og uavhengig sikkerhetsaudit er fullført med 0 funn på det faste
+kildegrunnlaget. Denne publiseringsoppdateringen endrer bare dokumentasjon;
+produksjonskilder, tester, byggoppsett, arbeidsflyter og skript er uendret.
+Faktisk CI og merge leses fra PR #132 og oppgavekommentarene.
 
 ## Reproduser verifikasjonen
 
@@ -112,7 +139,7 @@ Ta opp Atelier-overleveringen etter UX18/#93 i depmartin/Budsjettkalender.
 Les AGENTS.md, GLOSSARY.md, docs/status.md, CONTRIBUTING.md, CODING_STANDARDS.md,
 relevante ADR-er og docs/acceptance/2026-10-28-atelier-ux18.md samt
 2026-10-28-atelier-overlevering.md. Kontroller live #75/#93 med alle kommentarer,
-faktisk PR/CI/merge/main, åpne PR-er og alle grener/worktrees før arbeid.
+PR #132 med faktisk siste head/CI/merge/main, åpne PR-er og alle grener/worktrees før arbeid.
 Skill levert kode fra prototypehistorie 86 og eksterne miljø-/pilotporter.
 Mandatet i den gamle chatten stoppet etter #93; start ikke #94/#95, EV-arbeid,
 merge av andre PR-er eller deploy på grunnlag av den gamle bestillingen.

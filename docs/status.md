@@ -1,7 +1,9 @@
 # Gjeldende status
 
-Oppdatert 28. oktober 2026. Dette er dagens samlede status. GitHub er kilden til
-oppgavenes og PR-enes faktiske livsløp. Tidligere kandidatbeskrivelser og lokale
+Oppdatert 28. oktober 2026. Dette er samlet leveransestatus. [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132)
+og kommentarene i [#75](https://github.com/depmartin/Budsjettkalender/issues/75) og
+[#93](https://github.com/depmartin/Budsjettkalender/issues/93) er kilden til siste
+publiserte head, faktisk CI, mergecommit, verifisert main og oppgavenes livsløp. Tidligere kandidatbeskrivelser og lokale
 testtall er bevart som [datert historikk](archive/status-foer-ux18-2026-10-28.md),
 og gjelder den revisjonen som er oppgitt der.
 
@@ -10,12 +12,12 @@ Atelier UX01–UX17 / #76–#92 er levert og merget. UX17/PR #131 ble levert som
 [CI 40717209832](https://github.com/depmartin/Budsjettkalender/actions/runs/40717209832):
 901 ordinære, 319 Chromium- og 79 ekte SQL Server-tilfeller. Senere ble EV03/
 [PR #130](https://github.com/depmartin/Budsjettkalender/pull/130) merget av en annen
-chat som faktisk main `93b1aea3f0953535e3144d22b36991e88ead7852`,
+chat som daværende main `93b1aea3f0953535e3144d22b36991e88ead7852`,
 28. oktober 2026 kl. 17.33.10 +01:00. Denne mergede hovedgrenen er nødvendig
 integrert i UX18 før samlet review. [UX18s leveranseregister](acceptance/2026-10-28-atelier-ux18.md#leveranseregister)
 bevarer de enkelte leveransenes historiske PR-/CI-bevis. Nytt EV-arbeid er ikke bestilt.
 
-## UX18 – lokal samlet akseptansekandidat
+## UX18 – samlet akseptanse og publisering
 
 [#93](https://github.com/depmartin/Budsjettkalender/issues/93) prøver hele Atelier
 fra UX17-basen med den senere faktisk mergede EV03-main integrert. [Akseptanserapporten](acceptance/2026-10-28-atelier-ux18.md)
@@ -39,8 +41,12 @@ sluttbilder er bevart. Seks nye fokusbilder fra integrert runtime er visuelt les
 sluttkandidaten har 501 filer. `TestResults/93-main-integration/` binder
 resultat, inventar og SHA-256; tidligere 907/325-bevis i `TestResults/93-final/`
 er historisk. CI krever nøyaktig 328/130, bare TRX og uendret 45-minutters browsergrense.
-Full Standards-/Spec-review, separat sikkerhetsaudit, faktisk kandidat-CI og merge
-håndteres av root. UX18 er foreløpig ikke merget. Ingen deploy er utført.
+Det ferdige kildegrunnlaget har full Standards-review, full Spec-review og en
+uavhengig sikkerhetsaudit, alle med **0 funn**. [Publiseringsregisteret](acceptance/2026-10-28-atelier-ux18.md#publisering-og-gjeldende-livsløp)
+binder det lokale kildegrunnlaget og identisk første publiserte tree til PR #132.
+PR-ens kontroller og oppgavekommentarene viser endelig CI- og mergestatus.
+Beskrivelsen av en upublisert lokal kandidat før PR #132 er historikk fra
+28. oktober 2026. Ingen deploy inngår.
 
 ## Levert app og bevarte funksjoner
 
@@ -76,9 +82,9 @@ skissen. Reell rolleforvaltning er ikke levert av prototypen eller den lesende
 oversikten i #92. #94 AD01 er egen beslutning med #39/#92 som forutsetninger;
 #95 AD02 avventer godkjent #94. Ingen av disse startes i dette mandatet.
 
-#75 forblir åpen ved lokal kandidatstatus til samlet kodeakseptanse, review/audit,
-faktisk kandidat-CI og merge er bekreftet. UX18-rapporten begrunner en eventuell
-senere lukking; den lukker ikke andre oppgaver automatisk.
+Lukking av #75 bygger på kravkartet, fullført review/audit, grønn CI på siste
+publiserte kandidat og bekreftet merge. Den faktiske beslutningen og lukkestatusen
+står i #75/#93 og PR #132; rapporten lukker ikke andre oppgaver automatisk.
 #42/#43/#48/#55 og #38/#56/#57 beholder sine egne kalenderpolicy-/Office-/M365-/
 Entra-/Azure-/pilotporter. Lokal SQLite/Edge og vanlig CI beviser ikke virkelig
 innlogging/tilbakekalling, Azure SQL/migrering, Key Vault/RBAC/managed identity,
