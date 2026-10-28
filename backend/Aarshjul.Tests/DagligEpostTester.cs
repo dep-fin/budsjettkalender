@@ -17,7 +17,7 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
     {
         await using var database = new Sqlitedatabase();
         await database.OpprettTidligereSkjemaAsync();
-        await EpostoppgraderingBevis.LeggTilAsync(database);
+        var bekreftelsespost = await EpostoppgraderingBevis.LeggTilAsync(database);
         var foer = await EpostoppgraderingBevis.HentAsync(database);
         await using (var db = database.Fabrikk().CreateDbContext())
         {
@@ -25,7 +25,8 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
             await Demoskjema.SikreAsync(db); // Den samme normale oppstartsgrensen er idempotent.
         }
         Assert.True(foer == await EpostoppgraderingBevis.HentAsync(database), "EV02-data må bevares gjennom additiv EV03-oppgradering.");
-        await EpostoppgraderingBevis.BekreftIngenTilbakefylling(database);
+        await EpostoppgraderingBevis.BekreftInternvern(database);
+        await EpostoppgraderingBevis.BekreftIngenTilbakefylling(database, bekreftelsespost);
     }
     protected override async Task<Epostdatabase> OpprettAsync()
     {

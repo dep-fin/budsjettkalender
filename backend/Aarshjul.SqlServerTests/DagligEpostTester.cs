@@ -17,11 +17,30 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
     {
         await using var database = new Sqldatabase();
         await database.OpprettAsync("20261028083448_Epostabonnement");
-        await EpostoppgraderingBevis.LeggTilAsync(database);
+        var bekreftelsespost = await EpostoppgraderingBevis.LeggTilAsync(database);
         var foer = await EpostoppgraderingBevis.HentAsync(database);
         await using (var db = database.Fabrikk().CreateDbContext()) await db.Database.MigrateAsync();
         Assert.True(foer == await EpostoppgraderingBevis.HentAsync(database), "EV02-data må bevares gjennom additiv EV03-oppgradering.");
-        await EpostoppgraderingBevis.BekreftIngenTilbakefylling(database);
+        await EpostoppgraderingBevis.BekreftInternvern(database);
+        await EpostoppgraderingBevis.BekreftIngenTilbakefylling(database, bekreftelsespost);
+    }
+
+    [Fact]
+    public async Task Oppgradering_fra_levert_UX16_bevarer_internvern_aktive_og_ventende_abonnementer_uten_varslingsflom()
+    {
+        await using var database = new Sqldatabase();
+        await database.OpprettAsync("20261028112544_UnikeInternrunder");
+        var bekreftelsespost = await EpostoppgraderingBevis.LeggTilAsync(database);
+        var foer = await EpostoppgraderingBevis.HentAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            await db.Database.MigrateAsync();
+            Assert.Equal(new[] { "20261028112544_UnikeInternrunder", "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering" },
+                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(3));
+        }
+        Assert.True(foer == await EpostoppgraderingBevis.HentAsync(database), "Leverte UX16-/EV02-data må bevares gjennom EV03-oppgraderingen.");
+        await EpostoppgraderingBevis.BekreftInternvern(database);
+        await EpostoppgraderingBevis.BekreftIngenTilbakefylling(database, bekreftelsespost);
     }
     protected override async Task<Epostdatabase> OpprettAsync()
     {

@@ -37,3 +37,12 @@ Planen lagrer ingen rendret e-post. Ferskt mottakeroppslag, nåværende godkjent
 og sentralt synlighetsfilter begrenser innholdet før projeksjon. Abonnement, tilgang
 og utvalg revalideres etter varig planlegging rett før overlevering. Produksjon har
 utilgjengelige identitets- og postadaptere inntil egne miljøporter er levert.
+
+Etter levert UX16 er migrasjonsrekkefølgen Epostabonnement → UnikeInternrunder →
+DagligEpostoppsummering → OrdnetEpostaktivering. Begge EV03-målmodellene er generert
+på nytt med UX16s unike runder og samtidighetspredikater. Den første beskriver
+oppsummeringsskjemaet før sekvens/aktivering; den siste samsvarer med hele snapshotet.
+Alle tre migrasjonenes faktiske Up/Down beholdes uendret. Ingen advarsler undertrykkes.
+Modellregresjoner sammenlikner hver overgangs skjemaoperasjoner med Up/Down og
+kontrollerer samtidig at allerede levert internvern og EV02-abonnementer er bevart.
+Oppgradering av en levert UX16-/EV02-database oppretter ingen historiske hendelser.

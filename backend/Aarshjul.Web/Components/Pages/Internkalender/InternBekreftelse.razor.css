@@ -1,0 +1,6 @@
+.intern-dialog { max-width: min(540px, calc(100vw - 32px)); width: 100%; box-sizing: border-box; border: 1px solid #e0e6e1; border-radius: 14px; padding: 28px; color: #263531; background: #fbfaf7; box-shadow: 0 20px 70px #26353133; }
+.intern-dialog::backdrop { background: #26353170; }
+.intern-dialog h2 { font-size: 22px; margin: 0 0 16px; }
+.intern-dialog p { line-height: 1.7; overflow-wrap: anywhere; }
+.intern-dialoghandlinger { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+@media (max-width: 600px) { .intern-dialog { padding: 22px; } }

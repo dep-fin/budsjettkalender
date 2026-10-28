@@ -1,90 +1,90 @@
 @page "/internkalender/runde/{Id:guid}/synk"
 @using Aarshjul.Application.Internkalender
+@inherits Internside
 @attribute [Authorize(Policy = Autorisasjon.ErSbr)]
 @inject IInternkalender Kalender
+@inject InternkalenderKommando Kommando
 @inject NavigationManager Nav
 
-<PageTitle>Synkroniser runde</PageTitle>
-
-<div class="admintopp">
-    <h1>Synkroniser@(_runde is null ? "" : $" – {_runde.Etikett}")</h1>
-    <button class="knapp" @onclick="TilRunde">Tilbake</button>
-</div>
-
-<p class="melding">
-    Endringer i de generelle reglene siden runden ble opprettet/sist synkronisert. Hvert forslag
-    godtas for seg. Avhukede og manuelt endrede gjøremål røres aldri.
-</p>
-
-@if (!_lastet)
-{
-    <p class="melding">Laster …</p>
-}
-else if (_forslag.Count == 0)
-{
-    <p class="melding">Ingen endringer å synkronisere – runden er à jour med reglene.</p>
-}
-else
-{
-    <table class="tabell">
-        <thead>
-            <tr><th></th><th>Handling</th><th>Gjøremål</th><th>Grunn</th></tr>
-        </thead>
-        <tbody>
-            @foreach (var f in _forslag)
-            {
-                <tr>
-                    <td><input type="checkbox" @bind="_valgt[f]" /></td>
-                    <td>@HandlingNavn(f.Handling)</td>
-                    <td>@f.Tittel</td>
-                    <td>@f.Detalj</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-
-    <div class="skjemarad">
-        <button class="knapp knapp-primær" @onclick="Utfør" disabled="@(!_valgt.Values.Any(v => v))">Utfør valgte</button>
-        <button class="knapp" @onclick="TilRunde">Avbryt</button>
-    </div>
-}
-
+<PageTitle>Synkroniser internrunde</PageTitle>
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" />
+<InternkalenderOmraade>
+    <div class="admintopp"><div><h1>Synkroniser@(_runde is null ? "" : $" – {_runde.Etikett}")</h1><p class="ingress">Se endringer fra gjøremålsreglene før du velger hva som skal utføres. Fullførte og manuelt endrede gjøremål er vernet; manuelle gjøremål beholdes.</p></div><button class="knapp" disabled="@_arbeider" @onclick="TilRunde">Tilbake</button></div>
+    @if (_melding is not null) { <p class="internstatus" role="status">@_melding</p> }
+    @if (_feil is not null && !_bekrefter) { <div class="feil" role="alert"><p>@_feil</p><button class="knapp" disabled="@_arbeider" @onclick="Last">Hent ny forhåndsvisning</button></div> }
+    @if (!_lastet) { <p class="melding" role="status">Laster forhåndsvisning …</p> }
+    else if (_lastfeil is not null) { <div class="feil" role="alert"><p>@_lastfeil</p><button class="knapp" @onclick="Last">Prøv igjen</button></div> }
+    else if (_runde is null) { <p class="internkort">Runden finnes ikke. Den kan ha blitt slettet.</p><a href="/internkalender">Til oversikten</a> }
+    else if (_runde.Rundetype == Rundetype.Ovrig) { <p class="internkort">Øvrig er en stående runde uten regelgenerering eller synkronisering.</p> }
+    else if (_forslag.Count == 0) { <p class="internkort">Ingen endringer å synkronisere i denne forhåndsvisningen. Fullførte og manuelt endrede gjøremål er holdt utenfor.</p><button class="knapp" disabled="@_arbeider" @onclick="Last">Hent ny forhåndsvisning</button> }
+    else
+    {
+        <div class="internhandlinger"><button class="knapp" disabled="@_arbeider" @onclick="() => VelgAlle(true)">Velg alle</button><button class="knapp" disabled="@_arbeider" @onclick="() => VelgAlle(false)">Fjern alle</button><span role="status">@_valgt.Count(kv => kv.Value) av @_forslag.Count valgt</span></div>
+        <table class="tabell"><thead><tr><th scope="col" class="avhuking">Velg</th><th scope="col">Handling</th><th scope="col">Gjøremål</th><th scope="col">Grunn</th></tr></thead><tbody>
+        @foreach (var f in _forslag)
+        {
+            <tr @key="f"><td><input type="checkbox" @bind="_valgt[f]" aria-label="@($"{HandlingNavn(f.Handling)} {f.Tittel}")" disabled="@_arbeider" /></td><td data-label="Handling"><strong>@HandlingNavn(f.Handling)</strong></td><td data-label="Gjøremål"><strong class="oppgavetittel">@f.Tittel</strong></td><td data-label="Grunn">@f.Detalj</td></tr>
+        }
+        </tbody></table>
+        <div class="internhandlinger"><button class="knapp knapp-primær" @onclick="StartUtfoer" disabled="@(_arbeider || !_valgt.Values.Any(v => v))">Utfør valgte</button><button class="knapp" disabled="@_arbeider" @onclick="TilRunde">Avbryt</button><button class="knapp" disabled="@_arbeider" @onclick="Last">Hent ny forhåndsvisning</button></div>
+    }
+    <p class="hint">En godkjent frist i samme rundeår kan brukes som anker. Nye ankerdatoer flytter ikke eksisterende gjøremål ved vanlig lesing; se forslagene her før du oppdaterer et generert gjøremål.</p>
+</InternkalenderOmraade>
+<InternBekreftelse Aapen="@_bekrefter" Valg="@_valg" Tittel="Bekreft synkronisering" Tekst="@($"Utføre {_valgt.Count(kv => kv.Value)} valgte endringer i «{_runde?.Etikett}»? Bare de valgte forslagene utføres.")" Bekrefttekst="Ja, synkroniser" Arbeider="@_arbeider" Feil="@_feil" Bekreft="Utfoer" Avbryt="AvbrytBekreftelse" />
 @code {
     [Parameter] public Guid Id { get; set; }
-
+    private Guid? _ruteId;
     private RundeDto? _runde;
     private IReadOnlyList<SynkForslagDto> _forslag = [];
-    private readonly Dictionary<SynkForslagDto, bool> _valgt = [];
-    private bool _lastet;
-
-    protected override async Task OnInitializedAsync() => await Last();
-
+    private Dictionary<SynkForslagDto, bool> _valgt = [];
+    private bool _lastet, _arbeider, _bekrefter;
+    private string? _feil, _lastfeil, _melding;
+    private int _valg;
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_ruteId == Id) return;
+        _ruteId = Id; _runde = null; _melding = null; await Last();
+    }
     private async Task Last()
     {
-        _runde = await Kalender.HentRundeAsync(Id);
-        _forslag = await Kalender.ForberedSynkAsync(Id);
-        _valgt.Clear();
-        foreach (var f in _forslag)
+        if (_arbeider) return;
+        await LastForhaandsvisning();
+    }
+    private async Task LastForhaandsvisning()
+    {
+        var id = Id; var visning = ++Visning; _lastet = false; _lastfeil = null; _feil = null; _bekrefter = false;
+        try
         {
-            _valgt[f] = true;
+            var runde = await Kalender.HentRundeAsync(id, Levetid.Token);
+            var forslag = runde is null || runde.Rundetype == Rundetype.Ovrig ? [] : await Kalender.ForberedSynkAsync(id, Levetid.Token);
+            if (!ErGjeldende(visning)) return;
+            _runde = runde; _forslag = forslag; _valgt = forslag.ToDictionary(f => f, _ => true);
         }
-        _lastet = true;
+        catch (OperationCanceledException) when (Levetid.IsCancellationRequested) { }
+        catch (Exception e) { if (ErGjeldende(visning)) _lastfeil = Feiltekst(e, "Kunne ikke laste forhåndsvisningen. Prøv igjen."); }
+        finally { if (ErGjeldende(visning)) _lastet = true; }
     }
-
-    private static string HandlingNavn(SynkHandling h) => h switch
+    private static string HandlingNavn(SynkHandling h) => h switch { SynkHandling.LeggTil => "Legg til", SynkHandling.Oppdater => "Oppdater", SynkHandling.Fjern => "Fjern", _ => h.ToString() };
+    private void VelgAlle(bool valgt) { if (_arbeider) return; foreach (var f in _forslag) _valgt[f] = valgt; }
+    private void StartUtfoer() { if (_arbeider || !_valgt.Values.Any(v => v)) return; _bekrefter = true; _valg++; _feil = null; }
+    private void AvbrytBekreftelse() { if (!_arbeider) _bekrefter = false; }
+    private async Task Utfoer()
     {
-        SynkHandling.LeggTil => "Legg til",
-        SynkHandling.Oppdater => "Oppdater",
-        SynkHandling.Fjern => "Fjern",
-        _ => h.ToString()
-    };
-
-    private async Task Utfør()
-    {
-        var godkjente = _valgt.Where(kv => kv.Value).Select(kv => kv.Key).ToList();
-        await Kalender.SynkroniserAsync(Id, godkjente);
-        TilRunde();
+        if (_arbeider || !_bekrefter || _runde is null) return;
+        var visning = Visning; var id = _runde.Id; var forslag = _valgt.Where(kv => kv.Value).Select(kv => kv.Key).ToList();
+        if (forslag.Count == 0) return;
+        _arbeider = true; _feil = null;
+        try
+        {
+            await Kommando.SynkroniserAsync(id, forslag, Levetid.Token);
+            if (!ErGjeldende(visning)) return;
+            _bekrefter = false; _melding = $"{forslag.Count} valgte endringer er utført. Forhåndsvisningen er lest på nytt.";
+            await LastForhaandsvisning();
+        }
+        catch (OperationCanceledException) when (Levetid.IsCancellationRequested) { }
+        catch (Exception e) { if (ErGjeldende(visning)) { _feil = Feiltekst(e, "Kunne ikke synkronisere runden. Valgene er beholdt. Hent en ny forhåndsvisning før du prøver igjen."); _bekrefter = false; } }
+        finally { _arbeider = false; }
     }
-
-    private void TilRunde() => Nav.NavigateTo($"/internkalender/runde/{Id}");
+    private void TilRunde() { if (!_arbeider) Nav.NavigateTo($"/internkalender/runde/{Id}"); }
+    private void FoerNavigasjon(LocationChangingContext context) { if (_arbeider) context.PreventNavigation(); }
 }

@@ -1,0 +1,62 @@
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+
+<dialog @ref="_dialog" class="intern-dialog" aria-labelledby="@_overskriftId" data-valg="@Valg" data-aapen="@(Aapen ? "true" : "false")">
+    @if (Aapen)
+    {
+        <h2 id="@_overskriftId" tabindex="-1">@Tittel</h2>
+        <p>@Tekst</p>
+        @if (Feil is not null) { <p class="feil" role="alert">@Feil</p> }
+        <div class="intern-dialoghandlinger">
+            <button type="button" class="knapp" autofocus disabled="@Arbeider" @onclick="AvbrytAsync">@Avbryttekst</button>
+            <button type="button" class="knapp knapp-primær" disabled="@Arbeider" @onclick="Bekreft">@(Arbeider ? "Arbeider …" : Bekrefttekst)</button>
+        </div>
+    }
+</dialog>
+
+@code {
+    [Parameter] public bool Aapen { get; set; }
+    [Parameter] public int Valg { get; set; }
+    [Parameter] public bool Arbeider { get; set; }
+    [Parameter] public string Tittel { get; set; } = "Bekreft handling";
+    [Parameter] public string Tekst { get; set; } = "";
+    [Parameter] public string Bekrefttekst { get; set; } = "Bekreft";
+    [Parameter] public string Avbryttekst { get; set; } = "Avbryt";
+    [Parameter] public string? Feil { get; set; }
+    [Parameter] public EventCallback Bekreft { get; set; }
+    [Parameter] public EventCallback Avbryt { get; set; }
+    private readonly string _overskriftId = $"internbekreft-{Guid.NewGuid():N}";
+    private ElementReference _dialog;
+    private IJSObjectReference? _modul;
+    private DotNetObjectReference<InternBekreftelse>? _referanse;
+    private bool _avsluttet;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_avsluttet || (!Aapen && _modul is null)) return;
+        var valg = Valg;
+        if (_modul is null)
+        {
+            var modul = await Js.InvokeAsync<IJSObjectReference>("import", "./internbekreftelse.js");
+            if (_avsluttet || _modul is not null) await modul.DisposeAsync();
+            else _modul = modul;
+        }
+        if (_avsluttet || valg != Valg) return;
+        _referanse ??= DotNetObjectReference.Create(this);
+        await _modul!.InvokeVoidAsync("oppdater", _dialog, valg, _referanse);
+    }
+
+    private Task AvbrytAsync() => Arbeider ? Task.CompletedTask : Avbryt.InvokeAsync();
+
+    [JSInvokable]
+    public Task AvbruttFraTastaturAsync(int valg) => !_avsluttet && valg == Valg && Aapen
+        ? AvbrytAsync() : Task.CompletedTask;
+
+    public async ValueTask DisposeAsync()
+    {
+        _avsluttet = true;
+        _referanse?.Dispose();
+        if (_modul is null) return;
+        try { await _modul.DisposeAsync(); } catch (JSDisconnectedException) { }
+    }
+}

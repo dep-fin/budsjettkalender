@@ -1,0 +1,40 @@
+.internarbeid { min-width: 0; max-width: 1200px; }
+.internmerke { color: #285d56; font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 12px; }
+.internarbeid ::deep .ingress { color: #68746f; max-width: 72ch; line-height: 1.65; margin: 10px 0 24px; }
+.internarbeid ::deep .internkort { background: #fff; border: 1px solid #e0e6e1; border-radius: 12px; padding: 24px; margin: 24px 0; }
+.internarbeid ::deep .internkort h2 { font-size: 18px; margin: 0 0 16px; }
+.internarbeid ::deep .internstatus { background: #eaf1ed; color: #285d56; border-left: 3px solid #285d56; padding: 14px 18px; border-radius: 6px; }
+.internarbeid ::deep .internhandlinger { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.internarbeid ::deep .internhandlinger a { padding: 8px 0; }
+.internarbeid ::deep .skjemarad { align-items: end; }
+.internarbeid ::deep .skjemarad > label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; font-weight: 600; }
+.internarbeid ::deep .skjemarad > label.filtervalg { flex-direction: row; align-items: center; font-weight: 400; }
+.internarbeid ::deep input:not([type=checkbox]), .internarbeid ::deep select, .internarbeid ::deep textarea { min-width: 0; max-width: 100%; padding: 10px; min-height: 42px; border: 1px solid #aab8ad; border-radius: 6px; font: inherit; background: #fff; }
+.internarbeid ::deep input[type=checkbox] { width: 19px; height: 19px; accent-color: #285d56; flex-shrink: 0; }
+.internarbeid ::deep .tabell { table-layout: fixed; }
+.internarbeid ::deep .tabell td { font-size: 13px; overflow-wrap: anywhere; }
+.internarbeid ::deep .tabell th { font-size: 11px; }
+.internarbeid ::deep .tabell .avhuking { width: 48px; }
+.internarbeid ::deep .oppgavetittel { font-size: 14px; line-height: 1.55; }
+.internarbeid ::deep .oppgavenotat { color: #68746f; margin-top: 8px; white-space: pre-wrap; line-height: 1.6; }
+.internarbeid ::deep .internvern { display: block; margin-top: 8px; color: #68746f; font-size: 11px; }
+.internarbeid ::deep .skjema { max-width: 900px; }
+.internarbeid ::deep .skjema fieldset { min-width: 0; }
+.internarbeid ::deep .ansvarligliste { padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.internarbeid ::deep .ansvarligliste li { background: #eaf1ed; border: 1px solid #e0e6e1; border-radius: 7px; padding: 7px 10px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.internarbeid ::deep .internskjemafelter { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 22px; }
+.internarbeid ::deep .hint { display: block; font-size: 12px; line-height: 1.65; color: #68746f; }
+.internarbeid ::deep .ferdig .oppgavetittel { color: #68746f; }
+@media (max-width: 700px) {
+    .internarbeid ::deep .tabell { display: block; min-width: 0; border: 0; background: transparent; }
+    .internarbeid ::deep .tabell thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .internarbeid ::deep .tabell tbody { display: grid; gap: 14px; }
+    .internarbeid ::deep .tabell tr { display: block; padding: 18px; background: #fff; border: 1px solid #e0e6e1; border-radius: 10px; }
+    .internarbeid ::deep .tabell td { display: block; padding: 7px 0; border: 0; width: auto; font-size: 13px; }
+    .internarbeid ::deep .tabell td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: #68746f; font-size: 11px; }
+    .internarbeid ::deep .internkort, .internarbeid ::deep .skjema { padding: 18px; }
+    .internarbeid ::deep .skjemarad { gap: 14px; }
+    .internarbeid ::deep .skjemarad > label { flex-basis: 100%; }
+    .internarbeid ::deep .admintopp > div { display: flex; flex-wrap: wrap; gap: 8px; }
+    .internarbeid ::deep .internhandlinger { gap: 12px; }
+}

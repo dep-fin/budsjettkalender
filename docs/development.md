@@ -22,6 +22,14 @@ Ved modellendring må demo-databasen flyttes til en sikkerhetskopi eller gjenska
 seedet felles mal. Eksisterende demofiler må derfor sikkerhetskopieres/gjenskapes før
 bruk av denne modellen; bevar andre kjørende demoers filer. Produksjon bruker den additive
 EF-migrasjonen FellesFasemal. Migrate/Startdata overskriver ikke en redigert fasemal.
+UX16 legger til `20261028112544_UnikeInternrunder`. Produksjonsmigrasjonen bevarer
+eksisterende runder og gjøremål og oppretter unike indekser for rundetype/år og stående
+Øvrig. Før en eventuell senere produksjonsmigrering må det tas sikkerhetskopi og
+gjøres en forhåndskontroll av duplikater for begge nøklene. Hvis en SQL Server-database
+allerede har duplikater, stopper migrasjonen med
+beskjed om sikkerhetskopi og avklaring før nytt forsøk. Den sletter eller slår ikke
+sammen historiske runder automatisk. Også denne modellendringen krever sikkerhetskopi
+eller en ny disponibel fil for eldre `EnsureCreated`-demoer; andre demoers filer beholdes.
 
 EV02 legger i tillegg til `Epostabonnementer`. Bevar tidligere SQLite-filer før en ny
 demodatabase opprettes; `EnsureCreated` oppgraderer fortsatt ikke gamle filer.
@@ -35,6 +43,13 @@ uten historiske hendelser. Eldre demoer uten EV02-skjema avvises med beholdte da
 bruk en ny disponibel database, og bevar eksisterende filer. SQL Server bruker
 `20261028133321_DagligEpostoppsummering` og
 `20261028142358_OrdnetEpostaktivering` i den vanlige migrasjonskjeden.
+Migrasjonene følger etter levert UX16s UnikeInternrunder. Begge EV03-målmodellene
+er generert på nytt med hele den kronologiske modellen; faktiske Up/Down er uendret.
+Den lokale oppgraderingsprøven starter fra UX16-/EV02-modellen, bevarer aktive og
+ventende abonnementer og internkalenderens data/unikhet/versjonsvern, og prøver ny
+bekreftelse og publisering uten historisk varslingsflom. SQL-prosjektet har både
+EV02→UX16→EV03 og en særskilt oppgradering fra levert UX16; faktisk SQL-kjøring
+kreves i ny EV03-kandidat-CI.
 
 ## Kontrollert e-postpåmelding (EV02)
 
@@ -121,15 +136,44 @@ dotnet test backend/Aarshjul.BrowserTests -c Release --filter FullyQualifiedName
 dotnet test backend/Aarshjul.SqlServerTests -c Release --filter FullyQualifiedName~DagligEpostTester
 ```
 
-SQLite og ekte SQL Server deler 49 oppsummeringskontrakttilfeller og har hver sin
-EV02→EV03-migrasjonsprøve. Ordinær suite har i tillegg to prøver av vertsjobb og
+SQLite og ekte SQL Server deler 49 oppsummeringskontrakttilfeller. SQLite prøver
+normal demooppgradering fra UX16-/EV02-modellen; SQL Server prøver både EV02→EV03
+og særskilt levert UX16→EV03 med autentiske migrasjoner. Ordinær suite har i tillegg to prøver av vertsjobb og
 testoppstart. [EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) skiller lokale
 bevis fra kandidatens kommende SQL Server-/Chromium-CI.
+
+## Levert UX16/EV02-verifikasjon
+
+Sluttinventaret er 883 ordinære, 312 nettleser- og 79 SQL Server-tilfeller.
+Den nye ordinære modellregresjonen kommer i tillegg til begge greners bevarte navn.
+Full lokal Edge/Kestrel og ordinær suite er grønne; SQL Server er bare bygget/oppdaget
+lokalt. UX16 fullførte senere 79 ekte SQL Server- og 312 Chromium-tilfeller i
+[CI 40705737234](https://github.com/depmartin/Budsjettkalender/actions/runs/40705737234)
+før merge i PR #129. Dette er bevis for UX16, ikke den nye EV03-integrasjonen.
+Kommandoer, TRX, navn, kilde-/runtimebinding og ny topptekstinspeksjon finnes i
+`TestResults/91-main-integration/` og [UX16-akseptansen](acceptance/2026-10-28-atelier-ux16.md).
+De historiske kjøringene i tidligere bevismapper beholdes uendret.
+
+## Samlet EV03/UX16-verifikasjon
+
+EV03/PR #130 integrerer levert UX16/main `ffef7ab` lokalt. Faktisk oppdagelse gir
+938 ordinære, 130 SQL Server- og 315 nettlesertilfeller, uten tap av navn fra noen
+av grenene. Fire SQL Server-modelltilfeller og én lokal SQLite-oppgradering er
+grønne 5/5; full ordinær sluttkjøring er grønn 938/938 uten hopp. Alle tre låste
+restore med aktiv audit og Release-bygg gir 0 advarsler/feil. Begge EV03-målmodeller
+er generert på nytt med riktig kronologi og hele internvernet; Up/Down er uendret.
+Målrettet EV02/EV03/UX16 med Edge/Kestrel passerer 52/52 uten feil/hopp. 417
+backend-/SDK-kildefiler og 1564 runtimefiler er uendret gjennom sluttprøvene.
+`TestResults/113-integration/verify.ps1` og `suites.ps1` gir konkrete lokale
+kommandoer og bevis. Ny kandidat-CI må kjøre alle 130 mot ekte SQL Server og
+315 med Chromium; lokal oppdagelse og Edge er ikke slike kjørebevis.
+[EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) beskriver grenser og
+endrede reviewforutsetninger. EV03 er fortsatt kandidat, uten merge/deploy.
 
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 272 scenarioer bruker disponible Kestrel-verter,
+eksisterende app eller database: 315 scenarioer bruker disponible Kestrel-verter,
 inklusive fem fra EV02 og tre fra EV03.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
@@ -139,6 +183,9 @@ databaseporten ved generering/godkjenning/avvisning, maloverføringens preview/i
 dokumentinnlesingens fullføring, fristskjemaets felt-/bevis-/lagringskall og gruppeforvaltningens/innsynets lese- og lagringskall.
 Eksportutvalg, fristoverføringens preview/import og abonnementenes lese-/lagringskall
 bruker samme grense for feil, avbrudd, feltbytte, bekreftelse og dobbel innsending.
+Internkalenderens to editorer prøves også med kontrollerte sene lesesvar/feil,
+rask ruteendring og doble lagringer under venting. Faktisk SQLite-lagringsfeil prøver
+beholdte oppgavefelt/ansvar, trygg feilmelding og vellykket nytt forsøk i samme krets.
 De faktiske PDF-/uttrekks-/lagringsadapterne brukes også
 etter dokumentportens venting; kontrollert teknisk feil prøver trygg melding og nytt forsøk.
 Dette prøver initialisering, rask navigasjon, asynkront filbytte, dobbeltbekreftelse
@@ -167,6 +214,35 @@ Oppstartsfeil og feil ved lukking utløser opprydding av alle opprettede konteks
 nettleseren, Playwright og demoprosessen. Oppryddingsfeil rapporteres samlet og beholder
 en eventuell opprinnelig oppstarts- eller scenariofeil; de gjør ikke et feilet scenario grønt.
 
+UX16s lokale fullverifikasjon før reviewrettingen ligger i `TestResults/91-final-verified/`.
+Låst restore med aktiv audit og Release-bygg med SDK 10.0.402 passerer for ordinary,
+BrowserTests og SqlServerTests uten advarsler eller feil. Alle 841 ordinære tester og
+301 reelle Edge/Kestrel-scenarioer passerer uten feil eller hopp etter siste prøveendring.
+Browser-TRX måler 1914,527 sekunder; prosessen måler 1915,334 sekunder. De tidligere
+804/264/46 og nåværende 841/301/63 navnene er bevart. SQL-prosjektets 63 tilfeller er
+bygget og oppdaget; faktisk SQL Server og Chromium gjenstår i kandidat-CI. Kilde-/binærgrunnlaget
+er hashkontrollert uendret gjennom denne kjøringen, og alle 90 tidligere inspiserte interne
+desktop-/mobilbilder har uendrede hashverdier og dette historiske produksjonsgrunnlaget.
+
+Et felles P2 fra samlet Standards-/Spec-review gjaldt bare endret ansvar i de to
+interne editorene: barnet varslet ikke forelderen, og native reload kunne miste
+arbeidet uten varsel. Én callback etter hver av de tre listemutasjonene oppdaterer
+nå forelderen og dens eksisterende NavigationLock. Seks nye faktiske Edge-prøver
+feiler før rettingen og passerer etterpå. De prøver avvist native reload med
+beholdte felt, Escape/fokus, uttrykkelig forkasting, lagring og ren ny sidehenting.
+Fire nye tokenfrie desktop-/mobilbilder er visuelt inspisert uten funn.
+Den tidligere UX16-verifikasjonen før EV02-integrasjon passerer **841/841** ordinære tester
+og **307/307** faktiske Edge/Kestrel-scenarioer, uten feil eller hopp, i
+`TestResults/91-responsible-final/`. Alle tre prosjektenes låste restore med aktiv
+audit (`true/all/low`) og Release-bygg (`-m:1 -nr:false`) passerer uten advarsler/feil.
+Browser-TRX måler 1296,951 sekunder, prosessen 1297,892 sekunder. Alle 63 SQL-tilfeller
+er bygget/oppdaget; faktisk SQL Server og Chromium gjenstår i kandidat-CI.
+377 kildefiler og 1393 runtimefiler var uendret gjennom kjøringen. Hele kandidatens
+443 filer, TRX, testnavn og nye røde/grønne bevis er bundet med manifest og SHA-256.
+Alle 2510 originalbevisfiler, de tidligere 841/301/63 navnene og de 90 bildehashene
+er bevart. De fire nye inspiserte dialogbildene bruker samme relevante Web-/test-DLL
+som den endelige fullkjøringen. Lokal kjøretid dokumenterer ikke CI-jobbens varighet.
+
 Alle UI-handler bruker tilgjengelige navn og avgrensede forventninger. Før skriving venter
 testen på første interaktive render; synlig prerender alene er ikke tilstrekkelig.
 Nye personakontekster gir nye cookies. API-kontroller krysser samme serversynlighet som UI.
@@ -175,18 +251,18 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 272 beståtte scenarioer uten hopp.
-Den samlede EV02/UX15-kandidaten beholder EV02-grenens jobbgrense på 45 minutter.
+installerer systemavhengigheter og krever nøyaktig 315 beståtte scenarioer uten hopp.
+Den samlede EV03/UX16-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
 De lokale tidene begrunner rom for testene og oppsettet, men måler ikke Chromium.
 Ren EV02-CI [40673623216](https://github.com/depmartin/Budsjettkalender/actions/runs/40673623216)
 fullførte senere 226 Chromium-scenarioer: teststeget tok 11:57 og jobben 13:08.
-Den målingen dekker ikke de 269 integrerte tilfellene. UX15s tidligere
+Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidligere
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny EV03-kandidat-CI må fullføre alle 272; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny EV03-kandidat-CI må fullføre alle 315; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -201,6 +277,7 @@ og [UX09-prøvene](acceptance/2026-10-27-atelier-ux09.md), samt
 og [UX12-prøvene](acceptance/2026-10-28-atelier-ux12.md), samt
 [UX13-prøvene](acceptance/2026-10-28-atelier-ux13.md), [UX14-prøvene](acceptance/2026-10-28-atelier-ux14.md)
 og [UX15-prøvene](acceptance/2026-10-28-atelier-ux15.md), samt
+[UX16-prøvene](acceptance/2026-10-28-atelier-ux16.md) og
 [EV02-prøvene](acceptance/2026-10-28-epost-ev02.md) for faktisk prøvd scope og eksterne grenser.
 
 ## Obligatorisk SQL Server-kontroll i CI
@@ -219,30 +296,51 @@ innsendingen forblir åpen, uten feil publisering eller ekstra varsel. En separa
 oppgraderer produksjonsskjemaet etter Internkalender med et eksisterende forslag og
 bekrefter at innholdet bevares og kan behandles. Med UX08 kjører prosjektet også 14 delte
 fasemaltilfeller og én reell oppgraderingstest fra siste tidligere migrasjon. SQL-prosjektet
-har dermed 46 testtilfeller, inklusive ni delte genereringstilfeller fra UX11.
-De nye tilfellene bruker faktisk lagret mal ved sideeffektfri prøve og generering,
+har samlet 79 testtilfeller: de tidligere 46, 14 delte internkalendertilfeller,
+tre migrasjonsprøver fra UX16 og 16 e-post-/migrasjonstilfeller fra EV02.
+UX11-tilfellene bruker faktisk lagret mal ved sideeffektfri prøve og generering,
 bevarer andre års og behandlede forslag, prøver helt ugyldig og tom erstatning,
 og fremtvinger feil etter observerte DELETE/INSERT eller bare DELETE.
 En ny operasjon på samme tjeneste lykkes etter at feilen er fjernet. Generert
 månedsgodkjenning prøver aktivt POL-valg, serveravvisning av ugyldige grupper,
 én publisert identitet gjennom leseporten og avvisning av en slettet gammel forslag-ID.
+UX16s 14 delte tilfeller ved `IInternkalender` styrer overlapp før det endelige
+skriveøyeblikket: fullføring/manuell endring mot oppdatering/fjerning, dobbel synk,
+samtidig oppretting, feil runde, foreldet grunnlag, delutvalg og regelendringer etter
+siste lesing. De tre SQL-migrasjonsprøvene bevarer eksisterende data ved oppgradering
+og avviser historiske duplikater for både årlig runde og Øvrig uten datatap.
+De starter nå fra `20261028083448_Epostabonnement` og oppgraderer til
+siste EV03-migrasjon via `20261028112544_UnikeInternrunder`. Den positive prøven bevarer også et aktivt og
+et ventende e-postabonnement; den ventende bekreftelsen kan brukes etter oppgraderingen.
+EV02s tidligere oppgradering fra FellesFasemal er fortsatt en egen prøve.
+Den ordinære modellregresjonen kontrollerer SQL Server-modellen uten tilkobling:
+ingen ventende modellendringer, e-postentiteten og begge internrundeindeksene i
+siste migrasjonsmål, samt alle berørte samtidighetspredikater. Dette erstatter
+ikke de 130 faktiske SQL Server-prøvene i EV03-kandidatens CI.
+Regelinnholdet ved synk er snapshotet fra operasjonens siste lesing før lagring;
+en regelendring etter denne lesingen blir synlig i neste forhåndsvisning. Dette er
+egen delt kontrakt, og UI leser derfor forslagene på nytt etter lagring. Synk låser
+ikke regelregisteret mot samtidig redigering i andre runder. Fullføring/manuell
+oppgaveendring og dobbel synk har separat vern ved det endelige skriveøyeblikket.
 
 EV02 legger til 15 delte e-postabonnementstilfeller og én oppgradering fra FellesFasemal
 med bevart frist-/forslags-/kilde-/synlighetsinnhold. Eierskap, eksplisitte standarder,
 varig starttidspunkt, utløp, engangsbruk, forsøkstak, nyutsending og to samtidige
 instanser prøves gjennom `IEpostabonnement`, også avmelding/aktivering mens transporten
-fullfører en overlevering. Prosjektet har dermed 62 tilfeller.
+fullfører en overlevering. Sammen med UX16 har prosjektet 79 tilfeller.
 
 EV03 legger til 49 delte oppsummeringstilfeller og én migrasjonsprøve fra EV02, med
 bevart abonnement, frist, forslag, kilde, synlighet, feed og internkalender. Prosjektet
-har nå 112 tilfeller. Triggerprøven krever feil fra den faktiske hendelses-INSERT-en;
+har etter integrasjon med levert UX16 og en ny oppgraderingsprøve 130 tilfeller.
+Triggerprøven krever feil fra den faktiske hendelses-INSERT-en;
 en annen databasefeil teller ikke som rollbackbevis. To instanser prøver både den
 unike førstegangsplanen og vinnende overgang for en eksisterende plan.
 
 Prosjektet ligger bevisst utenfor `backend/Aarshjul.slnx`. De ordinære lokale kommandoene
 krever derfor verken SQL Server eller Docker. SQL-testene krever en disponibel testinstans
 med rettighet til å opprette og slette databaser. Oppgi tilkobling til `master`, aldri en
-applikasjonsdatabase. Hvert tilfelle oppretter et nytt navn `AarshjulGodkjenning_<guid>`,
+applikasjonsdatabase. Hvert tilfelle oppretter et nytt navn med testprefiks og GUID,
+blant annet `AarshjulGodkjenning_<guid>` og `AarshjulIntern_<guid>`,
 kjører MigrateAsync og sletter bare databasen det selv har opprettet, også ved testfeil.
 Eksisterende databaser blir ikke resatt eller slettet. Ikke bruk produksjonsinstansen.
 
@@ -260,7 +358,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 112 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 130 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

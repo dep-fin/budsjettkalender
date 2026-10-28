@@ -225,14 +225,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<InternRunde>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property(x => x.SistSynkronisert).IsConcurrencyToken();
             e.Property(x => x.OpprettetAv).HasMaxLength(256);
-            e.HasIndex(x => new { x.Rundetype, x.Aar });
+            e.HasIndex(x => new { x.Rundetype, x.Aar }).IsUnique().HasFilter("[Aar] IS NOT NULL");
+            e.HasIndex(x => x.Rundetype).IsUnique().HasFilter("[Aar] IS NULL");
         });
 
         // --- Internkalender: internt gjøremål ---
         b.Entity<InterntGjoeremaal>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property(x => x.Status).IsConcurrencyToken();
+            e.Property(x => x.ManueltEndret).IsConcurrencyToken();
             e.Property(x => x.Tittel).HasMaxLength(512);
             e.Property(x => x.AnkerLoep).HasMaxLength(128);
             e.Property(x => x.FullfoertAvId).HasMaxLength(128);

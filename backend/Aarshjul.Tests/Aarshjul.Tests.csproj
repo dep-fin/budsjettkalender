@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -26,6 +26,7 @@
     <Compile Include="..\Testkontrakter\FasedataBevis.cs" Link="FasedataBevis.cs" />
     <Compile Include="..\Testkontrakter\EpostoppgraderingBevis.cs" Link="EpostoppgraderingBevis.cs" />
     <Compile Include="..\Testkontrakter\DagligEpostKontrakt.cs" Link="DagligEpostKontrakt.cs" />
+    <Compile Include="..\Testkontrakter\InternkalenderSynkKontrakt.cs" Link="InternkalenderSynkKontrakt.cs" />
     <Compile Include="..\Testkontrakter\EpostabonnementKontrakt.cs" Link="EpostabonnementKontrakt.cs" />
   </ItemGroup>
 
