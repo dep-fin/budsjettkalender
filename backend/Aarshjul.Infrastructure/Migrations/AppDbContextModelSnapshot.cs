@@ -483,11 +483,18 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("SistSynkronisert")
+                        .IsConcurrencyToken()
                         .HasColumnType("datetimeoffset");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Rundetype", "Aar");
+                    b.HasIndex("Rundetype")
+                        .IsUnique()
+                        .HasFilter("[Aar] IS NULL");
+
+                    b.HasIndex("Rundetype", "Aar")
+                        .IsUnique()
+                        .HasFilter("[Aar] IS NOT NULL");
 
                     b.ToTable("InternRunder");
                 });
@@ -529,6 +536,7 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("ManueltEndret")
+                        .IsConcurrencyToken()
                         .HasColumnType("bit");
 
                     b.Property<string>("Notat")
@@ -547,6 +555,7 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasColumnType("date");
 
                     b.Property<int>("Status")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<int>("Tidfestingstype")

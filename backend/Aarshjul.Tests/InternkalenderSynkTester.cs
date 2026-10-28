@@ -1,4 +1,5 @@
 using Aarshjul.Application.Internkalender;
+using Aarshjul.Application;
 using Aarshjul.Domain;
 using Aarshjul.Infrastructure.Internkalender;
 using Microsoft.EntityFrameworkCore;
@@ -125,6 +126,23 @@ public class InternkalenderSynkTester : IDisposable
         await LeggRegel("Oppgave", Rundeposisjon.Start);
         var runde = await _kal.GenererRundeAsync(Rundetype.Augustrunden, 2027, "Dag");
         Assert.Empty(await _kal.ForberedSynkAsync(runde));
+    }
+
+    [Fact]
+    public async Task Forslag_fra_annen_runde_avvises_uten_a_endre_noen_runde()
+    {
+        var regel = await LeggRegel("Oppgave", Rundeposisjon.Start);
+        var foerste = await _kal.GenererRundeAsync(Rundetype.Augustrunden, 2027, "Dag");
+        var andre = await _kal.GenererRundeAsync(Rundetype.Augustrunden, 2028, "Dag");
+        await _regler.OppdaterAsync(regel, new RegelInndata
+        {
+            Tittel = "Ny regel", Rundetyper = [Rundetype.Augustrunden],
+            Tidfestingstype = Tidfestingstype.Rundeposisjon, Rundeposisjon = Rundeposisjon.Slutt
+        });
+        var forslag = await _kal.ForberedSynkAsync(foerste);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => _kal.SynkroniserAsync(andre, forslag));
+        Assert.Equal("Oppgave", Assert.Single(await _kal.HentGjoeremaalAsync(foerste, null)).Tittel);
+        Assert.Equal("Oppgave", Assert.Single(await _kal.HentGjoeremaalAsync(andre, null)).Tittel);
     }
 
     public void Dispose() => _t.Dispose();

@@ -1,71 +1,55 @@
 @page "/internkalender/regler"
 @using Aarshjul.Application.Internkalender
+@inherits Internside
 @attribute [Authorize(Policy = Autorisasjon.ErSbr)]
 @inject IGjoeremaalRegler RegelTjeneste
+@inject InternkalenderKommando Kommando
 @inject NavigationManager Nav
+@inject InternkalenderRetur Retur
 
-<PageTitle>Generelle regler (internkalender)</PageTitle>
-
-<div class="admintopp">
-    <h1>Generelle regler</h1>
-    <div>
-        <button class="knapp" @onclick='() => Nav.NavigateTo("/internkalender")'>Til oversikten</button>
-        <button class="knapp knapp-primær" @onclick='() => Nav.NavigateTo("/internkalender/regler/ny")'>Ny regel</button>
-    </div>
-</div>
-
-<p class="melding">
-    En generell regel beskriver et gjøremål som genereres inn i én eller flere rundetypers konkrete
-    planer. «Fyll fra generelle regler» ved oppretting av en runde bruker disse.
-</p>
-
-@if (!_lastet)
-{
-    <p class="melding">Laster …</p>
-}
-else if (_regler.Count == 0)
-{
-    <p class="melding">Ingen regler ennå.</p>
-}
-else
-{
-    <table class="tabell">
-        <thead>
-            <tr><th>Tittel</th><th>Gjelder runder</th><th>Tidspunkt</th><th>Ansvarlige</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var r in _regler)
-            {
-                <tr>
-                    <td><strong>@r.Tittel</strong></td>
-                    <td>@string.Join(", ", r.Rundetyper.Select(Runder.Navn))</td>
-                    <td>@r.Tidsangivelse</td>
-                    <td>@(r.Ansvarlige.Count == 0 ? "—" : string.Join(", ", r.Ansvarlige.Select(a => a.Navn)))</td>
-                    <td>
-                        <a href="@($"/internkalender/regler/{r.Id}")">Rediger</a>
-                        <button class="knapp-lenke" @onclick="() => Slett(r.Id)">Slett</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
+<PageTitle>Gjøremålsregler</PageTitle>
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" />
+<InternkalenderOmraade>
+    <div class="admintopp"><div><h1>Gjøremålsregler</h1><p class="ingress">Generelle regler for interne gjøremål i én eller flere rundetyper. Regelendringer endrer ingen eksisterende gjøremål før du velger forslag i synkroniseringen.</p></div><button class="knapp knapp-primær" disabled="@_arbeider" @onclick='() => Nav.NavigateTo("/internkalender/regler/ny")'>Ny regel</button></div>
+    @if (_melding is not null) { <p class="internstatus" role="status">@_melding</p> }
+    @if (!_lastet) { <p class="melding" role="status">Laster gjøremålsregler …</p> }
+    else if (_lastfeil is not null) { <div class="feil" role="alert"><p>@_lastfeil</p><button class="knapp" @onclick="Last">Prøv igjen</button></div> }
+    else if (_regler.Count == 0) { <div class="internkort"><h2>Ingen regler ennå</h2><p>Opprett en gjøremålsregel for å fylle nye runder eller foreslå tillegg i en eksisterende runde.</p></div> }
+    else
+    {
+        <table class="tabell"><thead><tr><th scope="col">Tittel</th><th scope="col">Gjelder runder</th><th scope="col">Tidspunkt</th><th scope="col">Standard ansvarlige</th><th scope="col">Handlinger</th></tr></thead><tbody>
+        @foreach (var r in _regler)
+        {
+            <tr @key="r.Id"><td data-label="Tittel"><strong class="oppgavetittel">@r.Tittel</strong>@if (!string.IsNullOrWhiteSpace(r.Notat)) { <div class="oppgavenotat">@r.Notat</div> }</td><td data-label="Gjelder runder">@string.Join(", ", r.Rundetyper.Select(Runder.Navn))</td><td data-label="Tidspunkt">@r.Tidsangivelse</td><td data-label="Standard ansvarlige">@(r.Ansvarlige.Count == 0 ? "Ingen ansvarlige" : string.Join(", ", r.Ansvarlige.Select(a => a.Navn + (a.BrukerId is null ? " (fritekst)" : ""))))</td><td data-label="Handlinger"><div class="internhandlinger"><a href="@($"/internkalender/regler/{r.Id}")" aria-label="@($"Rediger {r.Tittel}")">Rediger</a><button class="knapp-lenke" aria-label="@($"Slett {r.Tittel}")" disabled="@_arbeider" @onclick="() => VelgSlett(r)">Slett</button></div></td></tr>
+        }
+        </tbody></table>
+    }
+</InternkalenderOmraade>
+<InternBekreftelse Aapen="@(_slett is not null)" Valg="@_valg" Tittel="Slett gjøremålsregel" Tekst="@($"Slette regelen «{_slett?.Tittel}»? Eksisterende gjøremål beholdes til du selv velger synkronisering. Fullførte og manuelt endrede gjøremål er vernet.")" Bekrefttekst="Ja, slett" Feil="@_feil" Arbeider="@_arbeider" Bekreft="BekreftSlett" Avbryt="AvbrytSlett" />
 @code {
     private IReadOnlyList<RegelDto> _regler = [];
-    private bool _lastet;
-
-    protected override async Task OnInitializedAsync() => await Last();
-
+    private bool _lastet, _arbeider;
+    private int _valg;
+    private string? _lastfeil, _feil, _melding;
+    private RegelDto? _slett;
+    protected override Task OnInitializedAsync() { _melding = Retur.Hent("/internkalender/regler"); return Last(); }
     private async Task Last()
     {
-        _regler = await RegelTjeneste.HentAlleAsync();
-        _lastet = true;
+        var visning = ++Visning; _lastet = false; _lastfeil = null;
+        try { var data = await RegelTjeneste.HentAlleAsync(Levetid.Token); if (ErGjeldende(visning)) _regler = data; }
+        catch (OperationCanceledException) when (Levetid.IsCancellationRequested) { }
+        catch (Exception e) { if (ErGjeldende(visning)) _lastfeil = Feiltekst(e, "Kunne ikke laste gjøremålsreglene. Prøv igjen."); }
+        finally { if (ErGjeldende(visning)) _lastet = true; }
     }
-
-    private async Task Slett(Guid id)
+    private void VelgSlett(RegelDto r) { if (_arbeider) return; _slett = r; _valg++; _feil = null; }
+    private void AvbrytSlett() { if (!_arbeider) { _slett = null; _feil = null; } }
+    private async Task BekreftSlett()
     {
-        await RegelTjeneste.SlettAsync(id);
-        await Last();
+        if (_arbeider || _slett is not { } r) return; _arbeider = true; _feil = null; var visning = Visning;
+        try { await Kommando.SlettRegelAsync(r.Id, Levetid.Token); if (!ErGjeldende(visning)) return; _slett = null; _melding = $"Regelen «{r.Tittel}» er slettet. Eksisterende gjøremål er beholdt."; await Last(); }
+        catch (OperationCanceledException) when (Levetid.IsCancellationRequested) { }
+        catch (Exception e) { if (ErGjeldende(visning)) _feil = Feiltekst(e, "Kunne ikke slette regelen. Prøv igjen."); }
+        finally { _arbeider = false; }
     }
+    private void FoerNavigasjon(LocationChangingContext context) { if (_arbeider) context.PreventNavigation(); }
 }

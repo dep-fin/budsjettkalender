@@ -50,7 +50,11 @@ public sealed record SynkForslagDto(
     Guid? GjoeremaalId,
     Guid? RegelId,
     string Tittel,
-    string Detalj);
+    string Detalj)
+{
+    /// <summary>Ugjennomsiktig grunnlag fra forhåndsvisningen; må følge det valgte forslaget ved utføring.</summary>
+    public string? Grunnlag { get; init; }
+}
 
 /// <summary>Inndata fra gjøremål-skjemaet (opprett/rediger). Kun tittel er påkrevd.</summary>
 public sealed class GjoeremaalInndata
