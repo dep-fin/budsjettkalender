@@ -55,11 +55,11 @@ public sealed class TilgangTester
         foreach (var (omraade, overskrift, lenker) in new[]
         {
             (omraader[0], "Frister", new[] { ("Frister", "Frister"), ("Forslag", "Godkjenningskø"), ("Dokumenter", "Last opp dokument"), ("Generer fra årsmal", "Generér budsjettår") }),
-            (omraader[1], "Eksisterende gjentaksregler", new[] { ("Eksisterende gjentaksregler", "Eksisterende gjentaksregler"), ("Nye gjentaksregler", "Nye gjentaksregler") }),
+            (omraader[1], "Eksisterende gjentaksregler", new[] { ("Eksisterende gjentaksregler", "Eksisterende gjentaksregler"), ("Nye gjentaksregler", "Nye gjentaksregler"), ("Prøv malen", "Prøv malen"), ("Overfør mal", "Overfør mal") }),
             (omraader[2], "Grupper", new[] { ("Grupper", "Grupper"), ("Innsyn", "Innsyn") }),
             (omraader[3], "Eksporter frister", new[] { ("Eksporter", "Eksporter frister"), ("Del kalender", "Del kalender (abonnement)"), ("Data", "Eksporter / importer data") }),
             (omraader[4], "Internkalender for SBR", new[] { ("Internrunder", "Internkalender for SBR"), ("Mine gjøremål", "Mine gjøremål"), ("Gjøremålsregler", "Gjøremålsregler") }),
-            (omraader[5], "Administrator-innstillinger", new[] { ("Innstillinger", "Administrator-innstillinger") })
+            (omraader[5], "Administrator-innstillinger", new[] { ("Faseinndeling", "Faseinndeling"), ("Innstillinger", "Administrator-innstillinger") })
         })
         {
             await meny.GetByRole(AriaRole.Link, new() { Name = omraade, Exact = true }).ClickAsync();
@@ -77,7 +77,15 @@ public sealed class TilgangTester
         }
         await n.Side.GetByRole(AriaRole.Link, new() { Name = "Åpne dataforvaltning", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Button, new() { Name = "Forhåndsvis frister", Exact = true })).ToBeDisabledAsync();
-        foreach (var (sti, omraade) in new[] { ("/admin/frist/ny", omraader[0]), ("/admin/mal/ny", omraader[1]), ("/admin/innsyn", omraader[2]), ("/admin/abonnement", omraader[3]), ("/internkalender/mine", omraader[4]), ("/admin/innstillinger", omraader[5]) })
+        foreach (var (sti, omraade) in new[]
+        {
+            ("/admin/frister", omraader[0]), ("/admin/frist/ny", omraader[0]), ("/admin/ko", omraader[0]), ("/admin/last-opp", omraader[0]), ("/admin/generer", omraader[0]),
+            ("/admin/mal", omraader[1]), ("/admin/mal/ny", omraader[1]), ("/admin/mal/proev", omraader[1]), ("/admin/mal/overfor", omraader[1]),
+            ("/admin/grupper", omraader[2]), ("/admin/innsyn", omraader[2]),
+            ("/admin/eksport", omraader[3]), ("/admin/abonnement", omraader[3]), ("/admin/data", omraader[3]),
+            ("/internkalender", omraader[4]), ("/internkalender/mine", omraader[4]), ("/internkalender/regler", omraader[4]), ("/internkalender/regler/ny", omraader[4]),
+            ("/admin/innstillinger", omraader[5]), ("/admin/innstillinger/faseinndeling", omraader[5])
+        })
         {
             await n.Gaa(sti);
             await Expect(meny.GetByRole(AriaRole.Link, new() { Name = omraade, Exact = true })).ToHaveAttributeAsync("aria-current", "location");
