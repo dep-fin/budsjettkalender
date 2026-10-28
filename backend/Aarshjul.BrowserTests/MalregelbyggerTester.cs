@@ -206,6 +206,7 @@ public sealed class MalregelbyggerTester
         await Expect(n.Side.GetByText("Dato fastsettes manuelt", new() { Exact = false })).ToBeVisibleAsync();
         await Lagre(n.Side);
         await Ny(n, "AK sirkel b");
+        await Expect(Felt(n.Side, "Funksjon / løp")).ToHaveValueAsync("ak-sirkel-b");
         await Felt(n.Side, "Funksjon / løp").FillAsync("ak-sirkel-b");
         await Velg(n.Side, "Før eller etter en milepæl");
         await Felt(n.Side, "Ankerløp").FillAsync("ak-sirkel-a");
