@@ -7,6 +7,11 @@ Bicep-maler for Azure-infrastrukturen (kravdok. 9.2).
   identity gis lesetilgang til Key Vault og brukes til SQL-tilkobling (ingen lagrede passord).
 - `main.bicepparam` — eksempelparametre; fyll inn reelle verdier eller overstyr i CI.
 
+[EV01 – driftskontrakt for e-postvarsling](../docs/operations/epostvarsling-ev01.md)
+beskriver anbefalt tjenestekandidat, nødvendige rettigheter og operatørsteg.
+Beslutninger og miljøaksept gjenstår; malen etablerer verken e-posttjeneste,
+avsenderpostboks eller utsendingsjobb.
+
 ## Validering og utrulling
 
 - Kompiler/valider lokalt: `bicep build infra/main.bicep`

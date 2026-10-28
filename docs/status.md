@@ -5,6 +5,11 @@ gjenstående grenser. GitHub-lenkene er kilden for oppgavenes og PR-enes livslø
 [Gjennomgangen fra 20. oktober](reviews/2026-10-20.md) er et datert utgangspunkt,
 ikke en liste over dagens urettede kodefeil.
 
+[EV01 – driftskontrakt for e-postvarsling](operations/epostvarsling-ev01.md) gir en
+kildebelagt tjenestekandidat og konkrete IT-steg for [#111](https://github.com/depmartin/Budsjettkalender/issues/111).
+Dette er beslutningsgrunnlag: D1–D4 er åpne, og D5 krever senere miljøaksept.
+Tenant, postboks og ansvarlige er ikke bekreftet. Ingen utsending er aktivert eller produksjonsklarhet påvist.
+
 Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) er levert i
 [PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), merget som
 `c1f250ea4e6ddbf05075059e0d1fc47f582d805b`, med felles skall, rollebasert hovedmeny, seks virksomme
