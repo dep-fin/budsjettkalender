@@ -126,6 +126,7 @@ public sealed class InternansvarligNavigasjonTester
 
     private static async Task Reload(IPage side, bool forkast)
     {
+        await side.WaitForFunctionAsync("() => !window.dispatchEvent(new Event('beforeunload', { cancelable: true }))");
         var ferdig = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         EventHandler<IDialog> behandle = async (_, d) =>
         {
