@@ -1,0 +1,51 @@
+.delingsinnledning { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 28px 0; }
+.delingskort, .delingsvern, .delingsskjema, .abonnementoversikt { border: 1px solid var(--kant); background: var(--papir); border-radius: 12px; padding: 26px; }
+.delingskort h2, .delingsvern h2, .delingsskjema h2, .oversikttopp h2 { font-size: 19px; margin: 0 0 14px; }
+.delingskort p, .delingsvern p, .delingsskjema p { font-size: 14px; line-height: 1.65; }
+.delingskort a { color: var(--primaer); font-size: 13px; }
+.delingssymbol { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; color: var(--primaer); background: var(--myk); border-radius: 8px; font-size: 24px; margin-bottom: 18px; }
+.delingsvern { background: var(--myk); border-left: 3px solid var(--primaer); }
+.delingsvern h2 { margin-top: 8px; }
+.hint, .delingsfotnote { color: var(--dempet); font-size: 12px; line-height: 1.65; }
+.delingsskjema { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 28px; }
+.delingsskjema .menyoverskrift { font-size: 11px; margin: 0 0 9px; }
+.delingsskjema p { margin-bottom: 0; }
+.delingsvalg { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.delingsvalg label { font-size: 12px; font-weight: 600; }
+.delingsvalg select { width: 100%; min-width: 0; }
+.delingsvalg small { color: var(--dempet); font-size: 12px; line-height: 1.6; }
+.delingsvalg .knapp { margin-top: 7px; }
+.oversikttopp { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.oversikttopp span { color: var(--dempet); font-size: 12px; white-space: nowrap; }
+.delingstom { background: var(--myk); border-radius: 8px; padding: 24px; margin: 8px 0 22px; }
+.delingstom h3 { font-size: 16px; margin: 0 0 10px; }
+.delingstom p { font-size: 13px; margin: 0; line-height: 1.6; }
+.abonnementtabell { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+.abonnementtabell thead th { color: var(--dempet); font-size: 11px; font-weight: 600; }
+.abonnementtabell th, .abonnementtabell td { text-align: left; padding: 16px 10px; border-bottom: 1px solid var(--kant); vertical-align: top; overflow-wrap: anywhere; }
+.abonnementtabell th:first-child { width: 20%; padding-left: 0; }
+.abonnementtabell th:nth-child(2) { width: 12%; }
+.abonnementtabell th:last-child { width: 22%; }
+.feed-url { font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; word-break: break-word; user-select: all; }
+.radhandlinger, .dialoghandlinger { display: flex; gap: 8px; flex-wrap: wrap; }
+.radhandlinger .knapp { font-size: 11px; padding: 8px 10px; white-space: nowrap; }
+.delingsmerke { display: inline-block; border-radius: 5px; padding: 5px 8px; font-size: 11px; background: var(--myk); color: var(--primaer); }
+.delingsmerke.avskrudd { background: #f0ede7; color: var(--dempet); }
+.delingsfotnote { margin: 20px 0 0; }
+.delingsstatus { padding: 16px 20px; background: var(--myk); border-left: 3px solid var(--primaer); font-size: 14px; line-height: 1.6; }
+.feil p { font-size: 14px; line-height: 1.6; }
+.abonnementdialog { width: min(560px, calc(100vw - 32px)); max-width: 100%; max-height: calc(100dvh - 40px); overflow: auto; box-sizing: border-box; padding: 30px; border: 1px solid var(--kant); border-radius: 12px; color: var(--tekst); background: var(--papir); }
+.abonnementdialog::backdrop { background: rgb(30 45 39 / 34%); }
+.abonnementdialog h2 { margin: 10px 0 20px; }
+.abonnementdialog p { font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.dialoghandlinger { margin-top: 26px; }
+@media (max-width: 850px) { .delingsinnledning, .delingsskjema { grid-template-columns: minmax(0, 1fr); gap: 18px; } }
+@media (max-width: 600px) {
+    .delingskort, .delingsvern, .delingsskjema, .abonnementoversikt, .abonnementdialog { padding: 20px; }
+    .abonnementtabell, .abonnementtabell tbody, .abonnementtabell tr, .abonnementtabell th, .abonnementtabell td { display: block; width: auto !important; }
+    .abonnementtabell thead { display: none; }
+    .abonnementtabell tr { border: 1px solid var(--kant); border-radius: 8px; padding: 12px 16px; margin-top: 14px; }
+    .abonnementtabell th, .abonnementtabell td { padding: 8px 0; border: 0; }
+    .abonnementtabell th { font-size: 15px; }
+    .dialoghandlinger .knapp { max-width: 100%; white-space: normal; }
+}

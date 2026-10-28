@@ -1,138 +1,92 @@
 @page "/admin/data"
-@using System.Text.Json
-@using Aarshjul.Application.Datautveksling
-@using Aarshjul.Web.Api
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
-@inject IFristDatautveksling Utveksling
 
 <PageTitle>Eksporter / importer data</PageTitle>
-
-<h1>Eksporter / importer data</h1>
-
-<p class="melding">
-    Last ned frister eller årsmaler som en JSON-«database», og last opp igjen senere for å
-    gjenopprette. Dette er administratorfunksjoner. Import erstatter alt av den aktuelle typen.
-</p>
-
-<section class="skjema">
-    <h2>Frister</h2>
-    <p class="melding">Alle frister med synlighet, budsjettår, kategori, løp og notat.</p>
-    <div class="skjemarad">
-        <a class="knapp knapp-primær" href="/api/eksport/frister-json" download>Last ned frister (JSON)</a>
-    </div>
-
-    <div class="feil" role="note">
-        <strong>Erstatter alt.</strong> Import fjerner alle eksisterende frister og legger inn dem fra
-        fila. Ta gjerne en eksport først som sikkerhetskopi.
-    </div>
-
-    <label>Fil (JSON)
-        <InputFile OnChange="VelgFristfil" accept=".json" />
-    </label>
-
-    @if (_fristNavn is not null)
-    {
-        <p class="melding">Valgt fil: <strong>@_fristNavn</strong> (@_fristStr)</p>
-    }
-    @if (_fristFeil is not null)
-    {
-        <div class="feil">@_fristFeil</div>
-    }
-    @if (_fristResultat is { } r)
-    {
-        <div class="melding">
-            Importerte <strong>@r.AntallImportert</strong> frister (erstattet @r.AntallErstattet).
-            @if (r.Advarsler.Count > 0)
-            {
-                <ul>@foreach (var a in r.Advarsler) { <li>@a</li> }</ul>
-            }
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" />
+<div @ref="_flate" data-valg="@_valg" class="dataflate">
+    <p class="menyoverskrift">Eksport og deling</p>
+    <h1>Eksporter / importer data</h1>
+    <p class="ingress">Ta vare på hele fristdatabasen. Kontroller en faktisk JSON-fil før du bekrefter at den skal erstatte alle frister.</p>
+    <section class="fristoverfoering" aria-labelledby="frister-data">
+        <h2 id="frister-data">Frister</h2>
+        <div class="overfoervalg">
+            <div class="overfoerkort">
+                <span class="trinnmerke" aria-hidden="true">↓</span><h3>Last ned fristdatabasen</h3>
+                <p>Alle lagrede frister, med status, opphav, innsender, kilder, dokumentkoblinger og synlighet. Gruppene og perioden på Eksporter gjelder ikke denne sikkerhetskopien.</p>
+                <a class="knapp" href="/api/eksport/frister-json" download>Last ned frister (JSON)</a>
+                <small>JSON, formatversjon 1. Ta en kopi før du erstatter innholdet.</small>
+            </div>
+            <div class="overfoerkort">
+                <span class="trinnmerke" aria-hidden="true">↑</span><h3>Åpne en fristfil</h3>
+                <p>Filvalg og forhåndsvisning endrer ingen lagrede frister.</p>
+                <label for="fristfil">Fil (JSON)</label>
+                <InputFile @key="_filfelt" id="fristfil" OnChange="VelgFil" accept=".json" disabled="@_lagrer" aria-describedby="fristfil-hjelp" />
+                <small id="fristfil-hjelp">En fristdatabase i JSON, maks 25 MB.</small>
+                @if (_navn is not null) { <p class="filnavn">Valgt fil: <strong>@_navn</strong> (@_storrelse)</p> }
+                <button class="knapp" @onclick="ForhaandsvisAsync" disabled="@(_fil is null || _leser || _kontrollerer || _lagrer)">@(_leser ? "Leser og kontrollerer …" : "Forhåndsvis frister")</button>
+            </div>
         </div>
-    }
-
-    <div class="skjemarad">
-        @if (!_fristBekreft)
+        <p class="avgrensning">Dette gjenoppretter filens statuser og synlighet. Filer kan også inneholde upubliserte frister. Internkalender, brukere, abonnementer og faseinndeling inngår ikke.</p>
+        @if (_leser || _kontrollerer) { <p class="overfoerstatus" role="status">@(_leser ? "Leser og kontrollerer fristfila …" : "Oppdaterer konsekvensen før bekreftelse …")</p> }
+        @if (_status is not null) { <p class="overfoerstatus" role="status">@_status</p> }
+        @if (_feil is not null) { <div id="fristimport-feil" class="feil" tabindex="-1" role="alert">@_feil</div> }
+        @if (_resultat is { } resultat)
         {
-            <button class="knapp knapp-primær" @onclick="() => _fristBekreft = true" disabled="@(_fristFil is null || _fristArbeider)">
-                Importer frister (erstatt alt)
-            </button>
+            <section id="fristimport-kvittering" class="overfoerkvittering" tabindex="-1" aria-labelledby="fristimport-ferdig" role="status">
+                <h3 id="fristimport-ferdig">Fristdatabasen er erstattet</h3>
+                <p>Importerte <strong>@resultat.AntallImportert</strong> frister (erstattet @resultat.AntallErstattet).</p>
+                @if (resultat.Advarsler.Count > 0) { <ul>@foreach (var advarsel in resultat.Advarsler) { <li>@advarsel</li> }</ul> }
+                <a class="knapp" href="/admin/frister">Se fristregisteret</a>
+            </section>
         }
-        else
+        @if (_preview is { } preview)
         {
-            <span class="melding">Er du sikker? Dette fjerner alle eksisterende frister.</span>
-            <button class="knapp knapp-primær" @onclick="ImporterFrister" disabled="@_fristArbeider">
-                @(_fristArbeider ? "Importerer …" : "Ja, erstatt alt")
-            </button>
-            <button class="knapp" @onclick="() => _fristBekreft = false" disabled="@_fristArbeider">Avbryt</button>
+            <section class="importpreview" aria-label="Importforhåndsvisning" aria-busy="@(_lagrer ? "true" : "false")">
+                <div class="previewtopp"><div><p class="menyoverskrift">Kontroller før du erstatter</p><h3 id="fristimport-preview" tabindex="-1">Forhåndsvisning av fristfil</h3><p class="filnavn">@_navn · @_storrelse · Fristdatabase versjon @(_database?.Versjon)</p></div><span class="previewmerke">Ingenting er lagret</span></div>
+                <div class="importantall"><p><strong>@preview.Frister.Count</strong> frister tas inn</p><p><strong>@preview.EksisterendeAntall</strong> eksisterende frister erstattes</p><p><strong>@preview.Advarsler.Count</strong> advarsler</p></div>
+                <div class="erstattkonsekvens @(preview.Frister.Count == 0 ? "tomkonsekvens" : null)">
+                    @if (preview.Frister.Count == 0) { <h4>Fristdatabasen blir tom</h4><p>Alle @preview.EksisterendeAntall eksisterende frister fjernes og erstattes med null frister.</p> }
+                    else { <h4>Alle frister erstattes</h4><p>Alle @preview.EksisterendeAntall eksisterende frister erstattes av @preview.Frister.Count frister fra fila. Frister som ikke er med, fjernes.</p> }
+                    <p>Antallet er lest nå. Importen erstatter hele fristdatabasen slik den er ved gjennomføring.</p>
+                </div>
+                @if (preview.Advarsler.Count > 0) { <div class="importadvarsler"><h4>Advarsler om synlighet</h4><ul>@foreach (var advarsel in preview.Advarsler) { <li>@advarsel</li> }</ul></div> }
+                <div class="importfrister">
+                    @foreach (var frist in preview.Frister)
+                    {
+                        <article class="importfrist">
+                            <span class="importkategori">@Visningformat.KategoriNavn(frist.Kategori) · Budsjettår @frist.Budsjettaar</span><h4>@frist.Tittel</h4>
+                            <p>@Visningformat.FormatDato(frist.Dato, frist.Datopresisjon, frist.Datokvalifikator, frist.Klokkeslett)@(frist.Datopresisjon != Datopresisjon.Dag ? " (tentativ)" : "")</p>
+                            <p>Status: <strong>@frist.Status</strong> · Synlighet: <strong>@(frist.SynligFor.Count == 0 ? "Ingen grupper" : string.Join(", ", frist.SynligFor))</strong></p>
+                            <details><summary>Alle overførte felt</summary><dl class="importfelter">
+                                <dt>ID</dt><dd>@(frist.Id == Guid.Empty ? "Ny ID ved import" : frist.Id.ToString())</dd>
+                                <dt>Dato og presisjon</dt><dd>@frist.Dato.ToString("yyyy-MM-dd") · @frist.Datopresisjon · @frist.Datokvalifikator</dd>
+                                <dt>Klokkeslett</dt><dd>@(frist.Klokkeslett?.ToString("HH:mm") ?? "Ingen")</dd>
+                                <dt>Løp</dt><dd>@frist.Loep</dd><dt>Kilde</dt><dd>@frist.Kilde</dd><dt>Dokument-ID</dt><dd>@frist.DokumentId</dd>
+                                <dt>Opphav</dt><dd>@frist.Opphav</dd><dt>Innsender</dt><dd>@frist.ForeslaattAv</dd><dt>Notat</dt><dd>@frist.Notat</dd><dt>Gjentaksregel-ID</dt><dd>@frist.GjentaRegelId</dd>
+                            </dl></details>
+                        </article>
+                    }
+                </div>
+                <div class="overfoerhandlinger previewhandlinger"><button id="erstatt-frister" class="knapp knapp-primær" disabled="@(_leser || _kontrollerer || _lagrer)" @onclick="BeOmBekreftelseAsync">Importer frister (erstatt alt)</button><button class="knapp" disabled="@_lagrer" @onclick="AvbrytAsync">Avbryt</button></div>
+            </section>
         }
-    </div>
-</section>
-
-<section class="skjema">
-    <h2>Årsmal (gjentaksregler)</h2>
-    <p>Last ned hele årsmalen, eller kontroller en malfil før du erstatter alle gjentaksreglene.</p>
-    <a class="knapp" href="/admin/mal/overfor">Overfør mal</a>
-    <p class="hint">Maloverføring har forhåndsvisning og egen bekreftelse under Årsmal.</p>
-</section>
-@code {
-    private const long MaksStorrelse = 25 * 1024 * 1024; // 25 MB
-
-    // --- Frister ---
-    private IBrowserFile? _fristFil;
-    private string? _fristNavn;
-    private string? _fristStr;
-    private ImportResultat? _fristResultat;
-    private string? _fristFeil;
-    private bool _fristArbeider;
-    private bool _fristBekreft;
-
-    private void VelgFristfil(InputFileChangeEventArgs e)
-        => VelgFil(e, out _fristFil, out _fristNavn, out _fristStr, out _fristFeil, ref _fristBekreft, ref _fristResultat);
-
-    private static void VelgFil(
-        InputFileChangeEventArgs e, out IBrowserFile? fil, out string? navn, out string? str,
-        out string? feil, ref bool bekreft, ref ImportResultat? resultat)
-    {
-        resultat = null;
-        bekreft = false;
-        feil = null;
-        fil = e.File;
-        navn = e.File.Name;
-        str = $"{e.File.Size / 1024} kB";
-
-        if (e.File.Size > MaksStorrelse)
-        {
-            feil = "Filen er for stor (maks 25 MB).";
-            fil = null;
-        }
-        else if (!e.File.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-        {
-            feil = "Kun JSON-filer støttes.";
-            fil = null;
-        }
-    }
-
-    private async Task ImporterFrister()
-    {
-        if (_fristFil is null) { return; }
-        _fristArbeider = true;
-        _fristFeil = null;
-        _fristResultat = null;
-        try
-        {
-            var database = await Les<FristDatabase>(_fristFil);
-            _fristResultat = await Utveksling.ImporterAsync(database);
-            _fristBekreft = false;
-        }
-        catch (JsonException ex) { _fristFeil = $"Klarte ikke tolke JSON-fila: {ex.Message}"; }
-        catch (Exception ex) { _fristFeil = $"Import feilet: {ex.Message}"; }
-        finally { _fristArbeider = false; }
-    }
-
-    private static async Task<T> Les<T>(IBrowserFile fil)
-    {
-        using var ms = new MemoryStream();
-        await fil.OpenReadStream(MaksStorrelse).CopyToAsync(ms);
-        return JsonSerializer.Deserialize<T>(ms.ToArray(), FristEndepunkter.DatabaseJson)
-               ?? throw new FormatException("Fila er tom eller ikke gyldig.");
-    }
-}
+        else if (_leser || _fil is not null) { <button class="knapp" @onclick="AvbrytAsync">Avbryt</button> }
+        <dialog @key="_valg" @ref="_dialog" class="importdialog" aria-labelledby="fristimport-bekreft" data-valg="@_valg" data-bekreft="@(_bekreftelse ? "true" : "false")" data-arbeider="@(_lagrer ? "true" : "false")">
+            @if (_preview is { } bekreft)
+            {
+                var bekreftetValg = _valg;
+                <p class="menyoverskrift">Bekreft dataoverføring</p><h2 id="fristimport-bekreft">Erstatt alle frister?</h2>
+                <p>Fil: <strong>@_navn</strong></p>
+                @if (bekreft.Frister.Count == 0) { <p>Alle @bekreft.EksisterendeAntall eksisterende frister fjernes. 0 nye frister legges inn. Fristdatabasen blir tom.</p> }
+                else { <p>Alle @bekreft.EksisterendeAntall eksisterende frister erstattes av @bekreft.Frister.Count frister fra fila, med status og synlighet som vist.</p> }
+                <p>@bekreft.Advarsler.Count advarsler om ukjente grupper. Dette kan ikke angres her. En sikkerhetskopi kan importeres på nytt.</p>
+                <div class="overfoerhandlinger"><button class="knapp" autofocus disabled="@_lagrer" @onclick="AvbrytAsync">Avbryt</button><button class="knapp knapp-primær" disabled="@_lagrer" @onclick="() => ImporterAsync(bekreftetValg)">@(_lagrer ? "Importerer …" : "Ja, erstatt alt")</button></div>
+            }
+        </dialog>
+    </section>
+    <section class="maloverfoering" aria-labelledby="aarsmal-data">
+        <h2 id="aarsmal-data">Årsmal (gjentaksregler)</h2><p>Last ned alle gjentaksregler, eller åpne samme maloverføring under Årsmal for forhåndsvisning og bekreftet erstatning.</p>
+        <div class="overfoerhandlinger"><a class="knapp" href="/api/eksport/maler-json" download>Last ned årsmal (JSON)</a><a class="knapp" href="/admin/mal/overfor">Overfør mal</a></div>
+        <p class="hint">Faseinndelingen forvaltes separat under Administrator-innstillinger.</p>
+    </section>
+</div>

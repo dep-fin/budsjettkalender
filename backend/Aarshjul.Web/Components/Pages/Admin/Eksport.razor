@@ -1,77 +1,70 @@
 @page "/admin/eksport"
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
-@inject IGruppetjeneste Grupper
 
 <PageTitle>Eksporter frister</PageTitle>
-
-<h1>Eksporter frister</h1>
-<p class="ingress">
-    Velg en gruppe og en periode. Utvalget følger nøyaktig den gruppens tilgang (samme
-    synlighetsfilter som ellers), slik at «for POL» gir det settet politisk ledelse selv ville sett.
-    «Alt» gir ditt fulle innsyn og merkes som FIN-internt. Last ned som <strong>Word</strong>
-    (notat/underlag) eller som <strong>kalenderfil (.ics)</strong> du kan importere i Outlook —
-    hele utvalget kommer i én fil, så du slipper å legge inn hver frist for seg.
-</p>
-
-<div class="skjema">
-    <label class="filtervalg">
-        <input type="checkbox" @bind="_alt" /> Alt (mitt fulle innsyn – FIN-internt)
-    </label>
-
-    @if (!_alt)
+<div @ref="_flate" data-valg="@_valg" class="eksportflate">
+    <p class="menyoverskrift">Eksport og deling</p>
+    <h1>Eksporter frister</h1>
+    <p class="ingress">Velg publikum og kalenderperiode. Word og kalenderfil er øyeblikksbilder av godkjente frister.</p>
+    <section class="eksportvalg" aria-labelledby="eksportvalg-tittel">
+        <h2 id="eksportvalg-tittel">1. Velg innhold</h2>
+        <p>En gruppe får bare fristene den har innsyn i. Alt omfatter administrators fulle innsyn og merkes FIN-internt.</p>
+        @if (_laster) { <p role="status">Henter grupper …</p> }
+        <div class="utvalgsfelter">
+            <label class="filtervalg"><input type="checkbox" @bind="_alt" @bind:after="Endret" disabled="@_laster" /> Alt (mitt fulle innsyn – FIN-internt)</label>
+            @if (!_alt)
+            {
+                <label>Gruppe
+                    <select @bind="_valgtKode" @bind:after="Endret" disabled="@_laster">
+                        <option value="">(velg gruppe)</option>
+                        @foreach (var gruppe in _grupper) { <option value="@gruppe.Kode">@gruppe.Navn (@gruppe.Kode)</option> }
+                    </select>
+                </label>
+            }
+            <div class="datofelter">
+                <label>Fra dato<input type="date" @bind="_fra" @bind:after="Endret" aria-describedby="eksportperiode-hjelp" aria-invalid="@(UgyldigPeriode ? "true" : "false")" /></label>
+                <label>Til dato<input type="date" @bind="_til" @bind:after="Endret" aria-describedby="eksportperiode-hjelp" aria-invalid="@(UgyldigPeriode ? "true" : "false")" /></label>
+            </div>
+        </div>
+        <p id="eksportperiode-hjelp" class="hint">Kalenderdatoer, til og med begge datoer. Tom datoende betyr ingen grense. Alle kategorier og budsjettår i perioden følger med, også historikk.</p>
+        @if (UgyldigPeriode) { <p class="feil" role="alert">Fra dato må være før eller lik Til dato. Endre perioden før du kontrollerer eller laster ned.</p> }
+        @if (!KanLasteNed && !UgyldigPeriode && !_laster) { <p class="melding">Velg «alt» eller en gruppe for å laste ned.</p> }
+        <div class="eksporthandlinger">
+            <button id="kontroller-eksport" class="knapp" @onclick="KontrollerAsync" disabled="@(!KanLasteNed || _kontrollerer)">@(_kontrollerer ? "Kontrollerer …" : "Kontroller utvalg")</button>
+            @if (_kontrollerer) { <button class="knapp" @onclick="Avbryt">Avbryt</button> }
+        </div>
+        @if (_kontrollerer) { <p role="status">Kontrollerer godkjente frister for valgt publikum …</p> }
+    </section>
+    @if (_feil is not null)
     {
-        <label>Gruppe
-            <select @bind="_valgtKode">
-                <option value="">(velg gruppe)</option>
-                @foreach (var gruppe in _grupper)
-                {
-                    <option value="@gruppe.Kode">@gruppe.Navn (@gruppe.Kode)</option>
-                }
-            </select>
-        </label>
-    }
-
-    <div class="skjemarad">
-        <label>Fra dato
-            <input type="date" @bind="_fra" />
-        </label>
-        <label>Til dato
-            <input type="date" @bind="_til" />
-        </label>
-    </div>
-
-    @if (KanLasteNed)
-    {
-        <div class="skjemarad">
-            <a class="knapp knapp-primær" href="@Nedlastingsurl("word")">Last ned Word (.docx)</a>
-            <a class="knapp" href="@Nedlastingsurl("ics")">Last ned kalender (.ics)</a>
+        <div id="eksportfeil" class="feil" tabindex="-1" role="alert">@_feil
+            @if (_grupper.Count == 0) { <button class="knapp" @onclick="LastGrupperAsync" disabled="@_laster">Prøv igjen</button> }
         </div>
     }
-    else
+    @if (_status is not null) { <p role="status" class="melding">@_status</p> }
+    @if (_preview is { } preview)
     {
-        <p class="melding">Velg «alt» eller en gruppe for å laste ned.</p>
+        <section class="eksportpreview" aria-label="Eksportutvalg">
+            <div class="previewtopp"><div><p class="menyoverskrift">Kontrollert på server</p><h2 id="eksportpreview" tabindex="-1">@preview.Frister.Count godkjente frister</h2></div><span class="publikummerke">@(preview.Foresporsel.ErAlt ? "Alt · FIN-internt" : $"{preview.Foresporsel.GruppeEtikett} ({preview.Foresporsel.GruppeKode})")</span></div>
+            <p>Fra @(preview.Foresporsel.FraDato?.ToString("dd.MM.yyyy") ?? "første dato") til @(preview.Foresporsel.TilDato?.ToString("dd.MM.yyyy") ?? "siste dato"), inklusive.</p>
+            @if (preview.Frister.Count == 0) { <p class="melding">Ingen godkjente frister i dette utvalget. Du kan fortsatt laste ned en gyldig tom fil.</p> }
+            else
+            {
+                <div class="utvalgstabell"><table><thead><tr><th scope="col">Frist</th><th scope="col">Dato</th><th scope="col">Tid</th><th scope="col">Kategori</th><th scope="col">Budsjettår</th></tr></thead><tbody>
+                    @foreach (var frist in preview.Frister)
+                    {
+                        <tr><td>@frist.Tittel</td><td>@Visningformat.FormatDato(frist.Dato, frist.Datopresisjon, frist.Datokvalifikator)@(frist.ErTentativ ? " (tentativ)" : "")</td><td>@(frist.Klokkeslett?.ToString("HH:mm") ?? "Heldag")</td><td>@Visningformat.KategoriNavn(frist.Kategori)</td><td>@frist.Budsjettaar</td></tr>
+                    }
+                </tbody></table></div>
+            }
+            <p class="hint">Utvalget leses på nytt ved nedlasting og kan ha blitt oppdatert. Tentative måneder representeres på den eksisterende sorteringsdagen i kalenderfila; de er fortsatt tentative.</p>
+        </section>
     }
+    <h2 class="leveranseoverskrift">2. Last ned eller del</h2>
+    <div class="leveranser">
+        <section class="leveransekort"><span class="formatmerke">DOCX</span><h3>Word-fil</h3><p>Et dokument med fristene i det valgte utvalget.</p>@if (KanLasteNed) { <a class="knapp knapp-primær" href="@Nedlastingsurl("word")" download>Last ned Word (.docx)</a> } else { <p class="hint">Velg publikum og en gyldig periode.</p> }</section>
+        <section class="leveransekort"><span class="formatmerke">ICS</span><h3>Kalenderfil</h3><p>Importer et øyeblikksbilde i en kalender. Fila oppdateres ikke etter nedlasting.</p>@if (KanLasteNed) { <a class="knapp" href="@Nedlastingsurl("ics")" download>Last ned kalender (.ics)</a> } else { <p class="hint">Velg publikum og en gyldig periode.</p> }</section>
+        <section class="leveransekort"><span class="formatmerke">↗</span><h3>Løpende abonnement</h3><p>En hemmelig lenke som kalenderklienten henter på nytt. Filperioden over gjelder ikke abonnementet.</p><a class="knapp" href="/admin/abonnement">Del kalender</a></section>
+    </div>
+    <p class="hint">Hele fristdatabasen og årsmalen overføres separat under <a href="/admin/data">Dataoverføring</a>.</p>
 </div>
-
-@code {
-    private IReadOnlyList<GruppeDto> _grupper = [];
-    private bool _alt;
-    private string _valgtKode = "";
-    private DateOnly? _fra;
-    private DateOnly? _til;
-
-    protected override async Task OnInitializedAsync()
-        => _grupper = await Grupper.HentAktiveAsync();
-
-    private bool KanLasteNed => _alt || !string.IsNullOrEmpty(_valgtKode);
-
-    private string Nedlastingsurl(string format)
-    {
-        var deler = new List<string>();
-        if (_alt) deler.Add("alt=true");
-        else if (!string.IsNullOrEmpty(_valgtKode)) deler.Add($"gruppe={Uri.EscapeDataString(_valgtKode)}");
-        if (_fra is { } f) deler.Add($"fra={f:yyyy-MM-dd}");
-        if (_til is { } t) deler.Add($"til={t:yyyy-MM-dd}");
-        return $"/api/eksport/{format}?" + string.Join("&", deler);
-    }
-}

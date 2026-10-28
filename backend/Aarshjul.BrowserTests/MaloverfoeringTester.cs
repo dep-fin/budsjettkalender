@@ -27,7 +27,7 @@ public sealed class MaloverfoeringTester
         await Expect(n.Side.GetByRole(AriaRole.Link, new() { Name = "Last ned årsmal (JSON)", Exact = true }))
             .ToHaveAttributeAsync("href", "/api/eksport/maler-json");
         await n.Gaa("/admin/data");
-        await Expect(n.Side.GetByRole(AriaRole.Button, new() { Name = "Importer frister (erstatt alt)", Exact = true })).ToBeVisibleAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Button, new() { Name = "Forhåndsvis frister", Exact = true })).ToBeDisabledAsync();
         await n.Side.GetByRole(AriaRole.Link, new() { Name = "Overfør mal", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Overfør mal", Exact = true })).ToBeVisibleAsync();
         n.BekreftIngenKretsfeil();

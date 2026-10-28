@@ -1,0 +1,28 @@
+.eksportvalg, .eksportpreview, .leveransekort { background: var(--papir); border: 1px solid var(--kant); border-radius: 12px; padding: 26px; }
+.eksportvalg { margin: 28px 0 22px; }
+.eksportvalg h2, .leveranseoverskrift { font-size: 19px; margin: 0 0 14px; }
+.eksportvalg > p, .leveransekort p { font-size: 14px; line-height: 1.65; }
+.utvalgsfelter { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(180px, 1fr); gap: 20px 28px; margin-top: 24px; }
+.utvalgsfelter > .filtervalg { grid-column: 1 / -1; }
+.utvalgsfelter label:not(.filtervalg) { display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-weight: 600; }
+.datofelter { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.utvalgsfelter input[type=date], .utvalgsfelter select { min-width: 0; width: 100%; box-sizing: border-box; }
+.eksporthandlinger { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.eksportpreview { margin-bottom: 28px; }
+.previewtopp { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.previewtopp h2 { margin: 6px 0 14px; font-size: 21px; }
+.publikummerke, .formatmerke { background: var(--myk); color: var(--primaer); border-radius: 6px; padding: 8px 10px; font-size: 11px; font-weight: 600; }
+.utvalgstabell { overflow-x: auto; margin: 22px 0; }
+.utvalgstabell table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.utvalgstabell th { color: var(--dempet); font-size: 11px; text-align: left; }
+.utvalgstabell th, .utvalgstabell td { padding: 12px 10px; border-bottom: 1px solid var(--kant); }
+.utvalgstabell td:first-child { min-width: 160px; font-weight: 600; overflow-wrap: anywhere; }
+.utvalgstabell td:not(:first-child) { white-space: nowrap; }
+.leveranseoverskrift { margin-top: 30px; }
+.leveranser { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 20px 0; }
+.leveransekort { display: flex; flex-direction: column; align-items: start; }
+.leveransekort h3 { margin: 18px 0 8px; font-size: 19px; }
+.leveransekort .knapp { margin-top: auto; white-space: normal; }
+.feil { margin-bottom: 22px; }
+@media (max-width: 1000px) { .leveranser { grid-template-columns: minmax(0, 1fr); } .utvalgsfelter { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .eksportvalg, .eksportpreview, .leveransekort { padding: 20px; } .datofelter { grid-template-columns: minmax(0, 1fr); } .previewtopp { flex-wrap: wrap; } }
