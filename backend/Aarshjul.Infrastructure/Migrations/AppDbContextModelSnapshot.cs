@@ -176,6 +176,48 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.ToTable("Epostabonnementer");
                 });
 
+            modelBuilder.Entity("Aarshjul.Domain.Epostoppsummering", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("AktivertUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("BekreftetUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("BrukerId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateOnly>("LokalDato")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Utsettelsesgrunn")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid>("Versjon")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrukerId", "LokalDato")
+                        .IsUnique();
+
+                    b.ToTable("Epostoppsummeringer");
+                });
+
             modelBuilder.Entity("Aarshjul.Domain.Forslag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -607,6 +649,44 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.ToTable("Kalenderabonnementer");
                 });
 
+            modelBuilder.Entity("Aarshjul.Domain.NyFristHendelse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FristId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("OpprettetUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Publiseringssekvens")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FristId")
+                        .IsUnique();
+
+                    b.HasIndex("Publiseringssekvens");
+
+                    b.ToTable("NyFristHendelser");
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.Oppsummeringshendelse", b =>
+                {
+                    b.Property<Guid>("OppsummeringId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("HendelseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("OppsummeringId", "HendelseId");
+
+                    b.ToTable("Oppsummeringshendelser");
+                });
+
             modelBuilder.Entity("Aarshjul.Domain.RegelAnsvarlig", b =>
                 {
                     b.Property<Guid>("Id")
@@ -736,6 +816,43 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.ToTable("Varsler");
                 });
 
+            modelBuilder.Entity("Aarshjul.Infrastructure.Epost.Epostaktivering", b =>
+                {
+                    b.Property<string>("BrukerId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<long>("Sekvens")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("BrukerId");
+
+                    b.ToTable("Epostaktiveringer", (string)null);
+                });
+
+            modelBuilder.Entity("Aarshjul.Infrastructure.Epost.Epostrekkefolge", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<long>("Verdi")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Epostrekkefolge", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Epostrekkefolge_EnRad", "[Id] = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Verdi = 0L
+                        });
+                });
+
             modelBuilder.Entity("Aarshjul.Infrastructure.Faser.FasemalRad", b =>
                 {
                     b.Property<int>("Id")
@@ -827,6 +944,17 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.Navigation("Runde");
                 });
 
+            modelBuilder.Entity("Aarshjul.Domain.Oppsummeringshendelse", b =>
+                {
+                    b.HasOne("Aarshjul.Domain.Epostoppsummering", "Oppsummering")
+                        .WithMany("Hendelser")
+                        .HasForeignKey("OppsummeringId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Oppsummering");
+                });
+
             modelBuilder.Entity("Aarshjul.Domain.RegelAnsvarlig", b =>
                 {
                     b.HasOne("Aarshjul.Domain.GjoeremaalRegel", "Regel")
@@ -863,6 +991,11 @@ namespace Aarshjul.Infrastructure.Migrations
             modelBuilder.Entity("Aarshjul.Domain.Bruker", b =>
                 {
                     b.Navigation("Grupper");
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.Epostoppsummering", b =>
+                {
+                    b.Navigation("Hendelser");
                 });
 
             modelBuilder.Entity("Aarshjul.Domain.Forslag", b =>

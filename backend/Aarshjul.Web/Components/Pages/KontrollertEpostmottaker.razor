@@ -25,12 +25,34 @@ else
     <a href="@("/epostvarsling/bekreft#" + _melding.Token)" data-enhance-nav="false" rel="noreferrer">Bekreft jobbadressen</a>
 }
 <p><a href="/epostvarsling">Til e-postvarsling</a></p>
+@if (ErDemo)
+{
+    <h2>Daglige oppsummeringer</h2>
+    @if (_oppsummeringer.Count == 0)
+    {
+        <p>Ingen oppsummeringer for din innloggede bruker i denne appkjøringen.</p>
+    }
+    @foreach (var melding in _oppsummeringer)
+    {
+        <article aria-label="Daglig oppsummering">
+            <p>Til: @melding.Adresse</p>
+            <pre>@melding.Tekst</pre>
+            @((MarkupString)melding.Html)
+        </article>
+    }
+}
 
 @code {
     private Bekreftelsesmelding? _melding;
-    private bool ErDemo => Miljoe.IsDevelopment() && Konfigurasjon.GetValue<bool>("Demo") || Miljoe.IsEnvironment("Demo");
+    private IReadOnlyList<Oppsummeringsmelding> _oppsummeringer = [];
+    private bool ErDemo => Miljoe.IsDevelopment() && Konfigurasjon.GetValue<bool>("Demo") || Miljoe.IsEnvironment("Demo") || Miljoe.IsEnvironment("Testing");
     protected override async Task OnInitializedAsync()
     {
-        if (ErDemo) _melding = Tjenester.GetRequiredService<KontrollertBekreftelsespost>().Hent((await Brukerkilde.HentAsync()).Id);
+        if (ErDemo)
+        {
+            var id = (await Brukerkilde.HentAsync()).Id;
+            _melding = Tjenester.GetRequiredService<KontrollertBekreftelsespost>().Hent(id);
+            _oppsummeringer = Tjenester.GetRequiredService<KontrollertOppsummeringspost>().Hent(id);
+        }
     }
 }

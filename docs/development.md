@@ -29,6 +29,13 @@ Produksjonsmigrasjonen `20261028083448_Epostabonnement` er additiv og oppretter 
 abonnementer for eksisterende brukere. [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md)
 skiller SQLite-operasjonsprøven fra den reelle SQL Server-migrasjonsporten.
 
+EV03 oppgraderer en eksisterende EV02-demo additivt ved normal oppstart gjennom
+`Demoskjema.SikreAsync`. De fem nye tabellene opprettes samlet i en transaksjon,
+uten historiske hendelser. Eldre demoer uten EV02-skjema avvises med beholdte data;
+bruk en ny disponibel database, og bevar eksisterende filer. SQL Server bruker
+`20261028133321_DagligEpostoppsummering` og
+`20261028142358_OrdnetEpostaktivering` i den vanlige migrasjonskjeden.
+
 ## Kontrollert e-postpåmelding (EV02)
 
 Start en ny, disponibel demo med vanlig demoprofil. Logg inn som valgfri persona og
@@ -51,11 +58,79 @@ i minnet og erstatter også oppryddingsfeil med trygge meldinger før TRX. Den l
 testmottakeren kan bare vises i demo for samme innloggede bruker. I produksjon er
 bekreftelsestransporten utilgjengelig; EV02 setter ingen e-posttjeneste i drift.
 
+## Kontrollert daglig oppsummering (EV03)
+
+Vanlig demo har automatisk dagsjobb etter skjemaoppstart. `DagligEpost:Klokkeslett`
+har standard `08:00`, hver dag i Europe/Oslo. TimeProvider-timeren vekker jobben
+hvert minutt; operasjonen avgjør om tidspunktet er nådd. Ved vårens ugyldige lokale
+klokkeslett brukes første gyldige minutt etter gapet. Ved høstens overlapp brukes
+første forekomst, og samme lokale dato gir fortsatt høyst én oppsummering.
+Manglende Oslo-sonedata stanser kjøring; det brukes ingen UTC-reserve for utsending.
+
+Sett `DagligEpost:OffentligBasisadresse` til appens betrodde HTTPS-adresse.
+Demoprofilen setter `http://localhost:5014`; HTTP godtas bare på lokal loopback i
+demo/Testing. Nettleserprøvene angir selv sin disponible loopback-adresse. Lenken
+går til `/kalender` og krever vanlig innlogging; ingen feedhemmelighet brukes.
+
+For manuell, gjentakbar demonstrasjon, sett `DagligEpost__KontrollertKjoring=true`
+i en disponibel demo. Dette registrerer en kontrollert klokke på 1. januar 2030
+kl. 06.00 UTC og stanser den automatiske jobben. Meld på og bekreft en persona.
+Logg inn som demo-administrator og åpne `/demo/epostkjoring`. Sett klokken frem
+før direkte publisering, publiser frister, sett den til minst 07.00 UTC (08.00 norsk
+vintertid), og kjør. «Utsett kontrollert transport» lar en varig plan vente uten
+overlevering. Logg inn som abonnenten og åpne `/demo/epostmottaker` for eget innhold.
+Andre brukere får verken vedkommendes meldinger eller bekreftelseslenke.
+Kontrollene krever både eksplisitt konfigurasjon, kontrollert miljø og administrator.
+Produksjon registrerer aldri kontrollert klokke, tilgangskilde eller postadapter.
+
+Kun direkte manuell administratoroppretting lager hendelser i EV03. Kø, generering,
+import, endringer og sletting varsles ikke ennå. Abonnementets aktive Nye frister-valg,
+adressebekreftelse og databaseordnet aktiveringsgrense gjelder; avmelding og ny aktivering gir
+ingen tilbakefylling fra avmeldt periode. Manglende aktiv konto eller fersk tilgang
+utsetter mottakeren. Gjeldende godkjente frist og synlighet filtreres før projeksjon,
+og abonnement/tilgang kontrolleres på nytt rett før adapteren mottar innhold.
+
+Planer bevarer status og hendelses-IDer, men ingen rendret e-post eller mottakerliste.
+Bekreftet overlevering betyr at kontrollert transport tok imot meldingen, ikke at
+M365 leverte den. Kontrollert mottakerinnhold er bare i minnet og forsvinner ved
+omstart; den varige bekreftelsen hindrer ny overlevering. Ubehandlede hendelser etter
+nedetid samles i dagens oppsummering; historiske dagsmailer gjenskapes ikke.
+Hendelser som committer sent, forblir ventende gjennom uttrykkelig ID-kobling.
+En seedet koordinasjonsrad låses ved aktivering og direkte publisering og holdes
+gjennom samme transaksjon som endringen. Publiseringssekvens etter den lagrede
+aktiveringssekvensen avgjør utvalget, også ved like UTC-ticks eller forskjøvet klokke.
+Tidligere aktive EV02-abonnenter får fremtidige hendelser fra grense 0 uten historisk
+tilbakefylling. Mellomversjonen av den lokale EV03-kandidaten får sekvens 0 på sine
+tidligere hendelser ved oppgradering; disse historiske hendelsene sendes ikke.
+
+`UnderSending` etter avbrudd og `Uavklart` etter mulig overlevering stanser automatisk
+retry for mottakeren. Tilstanden kontrolleres også på selve innleste dagsplanen;
+overgangen krever Planlagt med forventet status og versjon. Ikke nullstill disse radene eller bekreftelsesstatus uten
+avklaring hos transporten; EV03 har ingen slik reparasjonskommando. Utfallet og
+utsettelsesgrunnen kan observeres ved `KjorAsync` og i varig planstatus. Vertjobben
+logger bare status/antall eller en trygg feilmelding. Produksjonsadaptere er
+utilgjengelige, så ingen fristdata overleveres der. Reell Entra-/gjestebrukertilgang,
+avsender, tjenestevalg, ekstern levering, drift/opprydding og sikker stans krever
+senere EV-porter. Dette er ingen produksjonsaktivering.
+
+Målrettede prøver:
+
+```sh
+dotnet test backend/Aarshjul.slnx -c Release --filter FullyQualifiedName~DagligEpost
+dotnet test backend/Aarshjul.BrowserTests -c Release --filter FullyQualifiedName~DagligEpostTester
+dotnet test backend/Aarshjul.SqlServerTests -c Release --filter FullyQualifiedName~DagligEpostTester
+```
+
+SQLite og ekte SQL Server deler 49 oppsummeringskontrakttilfeller og har hver sin
+EV02→EV03-migrasjonsprøve. Ordinær suite har i tillegg to prøver av vertsjobb og
+testoppstart. [EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) skiller lokale
+bevis fra kandidatens kommende SQL Server-/Chromium-CI.
+
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 269 scenarioer bruker disponible Kestrel-verter,
-inklusive de fem fra EV02.
+eksisterende app eller database: 272 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02 og tre fra EV03.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
 Kestrel, SQLite i minnet og testautentisering.
@@ -100,7 +175,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 269 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 272 beståtte scenarioer uten hopp.
 Den samlede EV02/UX15-kandidaten beholder EV02-grenens jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -111,7 +186,7 @@ Den målingen dekker ikke de 269 integrerte tilfellene. UX15s tidligere
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 269; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny EV03-kandidat-CI må fullføre alle 272; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -158,6 +233,12 @@ varig starttidspunkt, utløp, engangsbruk, forsøkstak, nyutsending og to samtid
 instanser prøves gjennom `IEpostabonnement`, også avmelding/aktivering mens transporten
 fullfører en overlevering. Prosjektet har dermed 62 tilfeller.
 
+EV03 legger til 49 delte oppsummeringstilfeller og én migrasjonsprøve fra EV02, med
+bevart abonnement, frist, forslag, kilde, synlighet, feed og internkalender. Prosjektet
+har nå 112 tilfeller. Triggerprøven krever feil fra den faktiske hendelses-INSERT-en;
+en annen databasefeil teller ikke som rollbackbevis. To instanser prøver både den
+unike førstegangsplanen og vinnende overgang for en eksisterende plan.
+
 Prosjektet ligger bevisst utenfor `backend/Aarshjul.slnx`. De ordinære lokale kommandoene
 krever derfor verken SQL Server eller Docker. SQL-testene krever en disponibel testinstans
 med rettighet til å opprette og slette databaser. Oppgi tilkobling til `master`, aldri en
@@ -179,7 +260,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 62 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 112 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

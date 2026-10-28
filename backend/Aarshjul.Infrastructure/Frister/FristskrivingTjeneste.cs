@@ -10,7 +10,7 @@ namespace Aarshjul.Infrastructure.Frister;
 /// aktivt (ingen stilltiende standard). Nye tildelinger krever aktive grupper;
 /// eksisterende inaktive referanser kan beholdes ved redigering.
 /// </summary>
-public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : IFristskriving
+public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvider? klokke = null) : IFristskriving
 {
     public async Task<Guid> OpprettAsync(FristInndata inndata, CancellationToken ct = default)
     {
@@ -32,6 +32,11 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : 
         }
 
         db.Frister.Add(frist);
+        db.NyFristHendelser.Add(new NyFristHendelse
+        {
+            FristId = frist.Id, OpprettetUtcTicks = (klokke ?? TimeProvider.System).GetUtcNow().UtcTicks
+        });
+        db.KoordinerEpostlagring();
         await db.SaveChangesAsync(ct);
         return frist.Id;
     }

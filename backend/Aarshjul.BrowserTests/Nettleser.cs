@@ -24,9 +24,9 @@ internal sealed class Nettleser
     private Nettleser(Process app, IPlaywright playwright, IBrowser browser, string mappe, string adresse, ConcurrentQueue<string> applogg)
         => (_app, _playwright, _browser, Mappe, Adresse, _applogg) = (app, playwright, browser, mappe, adresse, applogg);
 
-    public static async Task Kjor(Func<Nettleser, Task> scenario)
+    public static async Task Kjor(Func<Nettleser, Task> scenario, bool kontrollertEpost = false)
     {
-        var n = await Start();
+        var n = await Start(kontrollertEpost);
         try { await scenario(n); }
         catch (Exception scenariofeil)
         {
@@ -40,7 +40,7 @@ internal sealed class Nettleser
         await n.RyddOpp();
     }
 
-    private static async Task<Nettleser> Start()
+    private static async Task<Nettleser> Start(bool kontrollertEpost)
     {
         var rot = new DirectoryInfo(AppContext.BaseDirectory);
         while (rot is not null && !File.Exists(Path.Combine(rot.FullName, "global.json"))) rot = rot.Parent;
@@ -63,6 +63,8 @@ internal sealed class Nettleser
         foreach (var arg in new[] { dll, "--urls", adresse }) start.ArgumentList.Add(arg);
         start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         start.Environment["Demo"] = "true";
+        start.Environment["DagligEpost__OffentligBasisadresse"] = adresse;
+        if (kontrollertEpost) start.Environment["DagligEpost__KontrollertKjoring"] = "true";
         start.Environment["ConnectionStrings__Aarshjul"] = $"Data Source={Path.Combine(mappe, "demo.db")}";
         // Ikke skriv bearer-URL-er fra feed-forespørsler til CI-loggen.
         start.Environment["Logging__LogLevel__Default"] = "Warning";

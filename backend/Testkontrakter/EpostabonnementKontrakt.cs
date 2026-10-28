@@ -268,6 +268,8 @@ public abstract class Epostdatabase : IAsyncDisposable
 {
     protected abstract DbContextOptions<AppDbContext> Alternativer(SaveChangesInterceptor? port);
     public IDbContextFactory<AppDbContext> Fabrikk(SaveChangesInterceptor? port = null) => new FabrikkAdapter(Alternativer(port));
+    public IDbContextFactory<AppDbContext> FabrikkMedKommando(DbCommandInterceptor port)
+        => new FabrikkAdapter(new DbContextOptionsBuilder<AppDbContext>(Alternativer(null)).AddInterceptors(port).Options);
     private sealed class FabrikkAdapter(DbContextOptions<AppDbContext> options) : IDbContextFactory<AppDbContext>
     { public AppDbContext CreateDbContext() => new(options); }
     public abstract ValueTask DisposeAsync();

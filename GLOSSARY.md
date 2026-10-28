@@ -46,6 +46,13 @@ jobbadresse. Påmeldingen kan vente på adressebekreftelse, være aktiv eller v�
 **Adressebekreftelse**: Brukerens bekreftelse på at vedkommende disponerer den oppgitte
 jobbadressen. Bekreftelsen tildeler ingen funksjonsrolle eller synlighetsgruppe.
 
+**Ny frist-hendelse**: Første publisering av en frist, som kan inngå i abonnentens
+daglige oppsummering. Et upublisert forslag er ingen slik hendelse.
+
+**Daglig oppsummering**: Én samlet e-post med relevante nye frister for én abonnent
+og én norsk kalenderdag. Bekreftet overlevering betyr at transporten har tatt imot
+meldingen; det bekrefter ikke at en ekstern postkasse har mottatt den.
+
 ## Internkalender
 
 **Internrunde**: SBRs arbeidsrunde for en rundetype og et år, med egne interne gjøremål.

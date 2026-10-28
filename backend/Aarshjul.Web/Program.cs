@@ -97,14 +97,44 @@ public partial class Program
 
         // --- Tjenester ---
         builder.Services.AddSingleton(TimeProvider.System);
+        var kontrollertEpost = (erDemo || erTesting) && builder.Configuration.GetValue<bool>("DagligEpost:KontrollertKjoring");
+        if (kontrollertEpost)
+        {
+            builder.Services.AddSingleton<KontrollertEpostklokke>();
+            builder.Services.AddSingleton<TimeProvider>(s => s.GetRequiredService<KontrollertEpostklokke>());
+        }
+        builder.Services.AddOptions<DagligEpostOpsjoner>().Bind(builder.Configuration.GetSection("DagligEpost"))
+            .Validate(o => Uri.TryCreate(o.OffentligBasisadresse, UriKind.Absolute, out var uri)
+                && (uri.Scheme == "https" || (erDemo || erTesting) && uri.Scheme == "http" && uri.IsLoopback),
+                "DagligEpost:OffentligBasisadresse må være HTTPS, eller lokal loopback i demo/Testing.");
+        builder.Services.AddScoped<IDagligEpostoppsummering, DagligEpostoppsummering>();
+        // Testing oppretter skjema etter vertsstart. Kontrollerte klokker kjører eksplisitt.
+        if (!erTesting && !kontrollertEpost) builder.Services.AddHostedService<Aarshjul.Web.Epost.DagligEpostjobb>();
         builder.Services.AddScoped<IEpostabonnement, EpostabonnementTjeneste>();
         builder.Services.AddScoped<EpostabonnementKommando>();
         if (erDemo || erTesting)
         {
             builder.Services.AddSingleton<KontrollertBekreftelsespost>();
             builder.Services.AddSingleton<IBekreftelsespost>(s => s.GetRequiredService<KontrollertBekreftelsespost>());
+            builder.Services.AddSingleton<KontrollertOppsummeringspost>();
+            builder.Services.AddSingleton<IOppsummeringspost>(s => s.GetRequiredService<KontrollertOppsummeringspost>());
+            builder.Services.AddSingleton<KontrollertMottakertilgang>(s =>
+            {
+                var kilde = new KontrollertMottakertilgang();
+                if (erDemo)
+                    foreach (var p in Demodata.Personaer)
+                        kilde.Sett(p.Id, new(MottakertilgangStatus.Aktiv,
+                            new Synlighetskontekst(p.Rolle == Aarshjul.Domain.Funksjonsrolle.Administrator || p.Id == "demo-sbr", p.Grupper)));
+                return kilde;
+            });
+            builder.Services.AddSingleton<IMottakertilgangskilde>(s => s.GetRequiredService<KontrollertMottakertilgang>());
         }
-        else builder.Services.AddSingleton<IBekreftelsespost, UtilgjengeligBekreftelsespost>();
+        else
+        {
+            builder.Services.AddSingleton<IBekreftelsespost, UtilgjengeligBekreftelsespost>();
+            builder.Services.AddSingleton<IOppsummeringspost, UtilgjengeligOppsummeringspost>();
+            builder.Services.AddSingleton<IMottakertilgangskilde, UtilgjengeligMottakertilgang>();
+        }
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<IFristlesing, FristTjeneste>();
         builder.Services.AddScoped<IFasemal, FasemalTjeneste>();
@@ -214,8 +244,8 @@ public partial class Program
         {
             using var scope = app.Services.CreateScope();
             await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContextAsync();
-            // SQLite-skjema fra modellen (EF-migrasjonene er SqlServer-spesifikke).
-            db.Database.EnsureCreated();
+            // Ny SQLite-demo fra modellen; eksisterende EV02-demo oppgraderes additivt.
+            await Demoskjema.SikreAsync(db);
             var opsjoner = scope.ServiceProvider.GetRequiredService<IOptions<StartdataOpsjoner>>().Value;
             await Startdata.SeedAsync(db, opsjoner);
             await Demodata.SeedAsync(db);

@@ -6,21 +6,36 @@ gjenstående grenser. GitHub-lenkene er kilden for oppgavenes og PR-enes livslø
 ikke en liste over dagens urettede kodefeil.
 
 E-postvarsling EV02 ([#112](https://github.com/depmartin/Budsjettkalender/issues/112)) er
-implementert som leveransekandidat med egen påmelding for alle tre funksjonsroller,
+levert i [PR #126](https://github.com/depmartin/Budsjettkalender/pull/126), merget som
+`1973ac0c729a29da2da687e91359ac5a8f751a9a`, med egen påmelding for alle tre funksjonsroller,
 servervalidert `.dep.no`-adresse, kontrollert testmottaker, engangsbekreftelse, varig
 aktivering og avmelding. Standardutvalget Nye frister, Alle budsjettår og Alle kategorier
 lagres uttrykkelig. Ingen eksisterende bruker meldes automatisk på. Produksjonstransport,
-fristoppsummering, adressebytte, utvidede valg og administratoroversikt tilhører senere
-EV-tickets under [#110](https://github.com/depmartin/Budsjettkalender/issues/110).
+adressebytte, utvidede valg og administratoroversikt tilhører senere EV-tickets under
+[#110](https://github.com/depmartin/Budsjettkalender/issues/110).
 Ren EV02-kandidat `a6d3f2a` bestod [CI 40673623216](https://github.com/depmartin/Budsjettkalender/actions/runs/40673623216)
 med 823 ordinære, 62 ekte SQL Server- og 226 Chromium-tilfeller uten hopp.
 Dette endrer ikke den historiske lokale fullportens 224/226 og to grønne isolerte
-etterprøver. Kandidaten integrerer nå merget UX15 fra main `31bfddb`, med 845 beståtte
+etterprøver. Den leverte EV02-integrasjonen inneholder UX15 fra main `31bfddb`, med 845 beståtte
 ordinære tester og oppdaget samlet inventar på 269 nettleser- og 62 SQL Server-tilfeller.
 De tidligere 823/226/62 navnene er bevart; alle UX15-testklasser er beholdt.
 Målrettet Edge/Kestrel bestod 49/49 EV02-/UX15-forløp uten feil/hopp.
-Ny samlet Chromium-/SQL Server-CI kreves på integrasjonens publiserte head.
 [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md) inneholder de konkrete bevisene.
+
+EV03 ([#113](https://github.com/depmartin/Budsjettkalender/issues/113)) er en lokal
+leveransekandidat for daglig oppsummering av nye direkte manuelt publiserte frister.
+Publisering og hendelse er atomiske. Varig dagsplan, uttrykkelige hendelseskoblinger,
+fersk kontrollert mottakertilgang og nåværende synlighetsfilter begrenser hver melding.
+Bekreftede overleveringer gjentas ikke etter omstart; uavklart utfall krever avklaring.
+To reproduserte P2-funn fra samlet review/audit er rettet: databaseordnet grense
+mellom aktivering og vellykket publisering, og avvisning av en faktisk innlest
+UnderSending/Uavklart-plan med forventet status og versjon ved overgang.
+897 ordinære tester og 8 målrettede EV02-/EV03-Edge/Kestrel-forløp er grønne uten hopp.
+Samlet oppdaget inventar er 112 ekte SQL Server- og
+272 nettlesertilfeller; tidligere 845/62/269 og alle opprinnelige EV03-navn er bevart.
+Full SQL Server-/Chromium-CI gjenstår på publisert kandidat; orkestratoren avklarer
+samlet etterkontroll og sikkerhetsaudit på rettet kandidat før publisering. Lokal Edge/Kestrel-prøve og bevisgrenser står i
+[EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md). Produksjon sender ingen e-post.
 
 Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) er levert i
 [PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), merget som
