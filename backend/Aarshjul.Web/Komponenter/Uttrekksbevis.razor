@@ -1,0 +1,29 @@
+@if (Bevis.Count > 0)
+{
+    <table class="bevis">
+        <caption>Uttrekksbevis – kontroller mot originaldokumentet</caption>
+        <thead><tr><th scope="col">Felt</th><th scope="col">Tolket verdi og usikkerhet</th><th scope="col">Kildeutdrag</th><th scope="col">Konfidens</th></tr></thead>
+        <tbody>
+            @foreach (var b in Bevis)
+            {
+                <tr class="@(b.Flagg.Count > 0 ? "usikkert-felt" : null)">
+                    <td data-felt="Felt">@b.Felt</td>
+                    <td data-felt="Tolket verdi og usikkerhet">
+                        @b.TolketVerdi
+                        @if (b.Flagg.Count > 0)
+                        {
+                            <ul class="usikkerhetsflagg">
+                                @foreach (var flagg in b.Flagg) { <li>@flagg.Forklaring</li> }
+                            </ul>
+                        }
+                    </td>
+                    <td data-felt="Kildeutdrag" class="utdrag">@b.Kildeutdrag</td>
+                    <td data-felt="Konfidens">@b.Konfidens.ToString("0.00")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<KoBevis> Bevis { get; set; } = [];
+}

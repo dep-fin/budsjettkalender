@@ -20,6 +20,32 @@ public sealed class FristKildelenkeTester : IDisposable
     }
 
     [Fact]
+    public async Task Gruppelesing_skjuler_opplastingsfilnavn_men_bevarer_dokumentkoblingen_og_administrators_kilde()
+    {
+        var dokument = Dokument("https://regjeringen.no/original-offentlig-kilde");
+        var frist = Frist(dokument.Id);
+        frist.Kilde = "Opplastet: lokalt administrativt filnavn.pdf";
+        await _t.Db.SaveChangesAsync();
+
+        foreach (var dto in new[]
+        {
+            Assert.Single(await Lesing.HentSynligeAsync(Fa, new())),
+            Assert.Single(await Lesing.HentLandingsutvalgAsync(Fa, Idag, new())),
+            (await Lesing.HentEnAsync(Fa, frist.Id))!
+        })
+        {
+            Assert.Null(dto.Kilde);
+            Assert.Equal(dokument.Id, dto.DokumentId);
+            Assert.Equal("https://regjeringen.no/original-offentlig-kilde", dto.KildeUrl);
+            Assert.Equal(frist.Id, dto.Id);
+        }
+        var admin = new Synlighetskontekst(true, []);
+        Assert.Equal(frist.Kilde, Assert.Single(await Lesing.HentSynligeAsync(admin, new())).Kilde);
+        Assert.Equal(frist.Kilde, Assert.Single(await Lesing.HentLandingsutvalgAsync(admin, Idag, new())).Kilde);
+        Assert.Equal(frist.Kilde, (await Lesing.HentEnAsync(admin, frist.Id))!.Kilde);
+    }
+
+    [Fact]
     public async Task Synlig_frist_faar_URL_fra_sitt_tilknyttede_dokument()
     {
         var dokument = Dokument("https://www.regjeringen.no/no/syntetisk-kilde/id69/");
@@ -31,6 +57,21 @@ public sealed class FristKildelenkeTester : IDisposable
 
         Assert.Equal(frist.Id, resultat.Id);
         Assert.Equal("https://www.regjeringen.no/no/syntetisk-kilde/id69/", resultat.KildeUrl);
+    }
+
+    [Theory]
+    [InlineData("R-1/2031")]
+    [InlineData("manuell")]
+    [InlineData("lokal.pdf")]
+    [InlineData("Kilde med Opplastet: i teksten")]
+    public async Task Andre_etablerte_kildeetiketter_beholdes_i_gruppelesing(string kilde)
+    {
+        var frist = Frist(null);
+        frist.Kilde = kilde;
+        await _t.Db.SaveChangesAsync();
+        Assert.Equal(kilde, Assert.Single(await Lesing.HentSynligeAsync(Fa, new())).Kilde);
+        Assert.Equal(kilde, Assert.Single(await Lesing.HentLandingsutvalgAsync(Fa, Idag, new())).Kilde);
+        Assert.Equal(kilde, (await Lesing.HentEnAsync(Fa, frist.Id))!.Kilde);
     }
 
     [Theory]

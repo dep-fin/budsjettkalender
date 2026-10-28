@@ -34,6 +34,25 @@ public sealed class KoKildefilterHttpTester : IDisposable
     }
 
     [Theory]
+    [InlineData("KO73-hemmelig-innsender", true, false)]
+    [InlineData("KO73-hemmelig-robotkilde", false, true)]
+    [InlineData("KO73-hemmelig", false, false)]
+    [InlineData("KO73-hemmelig-innsender + &", false, false)]
+    public async Task Kildequery_avgrenser_faktisk_HTTP_svar_eksakt_uten_aa_falle_tilbake_til_alle(
+        string kilde, bool serBruker, bool serRobot)
+    {
+        using var klient = _app.CreateClient();
+        klient.DefaultRequestHeaders.Add("X-Test-Rolle", "Administrator");
+        var svar = await klient.GetAsync("/admin/ko?aar=alle&kilde=" + Uri.EscapeDataString(kilde));
+        Assert.Equal(200, (int)svar.StatusCode);
+        var html = await svar.Content.ReadAsStringAsync();
+        Assert.Equal(serBruker, html.Contains("KO73-hemmelig-forslag", StringComparison.Ordinal));
+        Assert.Equal(serBruker, html.Contains("KO73-hemmelig-bevis", StringComparison.Ordinal));
+        Assert.Equal(serRobot, html.Contains("KO73-hemmelig-robotforslag", StringComparison.Ordinal));
+        if (!serBruker && !serRobot) Assert.Contains("Ingen forslag til behandling.", html);
+    }
+
+    [Theory]
     [InlineData(null, null, 401)]
     [InlineData("Leser", "FA", 403)]
     [InlineData("Bidragsyter", "FA", 403)]
@@ -77,7 +96,7 @@ public sealed class KoKildefilterHttpTester : IDisposable
         foreach (var sti in new[] { "/admin/frister", "/admin/ko", "/admin/last-opp", "/admin/generer",
             "/admin/frist/ny", $"/admin/frist/{_id}", $"/admin/frist/juster/{_id}" })
         {
-            var svar = await klient.GetAsync($"{sti}?aar={aar}");
+            var svar = await klient.GetAsync($"{sti}?aar={aar}&kilde=" + Uri.EscapeDataString("KO73-hemmelig-innsender"));
             Assert.Equal(status, (int)svar.StatusCode);
             var tekst = await svar.Content.ReadAsStringAsync();
             foreach (var markoer in new[] { "KO73-hemmelig", _id.ToString(), "Kilde eller innsender",

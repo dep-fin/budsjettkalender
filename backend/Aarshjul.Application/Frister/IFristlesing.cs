@@ -10,6 +10,8 @@ namespace Aarshjul.Application.Frister;
 /// Manglende dokument eller avvist adresse gir null uten å fjerne fristen fra utvalget.
 /// VenterEndring utledes fra åpne endringsforslag bare for SerAlt-konteksten; gruppelesing,
 /// også administrators «se som gruppe», får alltid false uten forslagmetadata.
+/// Kildeetiketten «Opplastet: ...» inneholder et administrativt filnavn og returneres bare
+/// ved SerAlt. Øvrige kildeetiketter, DokumentId og kontrollert KildeUrl beholdes.
 /// </summary>
 public interface IFristlesing
 {

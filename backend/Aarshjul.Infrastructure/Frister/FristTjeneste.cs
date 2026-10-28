@@ -125,7 +125,7 @@ public class FristTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvid
                 f.Budsjettaar,
                 f.Kategori,
                 f.Loep,
-                f.Kilde,
+                TillattKildeetikett(f.Kilde, serAlt),
                 f.DokumentId,
                 f.Notat,
                 f.Status,
@@ -134,6 +134,11 @@ public class FristTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvid
                 TillattKildeUrl(db.BehandledeDokumenter.Where(d => d.Id == f.DokumentId).Select(d => d.Url).FirstOrDefault()),
                 serAlt && db.Forslag.Any(forslag => forslag.Status == FristStatus.Forslag
                     && forslag.ForslagType == ForslagType.Endring && forslag.EndrerFristId == f.Id)));
+
+    // Opplastingsetiketten bærer administratorens lokale filnavn. Fullt innsyn beholder
+    // den; gruppelesing (også «se som gruppe») får fortsatt øvrige etablerte kilder.
+    private static string? TillattKildeetikett(string? kilde, bool serAlt)
+        => !serAlt && kilde?.StartsWith("Opplastet: ", StringComparison.Ordinal) == true ? null : kilde;
 
     // Kalles i den siste projeksjonen, etter SQL-filteret for fristens synlighet.
     // Bare dokumentets lagrede adresse brukes; ingen gjetting fra kilde, filnavn eller opphav.

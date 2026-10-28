@@ -2,11 +2,15 @@
 @page "/admin/frist/{Id:guid}"
 @page "/admin/frist/juster/{ForslagId:guid}"
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+@implements IDisposable
 @inject IFristskriving Skriving
 @inject IGodkjenningsko Ko
 @inject IGruppetjeneste Grupper
 @inject NavigationManager Nav
 @inject TimeProvider Klokke
+@inject ILogger<RedigerFrist> Logg
+
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" ConfirmExternalNavigation="@_lagrer" />
 
 <PageTitle>@Tittel</PageTitle>
 
@@ -28,18 +32,32 @@
 {
     <p class="melding">Laster …</p>
 }
+else if (_lastfeil is not null)
+{
+    <p class="feil" role="alert">@_lastfeil</p>
+    <button type="button" class="knapp" @onclick="LastAsync">Prøv igjen</button>
+}
 else if (_inndata is null)
 {
     <p class="melding">@(ErJuster ? "Forslaget finnes ikke eller er allerede behandlet." : "Fristen finnes ikke.")</p>
 }
 else
 {
+    @if (_uttrekksbevis is { Bevis.Count: > 0 } bevis)
+    {
+        <section class="justeringsbevis" aria-label="Opprinnelig uttrekksbevis">
+            <h2>Kontroller kildegrunnlaget</h2>
+            <p>@bevis.KildeEllerInnsender. Bevisene viser de opprinnelige tolkingene, også når du endrer feltene nedenfor.</p>
+            <Uttrekksbevis Bevis="bevis.Bevis" />
+        </section>
+    }
     @if (_feil is not null)
     {
         <div class="feil" role="alert" tabindex="-1" @ref="_feilfelt">@_feil</div>
     }
 
     <form class="skjema" @onsubmit="Lagre" @onsubmit:preventDefault="true">
+        <fieldset class="fristfelter" disabled="@_lagrer">
         <label>Tittel
             <input @bind="_inndata.Tittel" />
         </label>
@@ -130,6 +148,7 @@ else
             <button type="submit" class="knapp knapp-primær" disabled="@(_lagrer || _lagret)">@(_lagrer ? "Lagrer …" : "Lagre")</button>
             <button type="button" class="knapp" disabled="@_lagrer" @onclick="() => Nav.NavigateTo(Retur)">Avbryt</button>
         </div>
+        </fieldset>
     </form>
 }
 
@@ -140,10 +159,12 @@ else
     [SupplyParameterFromQuery(Name = "fra")] public string? Fra { get; set; }
 
     private FristInndata? _inndata;
+    private Koelement? _uttrekksbevis;
     private IReadOnlyList<GruppeDto> _grupper = [];
     private IReadOnlyList<GruppeadministrasjonDto> _inaktive = [];
     private string _kvalifikatorValg = "";
     private string? _feil;
+    private string? _lastfeil;
     private bool _lastet;
     private bool _erEndre;
     private bool _lagrer;
@@ -151,6 +172,11 @@ else
     private bool _fokuserFeil;
     private ElementReference _feilfelt;
     private int? _arbeidsaar;
+    private readonly CancellationTokenSource _levetid = new();
+    private bool _avsluttet;
+    private int _lastVersjon, _inndataVersjon;
+    private Guid? _inndataId, _inndataForslagId;
+    private string? _lastenoekkel;
     private string Retur => Arbeidsaarkontekst.Lenke(ErJuster
         ? Fra == "generering" ? "/admin/generer" : "/admin/ko" : "/admin/frister", _arbeidsaar);
 
@@ -160,52 +186,97 @@ else
         ? "Juster forslag"
         : Id is null ? "Ny frist" : "Rediger frist";
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync()
     {
+        var noekkel = $"{Id}/{ForslagId}/{AarQuery}/{Fra}";
+        if (_lastenoekkel == noekkel) return Task.CompletedTask;
+        _lastenoekkel = noekkel;
+        return LastAsync();
+    }
+
+    private async Task LastAsync()
+    {
+        if (_avsluttet) return;
+        var versjon = ++_lastVersjon;
+        var maalId = Id;
+        var forslagId = ForslagId;
         _arbeidsaar = Arbeidsaarkontekst.Les(AarQuery, Klokke);
+        var arbeidsaar = _arbeidsaar;
+        _lastet = false;
+        _inndata = null;
+        _inndataId = null;
+        _inndataForslagId = null;
         _kvalifikatorValg = "";
         _feil = null;
+        _lastfeil = null;
+        _fokuserFeil = false;
         _lagret = false;
         _erEndre = false;
         _inaktive = [];
-        _grupper = await Grupper.HentAktiveAsync();
-
-        if (ForslagId is { } forslagId)
+        _uttrekksbevis = null;
+        try
         {
-            var forberedt = await Ko.HentForslagForJusteringAsync(forslagId);
-            _inndata = forberedt?.Felter;
-            _erEndre = forberedt?.ErEndring ?? false;
-            if (_inndata is not null && !_erEndre)
+            var grupper = await Grupper.HentAktiveAsync(_levetid.Token);
+            if (!ErGjeldende(versjon)) return;
+            FristInndata? inndata;
+            Koelement? bevis = null;
+            IReadOnlyList<GruppeadministrasjonDto> inaktive = [];
+            var erEndring = false;
+            if (forslagId is { } justerId)
             {
-                _inndata.Synlighetskoder = _inndata.Synlighetskoder
-                    .Where(k => _grupper.Any(g => g.Kode == k)).ToList();
+                var forberedt = await Ko.HentForslagForJusteringAsync(justerId, _levetid.Token);
+                if (!ErGjeldende(versjon)) return;
+                inndata = forberedt?.Felter;
+                erEndring = forberedt?.ErEndring ?? false;
+                if (inndata is not null)
+                {
+                    var ko = await Ko.HentKoAsync(new() { Budsjettaar = inndata.Budsjettaar }, _levetid.Token);
+                    if (!ErGjeldende(versjon)) return;
+                    bevis = ko.FirstOrDefault(f => f.Id == justerId);
+                    if (!erEndring)
+                        inndata.Synlighetskoder = inndata.Synlighetskoder.Where(k => grupper.Any(g => g.Kode == k)).ToList();
+                }
             }
-        }
-        else if (Id is null)
-        {
-            _inndata = new FristInndata
+            else if (maalId is null)
             {
-                Budsjettaar = _arbeidsaar ?? Arbeidsaarkontekst.Standardaar(Klokke),
-                Dato = Datohjelp.Idag(Klokke)
-            };
-        }
-        else
-        {
-            _inndata = await Skriving.HentForRedigeringAsync(Id.Value);
-            if (_inndata is not null)
-            {
-                _inaktive = (await Grupper.HentAlleAsync())
-                    .Where(g => !g.Aktiv && _inndata.Synlighetskoder.Contains(g.Kode)).ToList();
+                inndata = new FristInndata
+                {
+                    Budsjettaar = arbeidsaar ?? Arbeidsaarkontekst.Standardaar(Klokke),
+                    Dato = Datohjelp.Idag(Klokke)
+                };
             }
+            else
+            {
+                inndata = await Skriving.HentForRedigeringAsync(maalId.Value, _levetid.Token);
+                if (!ErGjeldende(versjon)) return;
+                if (inndata is not null)
+                {
+                    var alleGrupper = await Grupper.HentAlleAsync(_levetid.Token);
+                    if (!ErGjeldende(versjon)) return;
+                    inaktive = alleGrupper.Where(g => !g.Aktiv && inndata.Synlighetskoder.Contains(g.Kode)).ToList();
+                }
+            }
+            _grupper = grupper;
+            _inaktive = inaktive;
+            _erEndre = erEndring;
+            _uttrekksbevis = bevis;
+            _inndata = inndata;
+            _inndataId = maalId;
+            _inndataForslagId = forslagId;
+            _inndataVersjon = versjon;
+            _kvalifikatorValg = inndata?.Datokvalifikator?.ToString() ?? "";
         }
-
-        if (_inndata?.Datokvalifikator is { } k)
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (Exception e)
         {
-            _kvalifikatorValg = k.ToString();
+            if (!ErGjeldende(versjon)) return;
+            Logg.LogError(e, "Kunne ikke laste frist eller forslag for redigering.");
+            _lastfeil = "Kunne ikke laste feltene og kildegrunnlaget akkurat nå. Prøv igjen.";
         }
-
-        _lastet = true;
+        finally { if (ErGjeldende(versjon)) _lastet = true; }
     }
+
+    private bool ErGjeldende(int versjon) => !_avsluttet && versjon == _lastVersjon;
 
     private void VekslGruppe(string kode, bool på)
     {
@@ -224,7 +295,13 @@ else
 
     private async Task Lagre()
     {
-        if (_lagrer || _lagret || _inndata is null) return;
+        if (!_lastet || _lagrer || _lagret || _inndata is null || !ErGjeldende(_inndataVersjon)
+            || Id != _inndataId || ForslagId != _inndataForslagId) return;
+        var versjon = _inndataVersjon;
+        var maalId = _inndataId;
+        var forslagId = _inndataForslagId;
+        var inndata = _inndata;
+        var retur = Retur;
         _lagrer = true;
         _feil = null;
         _inndata!.Datokvalifikator =
@@ -234,27 +311,44 @@ else
 
         try
         {
-            if (ForslagId is { } forslagId)
+            if (forslagId is { } justerId)
             {
-                await Ko.JusterOgGodkjennAsync(forslagId, _inndata);
+                await Ko.JusterOgGodkjennAsync(justerId, inndata, _levetid.Token);
             }
-            else if (Id is null)
+            else if (maalId is null)
             {
-                await Skriving.OpprettAsync(_inndata);
+                await Skriving.OpprettAsync(inndata, _levetid.Token);
             }
             else
             {
-                await Skriving.OppdaterAsync(Id.Value, _inndata);
+                await Skriving.OppdaterAsync(maalId.Value, inndata, _levetid.Token);
             }
+            if (!ErGjeldende(versjon)) return;
             _lagret = true;
-            Nav.NavigateTo($"{Retur}&lagretAar={_inndata.Budsjettaar}");
+            _lagrer = false;
+            Nav.NavigateTo($"{retur}&lagretAar={inndata.Budsjettaar}");
         }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
         catch (Valideringsfeil f)
         {
+            if (!ErGjeldende(versjon)) return;
             _feil = f.Message;
             _fokuserFeil = true;
         }
-        finally { _lagrer = false; }
+        finally { if (ErGjeldende(versjon)) _lagrer = false; }
+    }
+
+    private Task FoerNavigasjon(Microsoft.AspNetCore.Components.Routing.LocationChangingContext kontekst)
+    {
+        if (_lagrer) kontekst.PreventNavigation();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        _avsluttet = true;
+        _levetid.Cancel();
+        _levetid.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

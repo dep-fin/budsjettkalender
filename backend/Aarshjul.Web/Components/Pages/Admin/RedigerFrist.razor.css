@@ -1,0 +1,5 @@
+.justeringsbevis { max-width: 960px; background: var(--papir); border: 1px solid var(--kant); border-radius: 12px; padding: 24px; margin: 24px 0; }
+.justeringsbevis h2 { font-size: 18px; }
+.justeringsbevis p { font-size: 13px; color: var(--dempet); overflow-wrap: anywhere; }
+@media (max-width: 800px) { .justeringsbevis { padding: 20px; } }
+.fristfelter { display: flex; flex-direction: column; gap: 18px; border: 0; padding: 0; margin: 0; min-width: 0; }

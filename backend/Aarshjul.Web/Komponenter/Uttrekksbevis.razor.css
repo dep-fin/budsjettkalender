@@ -1,0 +1,19 @@
+.bevis { width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; font-size: 13px; margin: 22px 0; }
+.bevis caption { text-align: left; font-size: 12px; font-weight: 600; padding-bottom: 12px; color: var(--primaer); }
+.bevis th, .bevis td { text-align: left; vertical-align: top; padding: 12px; overflow-wrap: anywhere; border-bottom: 1px solid var(--kant); }
+.bevis th { background: var(--myk); font-size: 11px; }
+.bevis th:first-child { width: 12%; }
+.bevis th:nth-child(2) { width: 34%; }
+.bevis th:last-child { width: 12%; }
+.bevis .usikkert-felt { background: #fff6df; }
+.usikkerhetsflagg { margin: 10px 0 0; padding-left: 18px; font-size: 12px; }
+.usikkerhetsflagg li + li { margin-top: 8px; }
+@media (max-width: 800px) {
+    .bevis, .bevis tbody { display: block; overflow: visible; }
+    .bevis caption { display: block; }
+    .bevis thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .bevis tr { display: block; border: 1px solid var(--kant); border-radius: 7px; margin-bottom: 16px; }
+    .bevis td { display: block; width: 100%; padding: 12px; }
+    .bevis td:last-child { border: 0; }
+    .bevis td::before { content: attr(data-felt); display: block; font-size: 11px; font-weight: 600; color: var(--dempet); margin-bottom: 5px; }
+}
