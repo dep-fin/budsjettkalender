@@ -5,7 +5,7 @@
 @inject NavigationManager Nav
 @inject TimeProvider Klokke
 
-<a class="hopp-til-innhold" href="#hovedinnhold">Hopp til innhold</a>
+<a class="hopp-til-innhold" href="#hovedinnhold" @onclick="HoppTilInnholdAsync" @onclick:preventDefault="true">Hopp til innhold</a>
 <div class="side">
     @if (ErDemo)
     {
@@ -63,7 +63,7 @@
                 </aside>
             </AuthorizeView>
         }
-        <main class="innhold @(ErKalender || ErBudsjettaar ? "med-leserfilter" : null)" id="hovedinnhold" tabindex="-1">
+        <main class="innhold @(ErKalender || ErBudsjettaar ? "med-leserfilter" : null)" id="hovedinnhold" tabindex="-1" @ref="_hovedinnhold">
             @if (ErForvaltning)
             {
                 @if (_sti.StartsWith("internkalender", StringComparison.OrdinalIgnoreCase))
@@ -89,6 +89,8 @@
     private bool _menyAapen;
     private bool _fokuserMeny;
     private ElementReference _menyknapp;
+    private ElementReference _hovedinnhold;
+    private async Task HoppTilInnholdAsync() => await _hovedinnhold.FocusAsync();
     private int? Arbeidsaar => Arbeidsaarkontekst.FraUri(Nav.Uri, Klokke);
     private bool ErKalender => _sti is "" or "kalender";
     private bool ErBudsjettaar => _sti is "budsjettaar" or "aarshjul";

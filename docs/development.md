@@ -17,6 +17,12 @@ dotnet run --project backend/Aarshjul.Web --launch-profile demo
 Demo: åpne `http://localhost:5014/demo`. Profilen bruker Development + Demo=true og
 SQLite-filen `aarshjul-demo.db`. Bare Development eller eksplisitt Demo-miljø kan bruke
 demoinnlogging. Miljøet Demo krever publiserte assets; bruk launch-profilen under utvikling.
+For samlet Atelier-visning på Windows finnes også
+`pwsh -NoProfile -File ./scripts/Start-AtelierDemo.ps1`. Helperen bruker SDK fra
+`global.json` via PATH eller `AARSHJUL_DOTNET`, kopierte publiserte Release-filer,
+en ny disponibel database og bare loopback på 5093. Den endrer ikke gamle demofiler
+eller prosessene på 5076/5077/5088. Portabilitet, stopp og avgrensning står i
+[overleveringen](acceptance/2026-10-28-atelier-overlevering.md#lokal-demo-med-ny-database).
 Ved modellendring må demo-databasen flyttes til en sikkerhetskopi eller gjenskapes;
 `EnsureCreated` oppgraderer ikke skjemaet. UX08 legger til Fasemaler med én deterministisk
 seedet felles mal. Eksisterende demofiler må derfor sikkerhetskopieres/gjenskapes før
@@ -181,37 +187,45 @@ det muterende brukeroppslaget. Ingen Graph eller ny rolleforvaltning inngår.
 til de bevarte 883/312/79 navnene. Sluttinventar er 901/319/79. Hele den ordinære
 suiten og alle 319 faktiske Edge/Kestrel-scenarioer passerer uten feil/hopp etter
 siste kodeendring. Browser-TRX måler 1422,795 sekunder, prosessen 1423,884 sekunder.
-SQL var bare bygget/oppdaget lokalt. Levert UX17 bestod deretter alle tre jobber i
+SQL ble bare bygget/oppdaget lokalt. Faktisk SQL Server og Chromium passerte deretter
 [CI 40717209832](https://github.com/depmartin/Budsjettkalender/actions/runs/40717209832)
-med 901 ordinære, 79 ekte SQL Server- og 319 Chromium-tilfeller før PR #131 ble merget.
+før PR #131 ble merget som `959060c898048da5ebd26bfb2cd5cdb68a1c2271`.
 TRX, navneinventar og SHA-256-manifest ligger i `TestResults/92-final/`.
 Se [UX17-akseptansen](acceptance/2026-10-28-atelier-ux17.md) for faktisk kjøreresultat,
 tokenfrie 1440-/390-bilder og verifikasjonsgrenser. Jobbgrensen på 45 minutter er uendret.
 403 kildefiler og 1518 runtimefiler har ingen drift mellom manifestopptakene;
 hele kandidaten på 471 filer og 16 visuelt inspiserte sluttbilder har SHA-256-bevis.
 
-## EV03 etter levert UX17
+## UX18 – samlet sluttakseptanse etter nødvendig mainintegrasjon
 
-Mergekonflikten i PR #130 er avstemt mot levert main `959060c` uten nye
-produktendringer. Program bevarer hele EV03-oppsettet og legger bare til de to
-UX17-registreringene. Alle øvrige backendfiler er identiske med en av de to grenene;
-modell, snapshot, migrasjonenes Up/Down, testassertions og tidsgrenser er uendret.
-Faktisk inventar er 956 ordinære, 130 SQL Server- og 322 nettlesertilfeller.
-Alle tidligere EV03-navn (938/130/315) og UX17-navn (901/79/319) består uten dubletter.
-Låst restore med aktiv NuGet-audit og Release-bygg for alle tre prosjekter passerer
-med 0 advarsler/feil og SDK 10.0.402. Ordinær suite er grønn 956/956;
-oppstart/autorisasjon/modell 118/118 og reell EV02/EV03/UX17 Edge/Kestrel 15/15.
-EF rapporterer ingen ventende SQL Server-modellendringer uten databaseforbindelse.
-Kommandoer, TRX, navneinventar, blobbevaring og SHA-256-manifester finnes i
-`TestResults/113-ux17-merge/`. Ny publisert kandidat-CI skal faktisk kjøre alle
-130 SQL Server- og 322 Chromium-tilfeller. Ingen full lokal nettleserport gjentas.
-Konfliktoppfølgingen følger CI-løkken uten ny review eller sikkerhetsaudit.
+UX18/#93 startet fra levert UX17/main `959060c`. En annen chat merget EV03/
+PR #130 som main `93b1aea3f0953535e3144d22b36991e88ead7852` 28. oktober 2026
+kl. 17.33.10 +01:00. Denne hovedgrenen er nødvendig integrert før samlet UX18-review;
+ingen ny EV-ticket eller umerget PR #128 er tatt inn. Begge leveransers backendblobber,
+e-postadaptervern, skjemaoppstart, modell/snapshot/migrasjoner og alle testnavn er bevart.
+
+[UX18-rapporten](acceptance/2026-10-28-atelier-ux18.md) kartlegger alle 89 historier
+individuelt. Seks nye HTTP-tilfeller, tre sammenhengende publiserings-/identitetstilfeller
+og tre tilgjengelighetsregresjoner er beholdt. Ny full ordinær suite passerer **962/962**,
+og hele faktiske Edge/Kestrel-suiten passerer **328/328**, uten feil/hopp. **130 SQL** er
+bygget/oppdaget lokalt. Alle tidligere UX17 901/319/79, UX18 907/325/79 og EV03/UX17
+956/322/130 navn består eksakt, med 63 navngitte kravkartmetoder i bestått TRX.
+Alle tre låste restore/Release-bygg har null advarsler/feil med aktiv audit.
+Modellregresjonen gir `HasPendingModelChanges=false` uten SQL-forbindelse.
+Browser-TRX/prosess måler 1 562,594/1 563,422 sekunder.
+427 kilde- og 1518 runtimefiler er uendret gjennom kjøringen; kandidaten har 501 filer.
+56 tidligere inspiserte UX18-bilder og 16 UX17-bilder er hashbevart, med
+seks nye tokenfrie fokusbilder fra integrert runtime, visuelt lest enkeltvis.
+Fullt bevis er i `TestResults/93-main-integration/`.
+Tidligere `TestResults/93-final/` bevares som historisk 907/325-bevis før mainintegrasjon.
+CI krever **328 Chromium og 130 SQL Server**, uten hopp, med uendrede 15/20/45 minutter.
+Samlet review, separat audit, faktisk kandidat-CI og UX18-merge gjenstår hos root.
 
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 322 scenarioer bruker disponible Kestrel-verter,
-inklusive fem fra EV02, tre fra EV03 og sju fra UX17. Alle tidligere navn består.
+eksisterende app eller database: 328 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02, tre fra EV03, sju fra UX17 og seks fra UX18. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
 Kestrel, SQLite i minnet og testautentisering.
@@ -288,8 +302,8 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 322 beståtte scenarioer uten hopp.
-Den samlede EV03/UX16/UX17-kandidaten beholder merget mains jobbgrense på 45 minutter.
+installerer systemavhengigheter og krever nøyaktig 328 beståtte scenarioer uten hopp.
+UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
 De lokale tidene begrunner rom for testene og oppsettet, men måler ikke Chromium.
@@ -299,7 +313,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny EV03-kandidat-CI må fullføre alle 322; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 328; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -315,7 +329,9 @@ og [UX12-prøvene](acceptance/2026-10-28-atelier-ux12.md), samt
 [UX13-prøvene](acceptance/2026-10-28-atelier-ux13.md), [UX14-prøvene](acceptance/2026-10-28-atelier-ux14.md)
 og [UX15-prøvene](acceptance/2026-10-28-atelier-ux15.md), samt
 [UX16-prøvene](acceptance/2026-10-28-atelier-ux16.md) og
-[EV02-prøvene](acceptance/2026-10-28-epost-ev02.md) for faktisk prøvd scope og eksterne grenser.
+[EV02-prøvene](acceptance/2026-10-28-epost-ev02.md),
+[UX17-prøvene](acceptance/2026-10-28-atelier-ux17.md) og
+[UX18-kravkartet](acceptance/2026-10-28-atelier-ux18.md) for faktisk prøvd scope og eksterne grenser.
 
 ## Obligatorisk SQL Server-kontroll i CI
 
@@ -333,7 +349,7 @@ innsendingen forblir åpen, uten feil publisering eller ekstra varsel. En separa
 oppgraderer produksjonsskjemaet etter Internkalender med et eksisterende forslag og
 bekrefter at innholdet bevares og kan behandles. Med UX08 kjører prosjektet også 14 delte
 fasemaltilfeller og én reell oppgraderingstest fra siste tidligere migrasjon. SQL-prosjektet
-har samlet 79 testtilfeller: de tidligere 46, 14 delte internkalendertilfeller,
+hadde før EV03 samlet 79 testtilfeller: de tidligere 46, 14 delte internkalendertilfeller,
 tre migrasjonsprøver fra UX16 og 16 e-post-/migrasjonstilfeller fra EV02.
 UX11-tilfellene bruker faktisk lagret mal ved sideeffektfri prøve og generering,
 bevarer andre års og behandlede forslag, prøver helt ugyldig og tom erstatning,
@@ -353,7 +369,7 @@ EV02s tidligere oppgradering fra FellesFasemal er fortsatt en egen prøve.
 Den ordinære modellregresjonen kontrollerer SQL Server-modellen uten tilkobling:
 ingen ventende modellendringer, e-postentiteten og begge internrundeindeksene i
 siste migrasjonsmål, samt alle berørte samtidighetspredikater. Dette erstatter
-ikke de 130 faktiske SQL Server-prøvene i EV03-kandidatens CI.
+ikke de 130 faktiske SQL Server-prøvene i ny UX18-kandidat-CI.
 Regelinnholdet ved synk er snapshotet fra operasjonens siste lesing før lagring;
 en regelendring etter denne lesingen blir synlig i neste forhåndsvisning. Dette er
 egen delt kontrakt, og UI leser derfor forslagene på nytt etter lagring. Synk låser
@@ -364,7 +380,7 @@ EV02 legger til 15 delte e-postabonnementstilfeller og én oppgradering fra Fell
 med bevart frist-/forslags-/kilde-/synlighetsinnhold. Eierskap, eksplisitte standarder,
 varig starttidspunkt, utløp, engangsbruk, forsøkstak, nyutsending og to samtidige
 instanser prøves gjennom `IEpostabonnement`, også avmelding/aktivering mens transporten
-fullfører en overlevering. Sammen med UX16 har prosjektet 79 tilfeller.
+fullfører en overlevering. Sammen med UX16 hadde prosjektet 79 tilfeller før EV03.
 
 EV03 legger til 49 delte oppsummeringstilfeller og én migrasjonsprøve fra EV02, med
 bevart abonnement, frist, forslag, kilde, synlighet, feed og internkalender. Prosjektet
