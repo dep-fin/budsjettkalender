@@ -26,12 +26,15 @@ EF-migrasjonen FellesFasemal. Migrate/Startdata overskriver ikke en redigert fas
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 144 scenarioer starter Kestrel i Development
-med Demo=true, tilfeldig loopback-port og ny SQLite-fil. 73 ytterligere scenarioer bruker den
-eksisterende HTTP-testverten i Testing med ekte Kestrel, SQLite i minnet og testautentisering.
+eksisterende app eller database: 264 scenarioer bruker disponible Kestrel-verter.
+Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
+De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
+Kestrel, SQLite i minnet og testautentisering.
 Der styres fullføringen av gruppeoppslag, malens laste-/preview-/lagringskall og
 databaseporten ved generering/godkjenning/avvisning, maloverføringens preview/import og
 dokumentinnlesingens fullføring, fristskjemaets felt-/bevis-/lagringskall og gruppeforvaltningens/innsynets lese- og lagringskall.
+Eksportutvalg, fristoverføringens preview/import og abonnementenes lese-/lagringskall
+bruker samme grense for feil, avbrudd, feltbytte, bekreftelse og dobbel innsending.
 De faktiske PDF-/uttrekks-/lagringsadapterne brukes også
 etter dokumentportens venting; kontrollert teknisk feil prøver trygg melding og nytt forsøk.
 Dette prøver initialisering, rask navigasjon, asynkront filbytte, dobbeltbekreftelse
@@ -68,7 +71,11 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 221 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 264 beståtte scenarioer uten hopp.
+Jobbens samlede tidsbudsjett er 20 minutter som et avgrenset forsøk etter at første
+UX15-kandidat-CI ble avbrutt ved 15 minutter uten fullført testantall eller TRX.
+Ingen forventningstimeout eller kontroll av manglende TRX er endret. Ny kandidat-CI
+må vise om budsjettet er tilstrekkelig; et nytt tidsavbrudd krever ny diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -81,7 +88,8 @@ og [UX03-prøvene](acceptance/2026-10-27-atelier-ux03.md), samt
 og [UX09-prøvene](acceptance/2026-10-27-atelier-ux09.md), samt
 [UX10-prøvene](acceptance/2026-10-27-atelier-ux10.md), [UX11-prøvene](acceptance/2026-10-27-atelier-ux11.md)
 og [UX12-prøvene](acceptance/2026-10-28-atelier-ux12.md), samt
-[UX13-prøvene](acceptance/2026-10-28-atelier-ux13.md) og [UX14-prøvene](acceptance/2026-10-28-atelier-ux14.md) for faktisk prøvd scope og eksterne grenser.
+[UX13-prøvene](acceptance/2026-10-28-atelier-ux13.md), [UX14-prøvene](acceptance/2026-10-28-atelier-ux14.md)
+og [UX15-prøvene](acceptance/2026-10-28-atelier-ux15.md) for faktisk prøvd scope og eksterne grenser.
 
 ## Obligatorisk SQL Server-kontroll i CI
 
