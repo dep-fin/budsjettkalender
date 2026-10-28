@@ -29,6 +29,19 @@ public sealed record MalDatabase
     public IReadOnlyList<MalRegelEksport> Regler { get; init; } = [];
 }
 
+/// <summary>En utelatt rad fra fila og den samme begrunnelsen importen rapporterer.</summary>
+public sealed record MalImportUtelatt(MalRegelEksport Regel, string Begrunnelse);
+
+/// <summary>
+/// Sideeffektfri konsekvensvisning. EksisterendeAntall er et lest øyeblikksbilde, ikke et
+/// versjonstoken. GyldigeRegler er hele den nye malen, også når listen er tom.
+/// Tomme ID-er tildeles først ved faktisk import.
+/// </summary>
+public sealed record MalImportForhaandsvisning(
+    int EksisterendeAntall,
+    IReadOnlyList<MalRegelEksport> GyldigeRegler,
+    IReadOnlyList<MalImportUtelatt> UtelatteRegler);
+
 /// <summary>
 /// Eksport og import av alle gjentaksregler (årsmalen) som en gjenopprettbar JSON-«database» —
 /// tilsvarende <see cref="IFristDatautveksling"/> for frister. Kun administrator (håndheves i
@@ -40,5 +53,6 @@ public sealed record MalDatabase
 public interface IMalDatautveksling
 {
     Task<MalDatabase> EksporterAsync(CancellationToken ct = default);
+    Task<MalImportForhaandsvisning> ForhaandsvisAsync(MalDatabase database, CancellationToken ct = default);
     Task<ImportResultat> ImporterAsync(MalDatabase database, CancellationToken ct = default);
 }

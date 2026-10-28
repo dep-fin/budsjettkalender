@@ -1,0 +1,74 @@
+@page "/admin/mal/overfor"
+@attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+
+<PageTitle>Overfør mal</PageTitle>
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" />
+<p class="menyoverskrift">Årsmal</p>
+<h1>Overfør mal</h1>
+<p class="ingress">Ta vare på hele årsmalen, eller erstatt den med gjentaksreglene fra en malfil.</p>
+<div class="overfoervalg">
+    <section class="overfoerkort" aria-labelledby="last-ned-mal">
+        <span class="trinnmerke" aria-hidden="true">↓</span>
+        <h2 id="last-ned-mal">Last ned årsmalen</h2>
+        <p>Alle lagrede gjentaksregler følger med, også regler som er skjult av søk og filtre i regellisten.</p>
+        <a class="knapp" href="/api/eksport/maler-json" download>Last ned årsmal (JSON)</a>
+        <small>Ta gjerne en kopi før du erstatter malen.</small>
+    </section>
+    <section class="overfoerkort" aria-labelledby="velg-mal">
+        <span class="trinnmerke" aria-hidden="true">↑</span>
+        <h2 id="velg-mal">Åpne en malfil</h2>
+        <p>Velg fil og kontroller innholdet før du bekrefter. Filvalget endrer ingen lagrede regler.</p>
+        <label for="malfil">Fil (JSON)</label>
+        <InputFile @key="_filfelt" id="malfil" OnChange="VelgFilAsync" accept=".json" disabled="@_lagrer" aria-describedby="malfil-hjelp" />
+        <small id="malfil-hjelp">JSON, maks 25 MB. Eldre malfiler støttes.</small>
+    </section>
+</div>
+<p class="overfoeravgrensning">Dette overfører gjentaksregler. Faseinndelingen forvaltes separat under Administrator-innstillinger. Frister og eksisterende forslag endres ikke.</p>
+@if (_leser || _kontrollerer) { <p class="overfoerstatus" role="status">@(_leser ? "Leser og kontrollerer malfila …" : "Oppdaterer konsekvensen før bekreftelse …")</p> }
+@if (_status is not null) { <p class="overfoerstatus" role="status">@_status</p> }
+@if (_feil is not null) { <div id="malimport-feil" class="feil" tabindex="-1" role="alert"><strong>@(_lagringsfeil ? "Importen kunne ikke lagres" : "Malfila kunne ikke åpnes")</strong><p>@_feil</p>@if (_navn is not null) { <small>Valgt fil: @_navn</small> }</div> }
+@if (_resultat is { } resultat)
+{
+    <section id="malimport-kvittering" class="overfoerkvittering" tabindex="-1" aria-labelledby="malimport-ferdig" role="status">
+        <h2 id="malimport-ferdig">Årsmalen er erstattet</h2>
+        <p>Importerte <strong>@resultat.AntallImportert</strong> regler og erstattet <strong>@resultat.AntallErstattet</strong> eksisterende regler.</p>
+        @if (resultat.Advarsler.Count > 0) { <p>@resultat.Advarsler.Count regler ble utelatt:</p><ul>@foreach (var advarsel in resultat.Advarsler) { <li>@advarsel</li> }</ul> }
+        <div class="overfoerhandlinger"><a class="knapp knapp-primær" href="/admin/mal">Se gjentaksreglene</a><a class="knapp" href="/admin/mal/proev">Prøv malen</a></div>
+    </section>
+}
+@if (_preview is { } preview)
+{
+    <section class="importpreview" aria-label="Importforhåndsvisning" aria-busy="@(_lagrer ? "true" : "false")">
+        <div class="previewtopp"><div><p class="menyoverskrift">Kontroller før du erstatter</p><h2 id="malimport-preview" tabindex="-1">Forhåndsvisning av malfil</h2><p class="filnavn">@_navn</p></div><span class="previewmerke">Ingenting er lagret</span></div>
+        <div class="importantall"><p><strong>@preview.GyldigeRegler.Count</strong> regler tas inn</p><p><strong>@preview.UtelatteRegler.Count</strong> regler utelates</p><p><strong>@preview.EksisterendeAntall</strong> eksisterende regler erstattes</p></div>
+        <div class="erstattkonsekvens @(preview.GyldigeRegler.Count == 0 ? "tomkonsekvens" : null)">
+            @if (preview.GyldigeRegler.Count == 0) { <h3>Årsmalen blir tom</h3><p>Ingen regler kan tas inn. Hvis du bekrefter, fjernes alle @preview.EksisterendeAntall eksisterende regler, og årsmalen blir tom.</p> }
+            else { <h3>Hele årsmalen erstattes</h3><p>Alle @preview.EksisterendeAntall eksisterende regler erstattes av de @preview.GyldigeRegler.Count gyldige reglene nedenfor. Gamle regler som ikke er med, fjernes.</p> }
+            <p class="hint">Antallet er lest nå. Importen erstatter hele malen slik den er ved gjennomføring.</p>
+        </div>
+        @if (preview.GyldigeRegler.Count > 0)
+        {
+            <h3 class="listeoverskrift">Regler som tas inn</h3>
+            <div class="importregler">@foreach (var regel in preview.GyldigeRegler) { <article class="importregel"><span class="importkategori">@Visningformat.KategoriNavn(regel.Kategori)</span><h4>@Navn(regel)</h4><p>@Beskriv(regel)</p><small>Løp: @regel.Loep@(regel.Valgaarssensitiv ? " · Valgårssensitiv" : "")</small></article> }</div>
+        }
+        @if (preview.UtelatteRegler.Count > 0)
+        {
+            <h3 class="listeoverskrift">Regler som utelates</h3>
+            <ul class="utelatte">@foreach (var rad in preview.UtelatteRegler) { <li><strong>@Navn(rad.Regel)</strong><p>@rad.Begrunnelse</p></li> }</ul>
+        }
+        <div class="overfoerhandlinger previewhandlinger"><button class="knapp knapp-primær" disabled="@(_kontrollerer || _lagrer)" @onclick="BeOmBekreftelseAsync">@(preview.GyldigeRegler.Count == 0 ? "Tøm årsmalen" : "Erstatt hele årsmalen")</button><button class="knapp" disabled="@_lagrer" @onclick="AvbrytAsync">Avbryt</button></div>
+    </section>
+}
+else if (_leser) { <button class="knapp" @onclick="AvbrytAsync">Avbryt</button> }
+<dialog @key="_valg" @ref="_dialog" class="importdialog" aria-labelledby="malimport-bekreft" data-valg="@_valg" data-bekreft="@(_bekreftelse ? "true" : "false")" data-arbeider="@(_lagrer ? "true" : "false")">
+    @if (_preview is { } bekreft)
+    {
+        <p class="menyoverskrift">Bekreft maloverføring</p>
+        <h2 id="malimport-bekreft">@(bekreft.GyldigeRegler.Count == 0 ? "Tøm årsmalen?" : "Erstatt hele årsmalen?")</h2>
+        <p>Fil: <strong>@_navn</strong></p>
+        @if (bekreft.GyldigeRegler.Count == 0) { <p>Alle @bekreft.EksisterendeAntall eksisterende regler fjernes. Ingen nye regler legges inn. Årsmalen blir tom.</p> }
+        else { <p>Alle @bekreft.EksisterendeAntall eksisterende regler erstattes av @bekreft.GyldigeRegler.Count regler fra fila. @bekreft.UtelatteRegler.Count regler utelates.</p> }
+        <p>Dette kan ikke angres her. En nedlastet malfil kan importeres på nytt.</p>
+        <div class="overfoerhandlinger"><button class="knapp" autofocus disabled="@_lagrer" @onclick="AvbrytAsync">Avbryt</button><button class="knapp knapp-primær" disabled="@_lagrer" @onclick="ImporterAsync">@(_lagrer ? "Importerer …" : bekreft.GyldigeRegler.Count == 0 ? "Ja, tøm årsmalen" : $"Ja, erstatt alle {bekreft.EksisterendeAntall} regler")</button></div>
+    }
+</dialog>

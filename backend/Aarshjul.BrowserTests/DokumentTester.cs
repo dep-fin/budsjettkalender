@@ -119,13 +119,17 @@ public sealed class DokumentTester
         await Importer(frister, "Importer frister (erstatt alt)");
         await Expect(frister).ToContainTextAsync("Importerte");
         Assert.Equal(foer, (await n.Frister()).ToJsonString());
-        var mal = n.Side.Locator("section").Filter(new() { Has = n.Side.GetByRole(AriaRole.Heading, new() { Name = "Årsmaler (gjentaksregler)" }) });
+        await n.Side.GetByRole(AriaRole.Link, new() { Name = "Overfør mal", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Overfør mal", Exact = true })).ToBeVisibleAsync();
+        var mal = n.Side.Locator("main");
         var blandet = new JsonObject { ["versjon"] = 1, ["regler"] = new JsonArray(
             new JsonObject { ["id"] = Guid.NewGuid(), ["loep"] = "ak-gyldig", ["tittel"] = "AK importregel", ["regeltype"] = "FastDato", ["regelparametre"] = "{\"maaned\":5,\"dag\":1}" },
             new JsonObject { ["id"] = Guid.NewGuid(), ["loep"] = "ak-ugyldig", ["regeltype"] = "FastDato", ["regelparametre"] = "{}" }) };
         await mal.GetByLabel("Fil (JSON)").SetInputFilesAsync(JsonFil("maler.json", blandet.ToJsonString()));
-        await Importer(mal, "Importer årsmaler (erstatt alt)");
-        await Expect(mal).ToContainTextAsync("Importerte 1 malregler");
+        await Expect(mal.GetByRole(AriaRole.Region, new() { Name = "Importforhåndsvisning" })).ToBeVisibleAsync();
+        await mal.GetByRole(AriaRole.Button, new() { Name = "Erstatt hele årsmalen", Exact = true }).ClickAsync();
+        await mal.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { NameRegex = new("^Ja, erstatt alle ") }).ClickAsync();
+        await Expect(mal).ToContainTextAsync("Importerte 1");
         await Expect(mal).ToContainTextAsync("ak-ugyldig");
         await n.Gaa("/admin/mal");
         await Expect(n.Side.GetByRole(AriaRole.Article)).ToHaveCountAsync(1);

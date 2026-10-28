@@ -4,7 +4,6 @@
 @using Aarshjul.Web.Api
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
 @inject IFristDatautveksling Utveksling
-@inject IMalDatautveksling MalUtveksling
 
 <PageTitle>Eksporter / importer data</PageTitle>
 
@@ -69,58 +68,11 @@
 </section>
 
 <section class="skjema">
-    <h2>Årsmaler (gjentaksregler)</h2>
-    <p class="melding">Alle malregler med løp, tittel, kategori, regeltype og parametre.</p>
-    <div class="skjemarad">
-        <a class="knapp knapp-primær" href="/api/eksport/maler-json" download>Last ned årsmaler (JSON)</a>
-    </div>
-
-    <div class="feil" role="note">
-        <strong>Erstatter alt.</strong> Import fjerner alle eksisterende malregler og legger inn dem fra
-        fila. Ta gjerne en eksport først som sikkerhetskopi.
-    </div>
-
-    <label>Fil (JSON)
-        <InputFile OnChange="VelgMalfil" accept=".json" />
-    </label>
-
-    @if (_malNavn is not null)
-    {
-        <p class="melding">Valgt fil: <strong>@_malNavn</strong> (@_malStr)</p>
-    }
-    @if (_malFeil is not null)
-    {
-        <div class="feil">@_malFeil</div>
-    }
-    @if (_malResultat is { } mr)
-    {
-        <div class="melding">
-            Importerte <strong>@mr.AntallImportert</strong> malregler (erstattet @mr.AntallErstattet).
-            @if (mr.Advarsler.Count > 0)
-            {
-                <ul>@foreach (var a in mr.Advarsler) { <li>@a</li> }</ul>
-            }
-        </div>
-    }
-
-    <div class="skjemarad">
-        @if (!_malBekreft)
-        {
-            <button class="knapp knapp-primær" @onclick="() => _malBekreft = true" disabled="@(_malFil is null || _malArbeider)">
-                Importer årsmaler (erstatt alt)
-            </button>
-        }
-        else
-        {
-            <span class="melding">Er du sikker? Dette fjerner alle eksisterende malregler.</span>
-            <button class="knapp knapp-primær" @onclick="ImporterMaler" disabled="@_malArbeider">
-                @(_malArbeider ? "Importerer …" : "Ja, erstatt alt")
-            </button>
-            <button class="knapp" @onclick="() => _malBekreft = false" disabled="@_malArbeider">Avbryt</button>
-        }
-    </div>
+    <h2>Årsmal (gjentaksregler)</h2>
+    <p>Last ned hele årsmalen, eller kontroller en malfil før du erstatter alle gjentaksreglene.</p>
+    <a class="knapp" href="/admin/mal/overfor">Overfør mal</a>
+    <p class="hint">Maloverføring har forhåndsvisning og egen bekreftelse under Årsmal.</p>
 </section>
-
 @code {
     private const long MaksStorrelse = 25 * 1024 * 1024; // 25 MB
 
@@ -133,20 +85,8 @@
     private bool _fristArbeider;
     private bool _fristBekreft;
 
-    // --- Årsmaler ---
-    private IBrowserFile? _malFil;
-    private string? _malNavn;
-    private string? _malStr;
-    private ImportResultat? _malResultat;
-    private string? _malFeil;
-    private bool _malArbeider;
-    private bool _malBekreft;
-
     private void VelgFristfil(InputFileChangeEventArgs e)
         => VelgFil(e, out _fristFil, out _fristNavn, out _fristStr, out _fristFeil, ref _fristBekreft, ref _fristResultat);
-
-    private void VelgMalfil(InputFileChangeEventArgs e)
-        => VelgFil(e, out _malFil, out _malNavn, out _malStr, out _malFeil, ref _malBekreft, ref _malResultat);
 
     private static void VelgFil(
         InputFileChangeEventArgs e, out IBrowserFile? fil, out string? navn, out string? str,
@@ -186,23 +126,6 @@
         catch (JsonException ex) { _fristFeil = $"Klarte ikke tolke JSON-fila: {ex.Message}"; }
         catch (Exception ex) { _fristFeil = $"Import feilet: {ex.Message}"; }
         finally { _fristArbeider = false; }
-    }
-
-    private async Task ImporterMaler()
-    {
-        if (_malFil is null) { return; }
-        _malArbeider = true;
-        _malFeil = null;
-        _malResultat = null;
-        try
-        {
-            var database = await Les<MalDatabase>(_malFil);
-            _malResultat = await MalUtveksling.ImporterAsync(database);
-            _malBekreft = false;
-        }
-        catch (JsonException ex) { _malFeil = $"Klarte ikke tolke JSON-fila: {ex.Message}"; }
-        catch (Exception ex) { _malFeil = $"Import feilet: {ex.Message}"; }
-        finally { _malArbeider = false; }
     }
 
     private static async Task<T> Les<T>(IBrowserFile fil)

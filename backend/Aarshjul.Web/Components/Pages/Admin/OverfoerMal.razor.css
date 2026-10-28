@@ -1,0 +1,47 @@
+.overfoervalg { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 28px 0 18px; }
+.overfoerkort { padding: 26px; border: 1px solid var(--kant); border-radius: 12px; background: var(--papir); }
+.trinnmerke { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; color: var(--primaer); background: var(--myk); border-radius: 8px; font-size: 22px; }
+.overfoerkort h2 { font-size: 19px; margin: 16px 0 10px; }
+.overfoerkort p { font-size: 14px; line-height: 1.6; margin-bottom: 22px; }
+.overfoerkort small, .overfoerkort label { display: block; }
+.overfoerkort small { font-size: 12px; color: var(--dempet); margin-top: 12px; }
+.overfoerkort label { font-weight: 600; font-size: 12px; margin-bottom: 8px; }
+.overfoerkort ::deep input[type=file] { font: inherit; font-size: 13px; max-width: 100%; }
+.overfoerkort ::deep input[type=file]::file-selector-button { background: var(--papir); color: var(--primaer); border: 1px solid var(--kant); border-radius: 6px; padding: 9px 12px; margin-right: 10px; cursor: pointer; }
+.overfoeravgrensning { color: var(--dempet); font-size: 12px; line-height: 1.6; max-width: 90ch; }
+.overfoerstatus { padding: 16px 20px; background: var(--myk); border-left: 3px solid var(--primaer); font-size: 14px; }
+.importpreview { border: 1px solid var(--kant); border-radius: 12px; background: var(--papir); margin-top: 28px; overflow: hidden; }
+.previewtopp { padding: 24px; display: flex; justify-content: space-between; align-items: start; gap: 20px; }
+.previewtopp h2 { margin: 8px 0; font-size: 21px; }
+.previewtopp .filnavn { margin: 0; color: var(--dempet); font-size: 13px; overflow-wrap: anywhere; }
+.previewmerke { color: var(--primaer); background: var(--myk); padding: 7px 10px; border-radius: 5px; white-space: nowrap; font-size: 11px; font-weight: 600; }
+.importantall { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 0 24px 22px; gap: 20px; }
+.importantall p { margin: 0; color: var(--dempet); font-size: 12px; }
+.importantall strong { display: block; font-size: 25px; color: var(--tekst); margin-bottom: 5px; font-weight: 600; }
+.erstattkonsekvens { margin: 0 24px 24px; padding: 20px; border-left: 3px solid var(--primaer); background: var(--myk); }
+.erstattkonsekvens h3 { margin: 0 0 8px; font-size: 16px; }
+.erstattkonsekvens p { margin: 6px 0 0; font-size: 13px; line-height: 1.6; }
+.tomkonsekvens { background: #fff4ed; border-color: #9b4b24; }
+.listeoverskrift { font-size: 15px; margin: 24px 24px 10px; }
+.importregel { padding: 18px 24px; border-top: 1px solid var(--kant); overflow-wrap: anywhere; }
+.importkategori { color: var(--primaer); font-size: 11px; font-weight: 600; }
+.importregel h4 { margin: 7px 0; font-size: 16px; }
+.importregel p { margin: 6px 0; font-size: 13px; }
+.importregel small { color: var(--dempet); font-size: 11px; }
+.utelatte { margin: 0 24px 22px; padding-left: 20px; }
+.utelatte li { font-size: 13px; padding: 8px 0; overflow-wrap: anywhere; }
+.utelatte p { margin: 6px 0; color: #873c27; line-height: 1.5; }
+.overfoerhandlinger { display: flex; gap: 12px; flex-wrap: wrap; }
+.previewhandlinger { border-top: 1px solid var(--kant); padding: 22px 24px; }
+.overfoerkvittering { margin-top: 28px; padding: 26px; border: 1px solid var(--kant); border-left: 4px solid var(--primaer); border-radius: 10px; background: var(--myk); overflow-wrap: anywhere; }
+.overfoerkvittering h2 { font-size: 21px; margin: 0 0 12px; }
+.overfoerkvittering p, .overfoerkvittering li { font-size: 14px; }
+.importdialog { width: min(560px, calc(100vw - 32px)); max-width: 100%; max-height: calc(100dvh - 40px); overflow: auto; box-sizing: border-box; padding: 30px; border: 1px solid var(--kant); border-radius: 12px; color: var(--tekst); background: var(--papir); }
+.importdialog::backdrop { background: rgb(30 45 39 / 34%); }
+.importdialog h2 { margin: 10px 0 20px; }
+.importdialog p { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.importdialog .overfoerhandlinger { margin-top: 26px; }
+.feil { margin-top: 24px; overflow-wrap: anywhere; }
+.feil p { margin-bottom: 8px; }
+@media (max-width: 800px) { .overfoervalg { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
+@media (max-width: 600px) { .overfoerkort, .previewtopp, .overfoerkvittering, .importdialog { padding: 20px; } .previewtopp { flex-wrap: wrap; gap: 12px; } .importantall { padding: 0 20px 20px; gap: 12px; } .importantall p { font-size: 11px; } .importantall strong { font-size: 22px; } .erstattkonsekvens { margin: 0 20px 20px; padding: 16px; } .importregel, .previewhandlinger { padding: 18px 20px; } .listeoverskrift { margin-left: 20px; } .overfoerhandlinger .knapp { white-space: normal; max-width: 100%; } }

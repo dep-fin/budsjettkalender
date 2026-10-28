@@ -38,19 +38,46 @@ public sealed class MalDatautveksling(IDbContextFactory<AppDbContext> dbFactory,
         };
     }
 
+    public async Task<MalImportForhaandsvisning> ForhaandsvisAsync(MalDatabase database, CancellationToken ct = default)
+    {
+        var klargjort = Klargjoer(database);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return new(await db.Gjentaksregler.CountAsync(ct), klargjort.Gyldige, klargjort.Utelatte);
+    }
+
     public async Task<ImportResultat> ImporterAsync(MalDatabase database, CancellationToken ct = default)
     {
+        // Valider hele fila på nytt ved gjennomføring, før noe spores for sletting.
+        var klargjort = Klargjoer(database);
+        var kandidater = klargjort.Gyldige.Select(kilde => new Gjentaksregel
+        {
+            Id = kilde.Id == Guid.Empty ? Guid.NewGuid() : kilde.Id,
+            Loep = kilde.Loep,
+            Tittel = kilde.Tittel,
+            Kategori = kilde.Kategori,
+            Regeltype = kilde.Regeltype,
+            Regelparametre = kilde.Regelparametre,
+            Valgaarssensitiv = kilde.Valgaarssensitiv
+        }).ToList();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var eksisterende = await db.Gjentaksregler.ToListAsync(ct);
+        db.Gjentaksregler.RemoveRange(eksisterende);
+        db.Gjentaksregler.AddRange(kandidater);
+        await db.SaveChangesAsync(ct);
+        return new ImportResultat(kandidater.Count, eksisterende.Count, klargjort.Utelatte.Select(r => r.Begrunnelse).ToList());
+    }
+
+    private static (IReadOnlyList<MalRegelEksport> Gyldige, IReadOnlyList<MalImportUtelatt> Utelatte) Klargjoer(MalDatabase database)
+    {
         ArgumentNullException.ThrowIfNull(database);
         Importvalidering.Kontroller(database.Versjon, database.Regler, r => r.Id);
-
-        var advarsler = new List<string>();
-        var kandidater = new List<Gjentaksregel>();
+        var utelatte = new List<MalImportUtelatt>();
+        var kandidater = new List<MalRegelEksport>();
         foreach (var kilde in database.Regler)
         {
             if (string.IsNullOrWhiteSpace(kilde.Loep))
             {
-                advarsler.Add($"Hoppet over en regel uten løp (tittel «{kilde.Tittel}»).");
+                utelatte.Add(new(kilde, $"Hoppet over en regel uten løp (tittel «{kilde.Tittel}»)."));
                 continue;
             }
 
@@ -60,26 +87,17 @@ public sealed class MalDatautveksling(IDbContextFactory<AppDbContext> dbFactory,
             }
             catch (FormatException e)
             {
-                advarsler.Add($"«{(string.IsNullOrWhiteSpace(kilde.Tittel) ? kilde.Loep : kilde.Tittel)}»: hoppet over — {e.Message}");
+                utelatte.Add(new(kilde, $"«{(string.IsNullOrWhiteSpace(kilde.Tittel) ? kilde.Loep : kilde.Tittel)}»: hoppet over — {e.Message}"));
                 continue;
             }
 
-            kandidater.Add(new Gjentaksregel
+            kandidater.Add(kilde with
             {
-                Id = kilde.Id == Guid.Empty ? Guid.NewGuid() : kilde.Id,
                 Loep = kilde.Loep.Trim(),
                 Tittel = (kilde.Tittel ?? "").Trim(),
-                Kategori = kilde.Kategori,
-                Regeltype = kilde.Regeltype,
-                Regelparametre = kilde.Regelparametre.Trim(),
-                Valgaarssensitiv = kilde.Valgaarssensitiv
+                Regelparametre = kilde.Regelparametre.Trim()
             });
         }
-
-        var eksisterende = await db.Gjentaksregler.ToListAsync(ct);
-        db.Gjentaksregler.RemoveRange(eksisterende);
-        db.Gjentaksregler.AddRange(kandidater);
-        await db.SaveChangesAsync(ct);
-        return new ImportResultat(kandidater.Count, eksisterende.Count, advarsler);
+        return (kandidater, utelatte);
     }
 }

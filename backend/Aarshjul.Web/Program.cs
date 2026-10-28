@@ -99,6 +99,7 @@ public partial class Program
         builder.Services.AddScoped<IFristlesing, FristTjeneste>();
         builder.Services.AddScoped<IFasemal, FasemalTjeneste>();
         builder.Services.AddScoped<FasemalKommando>();
+        builder.Services.AddScoped<MaloverfoeringKommando>();
         builder.Services.AddScoped<IFristskriving, FristskrivingTjeneste>();
         builder.Services.AddScoped<IGodkjenningsko, GodkjenningskoTjeneste>();
         builder.Services.AddScoped<IForslagsinnsending, ForslagsinnsendingTjeneste>();
