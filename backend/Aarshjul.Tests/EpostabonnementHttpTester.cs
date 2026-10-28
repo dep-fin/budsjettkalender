@@ -8,6 +8,26 @@ namespace Aarshjul.Tests;
 
 public sealed class EpostabonnementHttpTester
 {
+    [Theory]
+    [InlineData("Leser")]
+    [InlineData("Bidragsyter")]
+    [InlineData("Administrator")]
+    public async Task Varselvalg_haandheves_med_eierskap_versjon_og_minst_ett_valg(string rolle)
+    {
+        using var app = new TestApplikasjon(); using var klient = app.CreateClient();
+        klient.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
+        await klient.PostAsJsonAsync("/api/epostabonnement", new { adresse = "egen@fin.dep.no", godtarStandardvalg = true, nyeFrister = false, vesentligeEndringer = true });
+        var status = await klient.GetFromJsonAsync<JsonObject>("/api/epostabonnement");
+        Assert.False((bool)status!["nyeFrister"]!); Assert.True((bool)status["vesentligeEndringer"]!);
+        var versjon = (string)status["versjon"]!;
+        using var annen = app.CreateClient(); annen.DefaultRequestHeaders.Add("X-Test-Rolle", "Administrator"); annen.DefaultRequestHeaders.Add("X-Test-Bruker", "annen");
+        Assert.Equal(HttpStatusCode.BadRequest, (await annen.PostAsJsonAsync("/api/epostabonnement/valg", new { nyeFrister = true, vesentligeEndringer = true, versjon, brukerId = "test-bruker" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await klient.PostAsJsonAsync("/api/epostabonnement/valg", new { nyeFrister = false, vesentligeEndringer = false, versjon })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await klient.PostAsJsonAsync("/api/epostabonnement/valg", new { nyeFrister = true, vesentligeEndringer = true, versjon })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await klient.PostAsJsonAsync("/api/epostabonnement/valg", new { nyeFrister = false, vesentligeEndringer = true, versjon })).StatusCode);
+        status = await klient.GetFromJsonAsync<JsonObject>("/api/epostabonnement");
+        Assert.True((bool)status!["nyeFrister"]!); Assert.True((bool)status["vesentligeEndringer"]!);
+    }
     [Fact]
     public async Task Leser_maa_velge_paa_egen_adresse_foer_abonnementet_venter_paa_bekreftelse()
     {
@@ -98,6 +118,7 @@ public sealed class EpostabonnementHttpTester
     [InlineData("/bekreft")]
     [InlineData("/ny-lenke")]
     [InlineData("/meld-av")]
+    [InlineData("/valg")]
     public async Task Anonyme_skrivekall_avvises(string sti)
     {
         using var app = new TestApplikasjon(); using var klient = app.CreateClient();
@@ -109,6 +130,7 @@ public sealed class EpostabonnementHttpTester
     [Theory]
     [InlineData("/ny-lenke")]
     [InlineData("/meld-av")]
+    [InlineData("/valg")]
     public async Task Enkel_HTML_form_POST_kan_ikke_endre_et_eget_abonnement(string sti)
     {
         using var app = new TestApplikasjon(); using var klient = app.CreateClient();

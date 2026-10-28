@@ -1,12 +1,16 @@
 namespace Aarshjul.Domain;
 
-/// <summary>Første manuelle publisering. Identiteten bevares også når fristen senere fjernes.</summary>
+/// <summary>Publiseringshendelse. Navn og ID-er bevares fra EV03.</summary>
 public sealed class NyFristHendelse
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid FristId { get; set; }
     public long OpprettetUtcTicks { get; set; }
     public long Publiseringssekvens { get; set; }
+    public string Type { get; set; } = "Ny";
+    public string? FoerJson { get; set; }
+    public string? EtterJson { get; set; }
+    public string? Forklaring { get; set; }
 }
 
 public sealed class Epostoppsummering

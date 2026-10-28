@@ -148,6 +148,34 @@ og særskilt levert UX16→EV03 med autentiske migrasjoner. Ordinær suite har i
 testoppstart. [EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) skiller lokale
 bevis fra kandidatens SQL Server-/Chromium-CI og senere konfliktoppfølging.
 
+## Varselvalg og direkte endringer (EV04)
+
+På `/epostvarsling` kan brukeren velge Nye frister, Vesentlige endringer eller begge
+ved påmelding og senere endre valgene. Minst én type kreves. Valgene lagres med
+versjonskontroll for brukerens egen identitet; kalenderens visningsfiltre påvirker
+dem ikke. Utvidelse gjelder fra det aktuelle valgets nye databaseordnede grense.
+Den andre typens ventende hendelser bevares. Innskrenkning kontrolleres før sending.
+
+Direkte redigering på `/admin/frist/{id}` lager automatisk en vesentlig hendelse ved
+endret dato, klokkeslett, presisjon, måned, kvalifikator, budsjettår eller kategori.
+Endret vilkårlig dag innen samme tentative måned eller tekstkorrektur varsles ikke.
+Administrator kan markere annen faktisk innholdsendring og må da gi 1–300 tegn med
+forklaring. Markeringen styrer ikke de automatiske tilfellene. Oppsummeringen viser
+tidligere og nåværende dato/perioder, budsjettår og kategori, og samler hendelser per
+frist. En ny frist som også er endret vises én gang for hvert av de tre varselvalgene.
+
+`20261028165341_VarseltyperOgEndringer` utvider EV03-skjemaet additivt og bevarer
+abonnement, aktiveringsgrenser, hendelses-ID-er, planer og hendelseskoblinger.
+`Demoskjema.SikreAsync` oppgraderer eksisterende EV02-/EV03-demoer ved normal
+oppstart uten historisk tilbakefylling. SQL Server bruker den ordinære migrasjonskjeden.
+Bare direkte oppretting og redigering omfattes nå. Kø/generering, import og sletting
+tilhører senere EV-tickets. Produksjonens tilgangs- og postadaptere er fortsatt
+utilgjengelige frem til egne miljøporter er dokumentert.
+
+[EV04-akseptansen](acceptance/2026-10-28-epost-ev04.md) bevarer leveransens lokale
+prøver, inventar og daværende CI-porter. EV04 er merget i PR #133; ny UX18-kandidat-CI
+kreves etter integrasjonen nedenfor. De eksterne miljøportene består.
+
 ## Levert UX16/EV02-verifikasjon
 
 UX16/EV02 ble levert med 883 ordinære, 312 nettleser- og 79 SQL Server-tilfeller.
@@ -196,7 +224,37 @@ tokenfrie 1440-/390-bilder og verifikasjonsgrenser. Jobbgrensen på 45 minutter 
 403 kildefiler og 1518 runtimefiler har ingen drift mellom manifestopptakene;
 hele kandidaten på 471 filer og 16 visuelt inspiserte sluttbilder har SHA-256-bevis.
 
-## UX18 – samlet sluttakseptanse etter nødvendig mainintegrasjon
+## UX18 – nødvendig EV04-mainintegrasjon i CI-løkken
+
+PR #132 er publisert og fortsatt ikke merget. Dens head før integrasjonen,
+`6acf357efdb7498281b3bdf970e3cc48e543de03`, bestod
+[CI 40752611386](https://github.com/depmartin/Budsjettkalender/actions/runs/40752611386)
+med 962 ordinære, 130 ekte SQL Server- og 328 Chromium-tilfeller uten feil/hopp.
+EV04/PR #133 ble senere faktisk merget som main
+`926ffe74e62999714f6e711327636ecce2070317` 28. oktober 2026 kl. 20.24.08 +01:00.
+Denne nødvendige integrasjonen bevarer alle EV04-backendblobber, kontrakter,
+migrasjoner/snapshot, `Demoskjema` og `FristInndata`-felter eksakt, sammen med UX18
+og begge avgrensede CI-kvitteringer. Bare CI-/statuskonfliktene og dokumentasjon
+av faktisk inventar krever manuell avstemming; ingen ny EV-funksjon inngår.
+
+Hele ordinærporten passerer **1024/1024**, og hele faktiske Edge/Kestrel-porten passerer
+**332/332**, uten feil/hopp. **186 SQL Server-tilfeller** er bygget/oppdaget. Alle tidligere
+962/328/130 UX18-navn og 1018/326/186 EV04-navn er bevart eksakt uten dubletter.
+Alle tre låste restore og Release-bygg med `-m:1 -nr:false`, SDK 10.0.402 og aktiv
+audit (`true/all/low`) passerer uten advarsler/feil. Browser-TRX/prosess måler
+1778,580/1779,356 sekunder. 430 backend-kildefiler og 1518 runtimefiler har null drift;
+kandidatmanifestet har 505 filer. Bevis ligger i `TestResults/93-ci-main-integration/`,
+med ferske TRX, kilde-/runtime-/kandidatmanifest og navnebevaring fra begge leveranser.
+Alle 89 historier beholdes; samtlige 63 navngitte kravkartmetoder finnes i bestått ny TRX.
+De 56 tidligere UX18-bildene og seks fokusbildene
+er hashbevart; de viser ikke nye EV04-varselfelter. Modellprøven kontrollerer siste
+SQL Server-mål/snapshot og `HasPendingModelChanges=false` uten databaseforbindelse.
+SQL Server er bygget/oppdaget lokalt; ny faktisk kandidat-CI med SQL Server og
+Chromium kreves før UX18-merge. CI krever nøyaktig **332/186**, uten hopp eller
+manglende TRX, med uendrede 15/20/45 minutter, aktiv audit og bare TRX-artefakter.
+Denne avgrensede CI-konfliktrunden har ingen ny full gjennomgang eller sikkerhetsaudit.
+
+## UX18 – historisk sluttakseptanse før EV04
 
 UX18/#93 startet fra levert UX17/main `959060c`. En annen chat merget EV03/
 PR #130 som main `93b1aea3f0953535e3144d22b36991e88ead7852` 28. oktober 2026
@@ -218,14 +276,15 @@ Browser-TRX/prosess måler 1 562,594/1 563,422 sekunder.
 seks nye tokenfrie fokusbilder fra integrert runtime, visuelt lest enkeltvis.
 Fullt bevis er i `TestResults/93-main-integration/`.
 Tidligere `TestResults/93-final/` bevares som historisk 907/325-bevis før mainintegrasjon.
-CI krever **328 Chromium og 130 SQL Server**, uten hopp, med uendrede 15/20/45 minutter.
-Samlet review, separat audit, faktisk kandidat-CI og UX18-merge gjenstår hos root.
+Daværende CI krevde **328 Chromium og 130 SQL Server**, uten hopp, med uendrede 15/20/45 minutter.
+Samlet review og separat audit ble senere avsluttet med 0 funn på det angitte
+grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gjenstår.
 
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 328 scenarioer bruker disponible Kestrel-verter,
-inklusive fem fra EV02, tre fra EV03, sju fra UX17 og seks fra UX18. Alle tidligere navn består.
+eksisterende app eller database: 332 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02, tre fra EV03, fire fra EV04, sju fra UX17 og seks fra UX18. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
 Kestrel, SQLite i minnet og testautentisering.
@@ -302,7 +361,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 328 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 332 beståtte scenarioer uten hopp.
 UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -313,7 +372,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 328; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 332; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -369,7 +428,7 @@ EV02s tidligere oppgradering fra FellesFasemal er fortsatt en egen prøve.
 Den ordinære modellregresjonen kontrollerer SQL Server-modellen uten tilkobling:
 ingen ventende modellendringer, e-postentiteten og begge internrundeindeksene i
 siste migrasjonsmål, samt alle berørte samtidighetspredikater. Dette erstatter
-ikke de 130 faktiske SQL Server-prøvene i ny UX18-kandidat-CI.
+ikke de 186 faktiske SQL Server-prøvene i ny UX18-kandidat-CI.
 Regelinnholdet ved synk er snapshotet fra operasjonens siste lesing før lagring;
 en regelendring etter denne lesingen blir synlig i neste forhåndsvisning. Dette er
 egen delt kontrakt, og UI leser derfor forslagene på nytt etter lagring. Synk låser
@@ -384,7 +443,9 @@ fullfører en overlevering. Sammen med UX16 hadde prosjektet 79 tilfeller før E
 
 EV03 legger til 49 delte oppsummeringstilfeller og én migrasjonsprøve fra EV02, med
 bevart abonnement, frist, forslag, kilde, synlighet, feed og internkalender. Prosjektet
-har etter integrasjon med levert UX16 og en ny oppgraderingsprøve 130 tilfeller.
+hadde etter integrasjon med levert UX16 og en ny oppgraderingsprøve 130 tilfeller.
+EV04 utvider med direkte endringer, varselvalg og oppgradering fra levert EV03;
+det faktiske samlede inventaret er nå 186 SQL Server-tilfeller.
 Triggerprøven krever feil fra den faktiske hendelses-INSERT-en;
 en annen databasefeil teller ikke som rollbackbevis. To instanser prøver både den
 unike førstegangsplanen og vinnende overgang for en eksisterende plan.
@@ -411,7 +472,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 130 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 186 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

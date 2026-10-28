@@ -75,8 +75,8 @@ jobs:
           ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
           results = root.findall('t:Results/t:UnitTestResult', ns)
           counters = root.find('t:ResultSummary/t:Counters', ns)
-          if len(results) != 130 or counters is None:
-              raise SystemExit('SQL Server: forventet 130 utførte tester')
+          if len(results) != 186 or counters is None:
+              raise SystemExit('SQL Server: forventet 186 utførte tester')
           if any(r.get('outcome') != 'Passed' for r in results):
               raise SystemExit('SQL Server: minst én test feilet eller ble hoppet over')
           if int(counters.get('executed', '0')) != len(results) or int(counters.get('notExecuted', '0')) != 0:
@@ -129,13 +129,13 @@ jobs:
           ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
           results = root.findall('t:Results/t:UnitTestResult', ns)
           counters = root.find('t:ResultSummary/t:Counters', ns)
-          if len(results) != 328 or counters is None:
-              raise SystemExit('Nettleser: forventet 328 utførte scenarioer')
+          if len(results) != 332 or counters is None:
+              raise SystemExit('Nettleser: forventet 332 utførte scenarioer')
           if any(r.get('outcome') != 'Passed' for r in results):
               raise SystemExit('Nettleser: minst ett scenario feilet eller ble hoppet over')
           if int(counters.get('executed', '0')) != len(results) or int(counters.get('notExecuted', '0')) != 0:
               raise SystemExit('Nettleser: ugyldig antall utførte/hoppede tester')
-          print('Nettleser: 328 scenarioer bestått, ingen hoppet over')
+          print('Nettleser: 332 scenarioer bestått, ingen hoppet over')
           PY
       - name: Last opp nettleserresultater
         if: always()

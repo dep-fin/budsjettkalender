@@ -13,6 +13,17 @@ namespace Aarshjul.SqlServerTests;
 public sealed class DagligEpostTester : DagligEpostKontrakt
 {
     [Fact]
+    public async Task EV04_migrasjon_fra_levert_EV03_bevarer_hendelser_planer_koblinger_og_sekvensgrenser()
+    {
+        await using var database = new Sqldatabase(); await database.OpprettAsync("20261028142358_OrdnetEpostaktivering");
+        await EpostoppgraderingBevis.LeggTilAsync(database);
+        var foer = await EpostoppgraderingBevis.HentAsync(database);
+        var plan = await EpostoppgraderingBevis.LeggTilEV03PlanAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext()) await db.Database.MigrateAsync();
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+        await EpostoppgraderingBevis.BekreftEV04PlanAsync(database, plan);
+    }
+    [Fact]
     public async Task Additiv_EV03_migrasjon_bevarer_EV02_og_hele_datagrunnlaget_uten_varslingsflom()
     {
         await using var database = new Sqldatabase();
@@ -35,7 +46,7 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
         await using (var db = database.Fabrikk().CreateDbContext())
         {
             await db.Database.MigrateAsync();
-            Assert.Equal(new[] { "20261028112544_UnikeInternrunder", "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering" },
+            Assert.Equal(new[] { "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering", "20261028165341_VarseltyperOgEndringer" },
                 (await db.Database.GetAppliedMigrationsAsync()).TakeLast(3));
         }
         Assert.True(foer == await EpostoppgraderingBevis.HentAsync(database), "Leverte UX16-/EV02-data må bevares gjennom EV03-oppgraderingen.");

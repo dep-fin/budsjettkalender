@@ -5,6 +5,72 @@ namespace Aarshjul.BrowserTests;
 
 public sealed class DagligEpostTester
 {
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Varselvalg_ny_og_endret_med_foer_etter_og_varige_mobilinnstillinger(bool nye, bool endringer)
+        => await Trygt(async n =>
+        {
+            await n.LoggInn("demo-fag"); await n.Side.SetViewportSizeAsync(390, 844);
+            await MeldPaa(n, nye, endringer); await n.Gaa("/demo/epostmottaker");
+            await n.Side.GetByRole(AriaRole.Link, new() { Name = "Bekreft jobbadressen", Exact = true }).ClickAsync();
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Bekreft min jobbadresse" }).ClickAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Status)).ToContainTextAsync("Jobbadressen er bekreftet");
+            await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-01T06:30");
+            await n.OpprettFrist("EV04 ny og endret", "FAG", tid: "13:45");
+            await n.Gaa("/admin/frister?aar=2031");
+            await n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "EV04 ny og endret" }).GetByRole(AriaRole.Link, new() { Name = "Rediger", Exact = true }).ClickAsync();
+            await n.Side.GetByLabel("Dato", new() { Exact = true }).FillAsync("2030-12-05");
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Frister", Exact = true })).ToBeVisibleAsync();
+            await SettTid(n, "2030-01-01T07:00"); await Kjor(n, "1 bekreftet");
+            await n.LoggInn("demo-fag"); await n.Gaa("/demo/epostmottaker");
+            var melding = n.Side.GetByRole(AriaRole.Article, new() { Name = "Daglig oppsummering" });
+            await Expect(melding).ToHaveCountAsync(1); await Expect(melding).ToContainTextAsync("05.12.2030 kl. 13:45");
+            await Expect(melding).ToContainTextAsync(nye ? "Ny frist: EV04 ny og endret" : "Vesentlig endring: EV04 ny og endret");
+            if (!nye) await Expect(melding).ToContainTextAsync("Tidligere: 20.11.2030 kl. 13:45");
+            await n.Gaa("/epostvarsling"); await n.Side.SetViewportSizeAsync(390, 844);
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Nye frister", Exact = true })).ToBeCheckedAsync(new() { Checked = nye });
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Vesentlige endringer", Exact = true })).ToBeCheckedAsync(new() { Checked = endringer });
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Nye frister", Exact = true }).UncheckAsync();
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Vesentlige endringer", Exact = true }).UncheckAsync();
+            var lagre = n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre varselvalg", Exact = true });
+            await lagre.FocusAsync(); await n.Side.Keyboard.PressAsync("Enter");
+            await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Velg minst én varseltype");
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Vesentlige endringer", Exact = true }).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Nye frister", Exact = true }).UncheckAsync();
+            await lagre.FocusAsync(); await n.Side.Keyboard.PressAsync("Enter");
+            await Expect(n.Side.GetByRole(AriaRole.Status)).ToContainTextAsync("Varselvalgene er lagret");
+            Assert.True(await n.Side.EvaluateAsync<bool>("document.documentElement.scrollWidth <= window.innerWidth"), "Varselvalgene må passe mobilbredden.");
+            await n.OmstartAsync(); await n.LoggInn("demo-fag"); await n.Gaa("/epostvarsling");
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Nye frister", Exact = true })).Not.ToBeCheckedAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Vesentlige endringer", Exact = true })).ToBeCheckedAsync();
+        });
+
+    [Fact]
+    public async Task Administrator_maa_endre_innhold_og_begrunne_manuell_vesentlighet()
+        => await Trygt(async n =>
+        {
+            await n.LoggInn("demo-fag"); await MeldPaa(n, false, true); await n.Gaa("/demo/epostmottaker");
+            await n.Side.GetByRole(AriaRole.Link, new() { Name = "Bekreft jobbadressen", Exact = true }).ClickAsync();
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Bekreft min jobbadresse" }).ClickAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Status)).ToContainTextAsync("Jobbadressen er bekreftet");
+            await n.LoggInn("demo-admin"); await n.Side.SetViewportSizeAsync(390, 844); await SettTid(n, "2030-01-01T06:30");
+            await n.OpprettFrist("EV04 vesentlig tekst", "FAG"); await n.Gaa("/admin/frister?aar=2031");
+            await n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "EV04 vesentlig tekst" }).GetByRole(AriaRole.Link, new() { Name = "Rediger", Exact = true }).ClickAsync();
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Marker annen faktisk innholdsendring som vesentlig", Exact = true }).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("faktisk endret innhold");
+            await n.Side.GetByLabel("Notat", new() { Exact = true }).FillAsync("Utvidet oppgave");
+            await n.Side.GetByLabel("Kort endringsforklaring", new() { Exact = true }).FillAsync("Oppgaven gjelder flere <fagområder>");
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).FocusAsync(); await n.Side.Keyboard.PressAsync("Enter");
+            await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Frister", Exact = true })).ToBeVisibleAsync();
+            await SettTid(n, "2030-01-01T07:00"); await Kjor(n, "1 bekreftet");
+            await n.LoggInn("demo-fag"); await n.Gaa("/demo/epostmottaker");
+            await Expect(n.Side.GetByRole(AriaRole.Article)).ToContainTextAsync("Forklaring: Oppgaven gjelder flere <fagområder>");
+            await Expect(n.Side.GetByRole(AriaRole.Article).Locator("fagområder")).ToHaveCountAsync(0);
+        });
     [Fact]
     public async Task Paamelding_publisering_utsatt_plan_omstart_egen_oppsummering_og_avmelding()
         => await Trygt(async n =>
@@ -86,11 +152,13 @@ public sealed class DagligEpostTester
             await Expect(n.Side.GetByRole(AriaRole.Link, new() { Name = "Bekreft jobbadressen", Exact = true })).ToHaveCountAsync(0);
         });
 
-    private static async Task MeldPaa(Nettleser n)
+    private static async Task MeldPaa(Nettleser n, bool nye = true, bool endringer = false)
     {
         await n.Gaa("/epostvarsling");
         await n.Side.GetByLabel("Egen jobbadresse", new() { Exact = true }).FillAsync("ev03@fin.dep.no");
-        await n.Side.GetByRole(AriaRole.Checkbox).CheckAsync();
+        await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Nye frister", Exact = true }).SetCheckedAsync(nye);
+        await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Vesentlige endringer", Exact = true }).SetCheckedAsync(endringer);
+        await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Jeg bekrefter at dette er min egen jobbadresse og bekrefter varselvalgene.", Exact = true }).CheckAsync();
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Meld meg på", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByText("Status: Venter på bekreftelse", new() { Exact = true })).ToBeVisibleAsync();
     }

@@ -11,6 +11,10 @@ public sealed class EpostabonnementKommando(AuthenticationStateProvider tilstand
         => KjorAsync(id => abonnement.HentAsync(id, ct), ct);
     public Task<EpostabonnementDto> MeldPaaAsync(string adresse, bool godtarStandardvalg, CancellationToken ct = default)
         => KjorAsync(id => abonnement.MeldPaaAsync(id, adresse, godtarStandardvalg, ct), ct);
+    public Task<EpostabonnementDto> MeldPaaAsync(string adresse, bool godtar, bool nye, bool endringer, CancellationToken ct = default)
+        => KjorAsync(id => abonnement.MeldPaaAsync(id, adresse, godtar, nye, endringer, ct), ct);
+    public Task<EpostabonnementDto> EndreValgAsync(bool nye, bool endringer, Guid versjon, CancellationToken ct = default)
+        => KjorAsync(id => abonnement.EndreValgAsync(id, nye, endringer, versjon, ct), ct);
     public Task<EpostabonnementDto> SendNyAsync(CancellationToken ct = default)
         => KjorAsync(id => abonnement.SendNyAsync(id, ct), ct);
     public Task<EpostabonnementDto> BekreftAsync(string token, CancellationToken ct = default)

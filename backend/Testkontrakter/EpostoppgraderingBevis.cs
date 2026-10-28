@@ -10,6 +10,46 @@ namespace Aarshjul.Testkontrakter;
 
 public static class EpostoppgraderingBevis
 {
+    public sealed record EV03Plan(Guid Behandlet, Guid Ventende, Guid GammelPlan, Guid VentendePlan);
+
+    public static async Task<EV03Plan> LeggTilEV03PlanAsync(Epostdatabase database)
+    {
+        await using var db = database.Fabrikk().CreateDbContext();
+        var frister = await db.Frister.Where(x => x.Status == FristStatus.Godkjent).OrderBy(x => x.Tittel).Take(2).Select(x => x.Id).ToListAsync();
+        var bevis = new EV03Plan(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO NyFristHendelser (Id, FristId, OpprettetUtcTicks, Publiseringssekvens) VALUES ({bevis.Behandlet}, {frister[0]}, {10L}, {6L})");
+        await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO NyFristHendelser (Id, FristId, OpprettetUtcTicks, Publiseringssekvens) VALUES ({bevis.Ventende}, {frister[1]}, {10L}, {8L})");
+        await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO Epostaktiveringer (BrukerId, Sekvens) VALUES ({"eldre"}, {7L})");
+        await db.Database.ExecuteSqlRawAsync("UPDATE Epostrekkefolge SET Verdi = 9 WHERE Id = 1");
+        db.Epostoppsummeringer.Add(new()
+        {
+            Id = bevis.GammelPlan, BrukerId = "eldre", LokalDato = new(2029, 12, 31), Status = "Bekreftet",
+            Hendelser = [new() { HendelseId = bevis.Behandlet }]
+        });
+        db.Epostoppsummeringer.Add(new() { Id = bevis.VentendePlan, BrukerId = "eldre", LokalDato = new(2030, 1, 1) });
+        await db.SaveChangesAsync(); return bevis;
+    }
+
+    public static async Task BekreftEV04PlanAsync(Epostdatabase database, EV03Plan bevis)
+    {
+        await using var db = database.Fabrikk().CreateDbContext();
+        var hendelser = await db.NyFristHendelser.OrderBy(x => x.Publiseringssekvens).ToListAsync();
+        Assert.Equal(new[] { bevis.Behandlet, bevis.Ventende }, hendelser.Select(x => x.Id));
+        Assert.All(hendelser, x => { Assert.Equal("Ny", x.Type); Assert.Null(x.FoerJson); Assert.Null(x.EtterJson); Assert.Null(x.Forklaring); });
+        Assert.Equal(new long[] { 6, 8 }, hendelser.Select(x => x.Publiseringssekvens));
+        Assert.Equal(7, await db.Database.SqlQueryRaw<long>("SELECT Sekvens AS Value FROM Epostaktiveringer WHERE BrukerId = 'eldre'").SingleAsync());
+        Assert.Equal(0, await db.Database.SqlQueryRaw<long>("SELECT Endringssekvens AS Value FROM Epostaktiveringer WHERE BrukerId = 'eldre'").SingleAsync());
+        Assert.Equal("Bekreftet", (await db.Epostoppsummeringer.SingleAsync(x => x.Id == bevis.GammelPlan)).Status);
+        Assert.Equal("Planlagt", (await db.Epostoppsummeringer.SingleAsync(x => x.Id == bevis.VentendePlan)).Status);
+        Assert.Equal(bevis.Behandlet, (await db.Oppsummeringshendelser.SingleAsync()).HendelseId);
+        var kilde = new KontrollertMottakertilgang(); kilde.Sett("eldre", new(MottakertilgangStatus.Aktiv, new Aarshjul.Application.Synlighet.Synlighetskontekst(true, [])));
+        var post = new KontrollertOppsummeringspost();
+        var jobb = new DagligEpostoppsummering(database.Fabrikk(), new EpostabonnementKontrakt.Proeveklokke(), kilde, post,
+            Microsoft.Extensions.Options.Options.Create(new DagligEpostOpsjoner()));
+        var resultat = Assert.Single((await jobb.KjorAsync()).Mottakere);
+        Assert.Equal("Bekreftet", resultat.Status); Assert.Equal(bevis.VentendePlan, resultat.OppsummeringId);
+        Assert.Single(post.Hent("eldre")); Assert.Equal(1, resultat.AntallFrister);
+    }
     public static async Task<KontrollertBekreftelsespost> LeggTilAsync(Epostdatabase database)
     {
         await FasedataBevis.LeggTilHistorikkAsync(database.Fabrikk());
@@ -94,6 +134,11 @@ public static class EpostoppgraderingBevis
         {
             Tittel = "Ny frist etter EV03-oppgradering", Dato = new(2030, 11, 20), Budsjettaar = 2031, Synlighetskoder = ["FA"]
         });
+        // Levert EV02 har implisitt ny-grense 0 og ingen aktiveringsrad. Første
+        // utvidelse til endringer må ikke flytte denne grensen og miste ventende Ny.
+        var eldreAbonnement = new EpostabonnementTjeneste(database.Fabrikk(), klokke, bekreftelsespost);
+        var eldreStatus = await eldreAbonnement.HentAsync("eldre");
+        await eldreAbonnement.EndreValgAsync("eldre", true, true, eldreStatus.Versjon);
         Assert.Equal("Bekreftet", Assert.Single((await jobb.KjorAsync()).Mottakere).Status);
         var melding = Assert.Single(post.Hent("eldre"));
         Assert.Contains("Ny frist etter EV03-oppgradering", melding.Tekst);

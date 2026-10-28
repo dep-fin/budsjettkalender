@@ -17,10 +17,33 @@ chat som daværende main `93b1aea3f0953535e3144d22b36991e88ead7852`,
 integrert i UX18 før samlet review. [UX18s leveranseregister](acceptance/2026-10-28-atelier-ux18.md#leveranseregister)
 bevarer de enkelte leveransenes historiske PR-/CI-bevis. Nytt EV-arbeid er ikke bestilt.
 
+EV03 ([#113](https://github.com/depmartin/Budsjettkalender/issues/113)) er levert i
+[PR #130](https://github.com/depmartin/Budsjettkalender/pull/130), bekreftet merget som
+`93b1aea3f0953535e3144d22b36991e88ead7852`. Slutt-[CI 40722978578](https://github.com/depmartin/Budsjettkalender/actions/runs/40722978578)
+bestod 956 ordinære, 130 ekte SQL Server- og 322 Chromium-tilfeller uten feil/hopp.
+Kandidaten er avstemt med levert UX16/UX17. Varige publiseringshendelser, dagsplan,
+sekvensgrense, synlighetskontroll og fersk kontrollert mottakertilgang består.
+[EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) bevarer historiske prøver og grenser.
+Produksjon sender ingen e-post.
+
+EV04 ([#114](https://github.com/depmartin/Budsjettkalender/issues/114)) er deretter
+merget i [PR #133](https://github.com/depmartin/Budsjettkalender/pull/133) som faktisk
+main `926ffe74e62999714f6e711327636ecce2070317` 28. oktober 2026 kl. 20.24.08 +01:00.
+Denne mergede hovedgrenen er nødvendig integrert i UX18 etter mergekonflikt.
+Brukeren velger nye frister, vesentlige endringer eller begge, med
+versjonskontroll og egen aktiveringsgrense per type. Direkte administratorredigering
+varsler semantisk dato-/periode-, budsjettår- og kategoriendring automatisk.
+Annen faktisk innholdsendring kan markeres med kort forklaring. Oppsummeringen samler
+hendelser per frist og viser før-/etterverdier innen dagens synlighet og ferske tilgang.
+Additiv migrasjon og idempotent demooppgradering bevarer EV03-data uten tilbakefylling.
+[EV04-akseptansen](acceptance/2026-10-28-epost-ev04.md) bevarer leveransens daterte
+lokale prøver og daværende porter; gjeldende livsløp står i PR #133. Kø/generering, import/sletting
+og produksjonsporter tilhører senere EV-tickets. Ingen deploy er utført.
+
 ## UX18 – samlet akseptanse og publisering
 
 [#93](https://github.com/depmartin/Budsjettkalender/issues/93) prøver hele Atelier
-fra UX17-basen med den senere faktisk mergede EV03-main integrert. [Akseptanserapporten](acceptance/2026-10-28-atelier-ux18.md)
+fra UX17-basen med de senere faktisk mergede EV03- og EV04-hovedgrenene integrert. [Akseptanserapporten](acceptance/2026-10-28-atelier-ux18.md)
 kartlegger **alle 89 historier individuelt** med oppgave/PR, navngitt prøve,
 resultat og revisjonsgrunnlag. Den sammenhengende publiseringsprøven dekker FA og
 FIN-FAG: dato → ordinært forslag → Mine forslag/kø → eget aktivt POL-valg → én
@@ -29,7 +52,24 @@ Direkte administratoroppretting/redigering har samme identitet og verdier i alle
 seks flater. Hele HTTP-svar prøves med anonym, FAG, POL, FA, FIN-FAG og administrator;
 gamle innganger, seks adminområder, interne data og skjult metadata er med.
 
-Samlet lokal sluttkjøring passerer **962/962 ordinære og 328/328 faktiske
+PR #132 er fortsatt **ikke merget**. Før EV04-integrasjonen bestod publisert head
+`6acf357efdb7498281b3bdf970e3cc48e543de03`
+[CI 40752611386](https://github.com/depmartin/Budsjettkalender/actions/runs/40752611386)
+med **962 ordinære, 130 ekte SQL Server- og 328 Chromium-tilfeller**, uten feil/hopp.
+Ny faktisk kandidat-CI og bekreftet UX18-merge kreves etter integrasjonen.
+Den nye fulle lokale kjøringen passerer **1024/1024 ordinære og 332/332 faktiske
+Edge/Kestrel-scenarioer**, uten feil/hopp. **186 SQL Server-tilfeller** er bygget/oppdaget.
+Alle tidligere 962/328/130 UX18-navn og 1018/326/186 EV04-navn består eksakt.
+Alle tre låste restore og Release-bygg passerer med aktiv audit og null advarsler/feil.
+430 backend-kildefiler og 1518 runtimefiler har null drift; kandidatmanifestet har 505 filer.
+Browser-TRX/prosess måler 1778,580/1779,356 sekunder. Alle 63 kravkartmetoder er bestått
+i ny TRX; kartet har alle 89 historier, og 62 tidligere inspiserte bilder er hashbevart.
+Ferske lokale bevis ligger i `TestResults/93-ci-main-integration/`. Alle EV04-backendblobber,
+migrasjoner, kontrakter, DI og varselfelter samt UX18s kilder og to CI-kvitteringer
+er bevart eksakt. CI krever 332/186, uendrede 15/20/45 minutter, aktiv audit og bare TRX.
+Dette er en nødvendig CI-konfliktrunde uten nytt fullt review eller sikkerhetsaudit.
+
+Den tidligere samlede lokale kjøringen før EV04 passerte **962/962 ordinære og 328/328 faktiske
 Edge/Kestrel-scenarioer** uten feil/hopp. **130 SQL-tilfeller** er bygget/oppdaget
 lokalt. Alle tidligere 901/319/79, 907/325/79 og 956/322/130 navn er bevart eksakt.
 Låst restore og alle tre Release-bygg har null advarsler/feil med aktiv audit.
@@ -40,7 +80,7 @@ sluttbilder er bevart. Seks nye fokusbilder fra integrert runtime er visuelt les
 427 kilde- og 1518 runtimefiler har ingen drift under fullkjøringen;
 sluttkandidaten har 501 filer. `TestResults/93-main-integration/` binder
 resultat, inventar og SHA-256; tidligere 907/325-bevis i `TestResults/93-final/`
-er historisk. CI krever nøyaktig 328/130, bare TRX og uendret 45-minutters browsergrense.
+er historisk. Daværende CI krevde nøyaktig 328/130, bare TRX og uendret 45-minutters browsergrense.
 Det ferdige kildegrunnlaget har full Standards-review, full Spec-review og en
 uavhengig sikkerhetsaudit, alle med **0 funn**. [Publiseringsregisteret](acceptance/2026-10-28-atelier-ux18.md#publisering-og-gjeldende-livsløp)
 binder det lokale kildegrunnlaget og identisk første publiserte tree til PR #132.
@@ -73,7 +113,7 @@ ekstern e-post sendes av EV02. Mergede EV03 bevarer atomiske nye-frist-hendelser
 varig daglig oppsummering, databaseordnet aktivering og kontrollert demotransport.
 Produksjonens e-postadaptere er fortsatt utilgjengelige. Senere EV-arbeid under
 #110 inngår ikke i UX18.
-EV03/PR #130 er bevart fra faktisk main; separat PR #128 er ikke integrert.
+EV03/PR #130 og EV04/PR #133 er bevart fra faktisk main; separat PR #128 er ikke integrert.
 
 ## Prototype, videre oppgaver og miljøporter
 

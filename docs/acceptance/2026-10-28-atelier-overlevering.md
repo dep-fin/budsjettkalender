@@ -8,10 +8,14 @@ Historiske kjøringer er datert i de enkelte akseptanserapportene.
 
 UX01–UX17 / #76–#92 er merget. UX17/PR #131 er `959060c898048da5ebd26bfb2cd5cdb68a1c2271`,
 med grønn [CI 40717209832](https://github.com/depmartin/Budsjettkalender/actions/runs/40717209832).
-Main før UX18-publisering er `93b1aea3f0953535e3144d22b36991e88ead7852`, EV03/PR #130,
+Main før første UX18-publisering var `93b1aea3f0953535e3144d22b36991e88ead7852`, EV03/PR #130,
 merget 28. oktober 2026 kl. 17.33.10 +01:00 av en annen chat. Den er nødvendig
 integrert i UX18 før review, med EV02/EV03-kode/modell/adaptervern og alle tester bevart.
-PR #128 er ikke integrert; ingen ny EV-ticket er bestilt.
+En annen chat merget senere EV04/PR #133 som faktisk main
+`926ffe74e62999714f6e711327636ecce2070317`, 28. oktober 2026 kl. 20.24.08 +01:00.
+Den er nødvendig integrert etter UX18s mergekonflikt, med alle EV04-backendblobber,
+kontrakter, migrasjoner og modell bevart eksakt. UX18s kilder og begge avgrensede
+CI-kvitteringer er også bevart. PR #128 er ikke integrert; ingen ny EV-ticket er bestilt.
 UX18 er publisert i [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132).
 [Publiseringsregisteret](2026-10-28-atelier-ux18.md#publisering-og-gjeldende-livsløp)
 oppgir det faste, gjennomgåtte kildegrunnlaget, identisk første publiserte tree
@@ -19,12 +23,18 @@ og de tre fullførte gjennomgangene med 0 funn. Lokal arbeidsgren er
 `codex/93-atelier-sluttakseptanse`, i `work/Budsjettkalender-93` relativt til den
 opprinnelige checkouten. Den upubliserte lokale kandidatstatusen er historikk fra
 28. oktober 2026 før PR #132.
-`TestResults/93-main-integration/` er ignorert lokalt sluttbevis og følger ikke en
-ny klon. Tidligere 907/325-bevis i `TestResults/93-final/` er bevart som historikk.
+`TestResults/93-ci-main-integration/` samler det nye lokale integrasjonsbeviset og
+følger ikke en ny klon. `TestResults/93-main-integration/` (962/328) og tidligere
+907/325-bevis i `TestResults/93-final/` er bevart som historikk.
 PR #132 og kommentarene i [#75](https://github.com/depmartin/Budsjettkalender/issues/75)
 og [#93](https://github.com/depmartin/Budsjettkalender/issues/93) er autoriteten for
 siste publiserte head, faktisk CI, mergecommit og verifisert main. De lokale
 962/328-resultatene og 130 oppdagede SQL-prøvene beholder sitt faste revisjonsgrunnlag.
+PR #132 er fortsatt **ikke merget**. Dens publiserte head før EV04-integrasjonen,
+`6acf357efdb7498281b3bdf970e3cc48e543de03`, bestod
+[CI 40752611386](https://github.com/depmartin/Budsjettkalender/actions/runs/40752611386)
+med 962 ordinære, 130 ekte SQL Server- og 328 Chromium-tilfeller uten feil/hopp.
+Den nye integrasjonen krever publisering, faktisk kandidat-CI og bekreftet UX18-merge.
 Arbeidet stopper etter #93. Ingen deploy eller oppstart av neste ticket inngår.
 
 Andre uferdige checkouter, draft-PR #65, prototype-/plangrenene og eksisterende
@@ -70,9 +80,11 @@ Den kopierte Development-konfigurasjonen brukes som lokal Demo-konfigurasjon,
 slik at også demo-SBR beholder samme simulerte gruppeclaim som vanlig demoprofil.
 Dette endrer ingen produksjonspolicy eller kildefil. EV03s offentlige basisadresse
 settes til helperens faktiske loopback-port. Normal demo bruker den automatiske
-dagsjobben med bare kontrollert post i minnet. Helperen er faktisk smokeprøvd på
-5094 med HTTP 200, ny database og stans av sin egen prosess; 5093 er reservert
-roots senere sluttvisning.
+dagsjobben med bare kontrollert post i minnet. Den uendrede helperen ble faktisk
+smokeprøvd på EV03-grunnlaget på 5094 med HTTP 200, ny database og stans av sin egen
+prosess. EV04s normale `Demoskjema`-oppstart bevares eksakt og prøves med nye disponible
+SQLite-filer i full Kestrel-suite; det er ingen ny helper-smoke i denne CI-runden.
+5093 er reservert roots senere sluttvisning etter bekreftet merge.
 
 Velg demopersona for leser, FA/FIN-FAG-bidragsyter eller administrator.
 Samme innlogging gir e-postpåmelding til kontrollert lokal mottaker; ingen ekstern
@@ -81,7 +93,24 @@ som bidragsyter og bytt til administrator for godkjenning. Leseren får bare
 serverautoriserte frister. Dette er lokal visning, ingen produksjonsgodkjenning.
 EnsureCreated oppgraderer ikke en eldre database; helperen oppretter derfor en ny fil.
 
-## Bekreftet lokal sluttkontroll
+## Lokal kontroll etter EV04-mainintegrasjon
+
+Hele ordinærporten passerer **1024/1024**, og alle faktiske Edge/Kestrel-scenarioer
+passerer **332/332**, uten feil/hopp. **186 SQL Server-tilfeller** er bygget/oppdaget.
+Alle 962/328/130 UX18-navn og 1018/326/186 EV04-navn er bevart eksakt uten dubletter.
+Tre låste restore og Release-bygg med `-m:1 -nr:false` og aktiv audit passerer uten
+advarsler/feil. 430 backend-kildefiler og 1518 runtimefiler har null drift;
+kandidatmanifestet har 505 filer. Browser-TRX/prosess måler 1778,580/1779,356 sekunder.
+Fullverifikasjonen ligger i `TestResults/93-ci-main-integration/`, med kilde-/runtime-/
+kandidatmanifest, faktisk TRX og bevarte testnavn. SQL Server er bare bygget/oppdaget
+lokalt; faktisk SQL Server og Chromium kreves i ny kandidat-CI. Alle 89 historier
+beholdes, og samtlige 63 navngitte metoder finnes i bestått ny TRX. De 56 tidligere UX18-bildene og seks fokusbildene
+er hashbevart, med opprinnelig inspeksjonsgrunnlag. EV04s e-postside og nye varselfelter
+inngår ikke i disse historiske bildene. Native zoom-/hjelpemiddelgrenser består.
+CI bruker 332/186 med uendrede 15/20/45 minutter, aktiv audit og bare TRX.
+Denne nødvendige CI-konfliktrunden har ingen ny full gjennomgang eller sikkerhetsaudit.
+
+## Historisk lokal sluttkontroll før EV04
 
 **962/962 ordinære og 328/328 faktiske Edge/Kestrel** passerer uten feil/hopp.
 Alle tidligere 901/319/79, 907/325/79 og 956/322/130 navn er bevart eksakt.

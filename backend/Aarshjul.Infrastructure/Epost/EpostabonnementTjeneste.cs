@@ -19,10 +19,14 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
         return TilDto(await db.Epostabonnementer.AsNoTracking().SingleOrDefaultAsync(x => x.BrukerId == brukerId, ct));
     }
 
-    public async Task<EpostabonnementDto> MeldPaaAsync(string brukerId, string adresse, bool godtarStandardvalg, CancellationToken ct = default)
+    public Task<EpostabonnementDto> MeldPaaAsync(string brukerId, string adresse, bool godtarStandardvalg, CancellationToken ct = default)
+        => MeldPaaAsync(brukerId, adresse, godtarStandardvalg, true, false, ct);
+
+    public async Task<EpostabonnementDto> MeldPaaAsync(string brukerId, string adresse, bool godtar, bool nyeFrister, bool vesentligeEndringer, CancellationToken ct = default)
     {
         adresse = NormaliserAdresse(adresse);
-        if (!godtarStandardvalg) throw new Valideringsfeil("Bekreft standardvalgene og at adressen er din egen jobbadresse.");
+        if (!godtar) throw new Valideringsfeil("Bekreft valgene og at adressen er din egen jobbadresse.");
+        ValiderValg(nyeFrister, vesentligeEndringer);
         if (!post.Tilgjengelig) throw new Valideringsfeil("Adressebekreftelse er ikke satt i drift. Du er ikke meldt på.");
         await using var db = await fabrikk.CreateDbContextAsync(ct);
         var rad = await db.Epostabonnementer.SingleOrDefaultAsync(x => x.BrukerId == brukerId, ct);
@@ -36,6 +40,8 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var erNy = rad is null;
         rad ??= new() { BrukerId = brukerId, Adresse = adresse, Opprettet = naa, SendevinduStart = naa };
+        rad.NyeFrister = nyeFrister;
+        rad.VesentligeEndringer = vesentligeEndringer;
         KlargjoerBekreftelse(rad, token, naa);
         if (erNy) db.Epostabonnementer.Add(rad);
         try { await LagreAsync(db, rad, ct); }
@@ -50,6 +56,26 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
             return TilDto(eksisterende);
         }
         return await SendAsync(db, rad, token, ct);
+    }
+
+    public async Task<EpostabonnementDto> EndreValgAsync(string brukerId, bool nyeFrister, bool vesentligeEndringer, Guid versjon, CancellationToken ct = default)
+    {
+        ValiderValg(nyeFrister, vesentligeEndringer);
+        await using var db = await fabrikk.CreateDbContextAsync(ct);
+        var rad = await db.Epostabonnementer.SingleOrDefaultAsync(x => x.BrukerId == brukerId, ct);
+        if (rad?.Status is not ("Aktiv" or "VenterPaaBekreftelse")) throw new Valideringsfeil("Meld deg på før du endrer varselvalg.");
+        if (rad.Versjon != versjon) throw new EpostabonnementKonflikt();
+        rad.NyeFrister = nyeFrister;
+        rad.VesentligeEndringer = vesentligeEndringer;
+        rad.Endret = klokke.GetUtcNow();
+        db.KoordinerEpostlagring();
+        await LagreAsync(db, rad, ct);
+        return TilDto(rad);
+    }
+
+    private static void ValiderValg(bool nye, bool endringer)
+    {
+        if (!nye && !endringer) throw new Valideringsfeil("Velg minst én varseltype.");
     }
 
     public async Task<EpostabonnementDto> SendNyAsync(string brukerId, CancellationToken ct = default)
@@ -181,5 +207,5 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
 
     private static string Hash(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
     private static EpostabonnementDto TilDto(Epostabonnement? rad) => rad is null ? new("IkkePaameldt", null)
-        : new(rad.Status, rad.Adresse, rad.NyeFrister, rad.VesentligeEndringer, rad.AlleBudsjettaar, rad.AlleKategorier, rad.Aktivert, rad.Endret);
+        : new(rad.Status, rad.Adresse, rad.NyeFrister, rad.VesentligeEndringer, rad.AlleBudsjettaar, rad.AlleKategorier, rad.Aktivert, rad.Endret, rad.Versjon);
 }
