@@ -62,7 +62,8 @@ public sealed class InternkalenderLagringsvernTester : InternkalenderSynkKontrak
         {
             var anvendte = (await db.Database.GetAppliedMigrationsAsync()).ToArray();
             Assert.Equal(new[] { "20261028083448_Epostabonnement", "20261028112544_UnikeInternrunder",
-                "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering" }, anvendte.TakeLast(4));
+                "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering",
+                "20261028165341_VarseltyperOgEndringer" }, anvendte.TakeLast(5));
         }
     }
 
