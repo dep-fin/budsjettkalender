@@ -8,6 +8,7 @@ public sealed class GruppeadministrasjonTester
     private static async Task OpprettSkok(Nettleser n)
     {
         await n.Gaa("/admin/grupper");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Ny gruppe", Exact = true }).ClickAsync();
         var ny = n.Side.GetByRole(AriaRole.Form, new() { Name = "Ny synlighetsgruppe", Exact = true });
         await ny.GetByLabel("Kode", new() { Exact = true }).FillAsync("SKOK");
         await ny.GetByLabel("Visningsnavn", new() { Exact = true }).FillAsync("Skatteøkonomisk avdeling");
@@ -136,13 +137,14 @@ public sealed class GruppeadministrasjonTester
     {
         await n.LoggInn("demo-admin");
         await n.Gaa("/admin/grupper");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Ny gruppe", Exact = true }).ClickAsync();
         var ny = n.Side.GetByRole(AriaRole.Form, new() { Name = "Ny synlighetsgruppe", Exact = true });
         await ny.GetByRole(AriaRole.Button, new() { Name = "Opprett gruppe", Exact = true }).ClickAsync();
-        await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Kode");
+        await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Kontroller feltene");
         await ny.GetByLabel("Kode", new() { Exact = true }).FillAsync("SK OK");
         await ny.GetByLabel("Visningsnavn", new() { Exact = true }).FillAsync("Skatteøkonomisk avdeling");
         await ny.GetByRole(AriaRole.Button, new() { Name = "Opprett gruppe", Exact = true }).ClickAsync();
-        await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Kode");
+        await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Kontroller feltene");
         await ny.GetByLabel("Kode", new() { Exact = true }).FillAsync("pol");
         await ny.GetByRole(AriaRole.Button, new() { Name = "Opprett gruppe", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("finnes allerede");

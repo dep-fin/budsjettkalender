@@ -1,70 +1,50 @@
 @page "/admin/innsyn"
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
-@inject IGruppetjeneste Grupper
-@inject IFristlesing Lesing
 
-<PageTitle>Innsyn – hvem ser hva</PageTitle>
-
+<PageTitle>Innsyn</PageTitle>
+<p class="menyoverskrift">Grupper og innsyn</p>
 <h1>Innsyn</h1>
-<p class="ingress">
-    Velg en gruppe for å se nøyaktig de fristene gruppen har tilgang til (som «se som rolle»).
-    De øvrige gruppene fristen er delt med vises ved siden av – nyttig for å kontrollere hva som er delt med POL.
-</p>
-
-<label>Gruppe
-    <select @bind="_valgtKode" @bind:after="LastInnAsync">
-        <option value="">(velg gruppe)</option>
-        @foreach (var gruppe in _grupper)
-        {
-            <option value="@gruppe.Kode">@gruppe.Navn (@gruppe.Kode)</option>
-        }
-    </select>
-</label>
-
-@if (string.IsNullOrEmpty(_valgtKode))
-{
-    <p class="melding">Ingen gruppe valgt.</p>
-}
-else if (!_lastet)
-{
-    <p class="melding">Laster …</p>
-}
-else if (_frister.Count == 0)
-{
-    <p class="melding">Ingen frister er delt med @_valgtKode.</p>
-}
-else
-{
-    <p class="ingress">@_frister.Count frist(er) delt med <strong>@_valgtKode</strong>:</p>
-    <div class="fristliste">
-        @foreach (var frist in _frister)
-        {
-            <Fristkort Frist="frist" VisGrupper="true" />
-        }
+<p class="ingress">Se det publiserte innholdet én gruppe har tilgang til. Forhåndsvisningen viser alle kategorier og budsjettår, også tidligere frister.</p>
+<div class="innsynvelger">
+    <div><label for="innsyn-gruppe">Velg gruppe</label>
+        <select id="innsyn-gruppe" value="@_valgtKode" @onchange="VelgGruppeAsync" aria-describedby="innsyn-hjelp">
+            <option value="">(velg gruppe)</option>
+            @foreach (var gruppe in _grupper) { <option value="@gruppe.Kode">@gruppe.Navn (@gruppe.Kode)</option> }
+        </select>
+        <small id="innsyn-hjelp">Bare aktive grupper kan velges. Valget endrer ingen medlemskap eller deling.</small>
     </div>
+    <button class="knapp" @onclick="LastInnAsync" disabled="@(_laster || string.IsNullOrEmpty(_valgtKode))">Oppdater innsyn</button>
+</div>
+@if (_feil is not null)
+{
+    <div class="feil innsynfeil" role="alert"><p>@_feil</p><button class="knapp" disabled="@_laster" @onclick="LastInnAsync">Prøv igjen</button></div>
 }
-
-@code {
-    private IReadOnlyList<GruppeDto> _grupper = [];
-    private IReadOnlyList<FristDto> _frister = [];
-    private string _valgtKode = "";
-    private bool _lastet;
-
-    protected override async Task OnInitializedAsync()
-        => _grupper = await Grupper.HentAktiveAsync();
-
-    private async Task LastInnAsync()
+@if (_beskjed is not null) { <p class="gruppestatus" role="status">@_beskjed</p> }
+<section class="innsynresultat" aria-label="Gruppeinnsyn" aria-busy="@(_laster ? "true" : "false")">
+    @if (_laster) { <div class="innsyntom" role="status"><h2>Laster innsyn …</h2><p>Henter gruppens publiserte frister.</p></div> }
+    else if (string.IsNullOrEmpty(_valgtKode))
     {
-        if (string.IsNullOrEmpty(_valgtKode))
-        {
-            _frister = [];
-            return;
-        }
-
-        _lastet = false;
-        // Kjør den valgte gruppens synlighetsspørring i backend (samme filter som ellers).
-        var ctx = Synlighetskontekst.ForGruppe(_valgtKode);
-        _frister = await Lesing.HentSynligeAsync(ctx, new FristFilter { InkluderHistorikk = true });
-        _lastet = true;
+        <div class="innsyntom"><span class="innsynikon" aria-hidden="true">◫</span><h2>Ingen gruppe valgt</h2><p>Velg en gruppe for å undersøke fristene og åpne detaljer og kilder.</p></div>
     }
-}
+    else if (_lastet)
+    {
+        <div class="innsynbanner"><div><p class="menyoverskrift">Forhåndsvisning som gruppe</p><h2>@ValgtNavn <span>(@_valgtKode)</span></h2></div><p class="innsyn-antall" role="status">@_frister.Count publiserte @(_frister.Count == 1 ? "frist" : "frister")</p></div>
+        @if (_frister.Count == 0) { <div class="innsyntom"><h3>Ingen frister er delt med @_valgtKode.</h3><p>Gruppen har ingen publiserte frister i dette utvalget.</p></div> }
+        else
+        {
+            <div class="innsynliste">
+                @foreach (var frist in _frister)
+                {
+                    <article class="innsyn-frist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" data-frist-id="@frist.Id" @key="frist.Id">
+                        <div class="innsyndato">@Visningformat.FormatDato(frist)@if (!frist.ErTentativ && !frist.HarKlokkeslett) { <span>Heldag</span> }</div>
+                        <div class="innsyninnhold"><h3><button type="button" @onclick="() => VisFristAsync(frist)">@frist.Tittel</button></h3><div><span class="merke merke-kategori">@Visningformat.KategoriNavn(frist.Kategori)</span>@if (frist.ErTentativ) { <span class="merke merke-tentativ">Tentativ måned</span> }</div></div>
+                        <span class="innsynaar"><span class="aarsprikk" aria-hidden="true"></span>Budsjettår @frist.Budsjettaar</span>
+                    </article>
+                }
+            </div>
+        }
+        @if (_detaljLaster) { <p class="melding" role="status">Henter fristdetaljer …</p> }
+        @if (_detaljFeil is not null) { <p class="feil" role="alert">@_detaljFeil</p> }
+    }
+</section>
+<Fristdialog @key="_kontekst" @ref="_fristdialog" Lesemodus="true" />

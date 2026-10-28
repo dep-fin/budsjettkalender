@@ -50,6 +50,8 @@
             {
                 <p><span class="merke merke-tentativ">Tentativ måned – dato ikke fastsatt</span></p>
             }
+            @if (!Lesemodus)
+            {
             <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
                 @if (frist.VenterEndring)
                 {
@@ -62,6 +64,7 @@
                     </p>
                 }
             </AuthorizeView>
+            }
             @if (frist.KildeUrl is { } kildeUrl)
             {
                 <section class="dialogkilde" aria-label="Kilderundskriv">
@@ -73,16 +76,22 @@
                 <h3>Om fristen</h3>
                 <p>@(string.IsNullOrWhiteSpace(frist.Notat) ? "Ingen merknader til fristen." : frist.Notat)</p>
             </section>
+            @if (!Lesemodus)
+            {
             <AuthorizeView Policy="@Autorisasjon.ErAdministrator">
                 <div class="dialoghandlinger"><a class="knapp" href="@($"/admin/frist/{frist.Id}")">Rediger</a></div>
             </AuthorizeView>
-            @if (VisIKalenderen.HasDelegate)
+            }
+            @if (!Lesemodus && VisIKalenderen.HasDelegate)
             {
                 <div class="dialoghandlinger"><button class="knapp" @onclick="() => TilKalenderAsync(frist)">Vis i kalenderen</button></div>
             }
+            @if (!Lesemodus)
+            {
             <AuthorizeView Policy="@Autorisasjon.ErBidragsyter">
                 <div class="dialoghandlinger"><button class="knapp" data-dialoghandling="endre" @onclick="AapneForslagAsync">Foreslå endring</button></div>
             </AuthorizeView>
+            }
         </div>
     }
     else if (_agendadato is { } dato)
@@ -109,12 +118,15 @@
                     }
                 </div>
             }
+            @if (!Lesemodus)
+            {
             <AuthorizeView Policy="@Autorisasjon.ErBidragsyter">
                 <div class="dialoghandlinger">
                     <p class="dempet">Har du en frist som mangler? Send et forslag til administrator.</p>
                     <button class="knapp knapp-primær" data-dialoghandling="foreslaa" @onclick="AapneForslagAsync">Foreslå frist</button>
                 </div>
             </AuthorizeView>
+            }
         </div>
     }
     @if (_forslagsfeil is not null)
@@ -126,6 +138,7 @@
 @code {
     [Parameter] public EventCallback<FristDto> VisIKalenderen { get; set; }
     [Parameter] public int? Startbudsjettaar { get; set; }
+    [Parameter] public bool Lesemodus { get; set; }
     private ElementReference _dialog;
     private IJSObjectReference? _modul;
     private DotNetObjectReference<Fristdialog>? _referanse;
@@ -220,7 +233,7 @@
 
     private async Task AapneForslagAsync()
     {
-        if (_forslag || _sender) return;
+        if (Lesemodus || _forslag || _sender) return;
         // AuthorizeView skjuler handlingen, men håndhever ikke serverhendelsen.
         if (!(await Autorisering.AuthorizeAsync((await AuthState.GetAuthenticationStateAsync()).User, Autorisasjon.ErBidragsyter)).Succeeded)
         {
@@ -271,6 +284,7 @@
 
     private async Task TilKalenderAsync(FristDto frist)
     {
+        if (Lesemodus) return;
         await LukkAsync();
         if (!_avsluttet) await VisIKalenderen.InvokeAsync(frist);
     }

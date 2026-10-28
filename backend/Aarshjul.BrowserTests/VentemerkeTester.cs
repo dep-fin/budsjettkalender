@@ -72,12 +72,13 @@ public sealed class VentemerkeTester
 
         await n.LoggInn("demo-admin");
         await n.Gaa("/admin/innsyn");
-        await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Gruppe", Exact = true }).SelectOptionAsync("FA");
+        await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Velg gruppe", Exact = true }).SelectOptionAsync("FA");
         await Expect(Kalenderkort(n.Side, "VENT71 original")).ToBeVisibleAsync();
-        await Expect(Kalenderkort(n.Side, "VENT71 original").Locator(".merke-gruppe").Filter(new() { HasTextRegex = new("^FA$") })).ToBeVisibleAsync();
+        await Expect(Kalenderkort(n.Side, "VENT71 original").GetByText("FA", new() { Exact = true })).ToHaveCountAsync(0);
+        await Expect(Kalenderkort(n.Side, "VENT71 original").GetByRole(AriaRole.Link, new() { Name = "Rediger", Exact = true })).ToHaveCountAsync(0);
         await Expect(n.Side.GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(0);
         IngenForslagmetadata(await n.Side.ContentAsync(), forslagsIder);
-        await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Gruppe", Exact = true }).SelectOptionAsync("POL");
+        await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Velg gruppe", Exact = true }).SelectOptionAsync("POL");
         await Expect(Kalenderkort(n.Side, "VENT71 aktivt valgt POL")).ToBeVisibleAsync();
         await Expect(Kalenderkort(n.Side, "VENT71 original")).ToHaveCountAsync(0);
         await Expect(n.Side.GetByText("venter endring", new() { Exact = true })).ToHaveCountAsync(0);
@@ -123,7 +124,7 @@ public sealed class VentemerkeTester
     });
 
     private static ILocator Kalenderkort(IPage side, string tittel)
-        => side.Locator(".fristkort").Filter(new() { Has = side.GetByText(tittel, new() { Exact = true }) });
+        => side.Locator("[data-frist-id]").Filter(new() { Has = side.GetByText(tittel, new() { Exact = true }) });
 
     private static ILocator Detaljer(IPage side, string tittel)
         => side.GetByRole(AriaRole.Dialog, new() { Name = tittel, Exact = true });

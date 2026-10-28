@@ -19,8 +19,22 @@ public sealed class GruppeadministrasjonHttpTester(TestApplikasjon app) : IClass
         if (rolle is not null) klient.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
         var svar = await klient.GetAsync("/admin/grupper");
         Assert.Equal(status, (int)svar.StatusCode);
-        if (status == 200) Assert.Contains("Synlighetsgrupper", await svar.Content.ReadAsStringAsync());
+        if (status == 200) Assert.Contains("Grupper", await svar.Content.ReadAsStringAsync());
         else Assert.DoesNotContain("Opprett gruppe", await svar.Content.ReadAsStringAsync());
+    }
+
+    [Theory]
+    [InlineData(null, 401)]
+    [InlineData("Leser", 403)]
+    [InlineData("Bidragsyter", 403)]
+    [InlineData("Administrator", 200)]
+    public async Task Gruppeinnsyn_krever_administrator_ogsaa_ved_direkte_HTTP_inngang(string? rolle, int status)
+    {
+        using var klient = app.CreateClient();
+        if (rolle is not null) klient.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
+        var svar = await klient.GetAsync("/admin/innsyn");
+        Assert.Equal(status, (int)svar.StatusCode);
+        if (status != 200) Assert.DoesNotContain("Velg gruppe", await svar.Content.ReadAsStringAsync());
     }
 
     [Theory]
