@@ -27,8 +27,26 @@ HTTP-/Blazor-kall; ingen operasjon tar en mottatt identitet som eier fra skjemae
 Infrastructure lagrer ett abonnement per identitet med versjonskontroll og skjuler
 bekreftelsestransporten bak `IBekreftelsespost`. Bare demo/Testing registrerer den
 kontrollerte mottakeren. Produksjon registrerer en utilgjengelig transport og kan ikke
-opprette påmelding. Ingen fristdata eller oppsummeringsjobb er koblet til denne grensen.
+opprette påmelding. Bekreftelsestransporten får fortsatt ingen fristdata.
 Se [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md).
+
+Direkte manuell oppretting → atomisk ny frist-hendelse → varig dagsplan → fersk
+mottakertilgang → sentralt synlighetsfilter → egen tekst-/HTML-melding går gjennom
+`IDagligEpostoppsummering.KjorAsync`. Tid, lagring, identitetskilde og posttransport
+skjules i Infrastructure. En unik bruker/lokal dato og vinnende versjonsovergang
+verner to instanser. Bekreftet overlevering gjentas ikke; mulig overlevering stanser
+automatisk retry. Hendelses-IDer bevarer sene commits til neste dags oppsummering.
+En felles koordinasjonsrad ordner adresseaktivering og publisering i databasen innen
+samme transaksjon som de respektive endringene. Utvalget bruker publiseringssekvens
+etter abonnentens aktiveringsgrense; UTC-klokken avgjør bare sendetid og lokal dato.
+Bare Planlagt med forventet status og versjon kan gå til UnderSending.
+Jobben starter etter Webs skjemaoppstart og vekkes av en TimeProvider-timer hvert
+minutt; selve operasjonen håndhever kl. 08.00 Europe/Oslo eller konfigurert tid.
+Testing og eksplisitt kontrollert demo kjører operasjonen direkte uten bakgrunnsjobb.
+Produksjon har utilgjengelig tilgangskilde og oppsummeringstransport. Demo bruker et
+selvstendig kontrollert identitetsregister, ikke sist lagrede innloggingsclaims.
+Se [ADR-0010](adr/0010-varig-daglig-epostoppsummering.md) og
+[EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md).
 
 HTTP-policyer og Blazor-sideautorisasjon er tilgangsgrensen for skrivetjenestene.
 Tjenestegrensesnittene i seg selv er ikke en ekstra autorisasjonsgrense.
@@ -45,6 +63,7 @@ Ved nye innganger må policyene håndheves og testes der.
 - [Konkurransekontroll ved godkjenning](adr/0007-konkurransekontroll-ved-godkjenning.md).
 - [Felles validering av gjentaksregler](adr/0008-felles-validering-av-gjentaksregler.md).
 - [Separat nettleserakseptanse](adr/0009-nettleserakseptanse.md).
+- [Varig daglig e-postoppsummering](adr/0010-varig-daglig-epostoppsummering.md).
 
 Se [gjeldende status](status.md) for leverte endringer og åpne oppgaver.
 

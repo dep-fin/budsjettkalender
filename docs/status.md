@@ -11,17 +11,46 @@ levert i [PR #126](https://github.com/depmartin/Budsjettkalender/pull/126), merg
 servervalidert `.dep.no`-adresse, kontrollert testmottaker, engangsbekreftelse, varig
 aktivering og avmelding. Standardutvalget Nye frister, Alle budsjettår og Alle kategorier
 lagres uttrykkelig. Ingen eksisterende bruker meldes automatisk på. Produksjonstransport,
-fristoppsummering, adressebytte, utvidede valg og administratoroversikt tilhører senere
-EV-tickets under [#110](https://github.com/depmartin/Budsjettkalender/issues/110).
+adressebytte, utvidede valg og administratoroversikt tilhører senere EV-tickets under
+[#110](https://github.com/depmartin/Budsjettkalender/issues/110).
 Ren EV02-kandidat `a6d3f2a` bestod [CI 40673623216](https://github.com/depmartin/Budsjettkalender/actions/runs/40673623216)
 med 823 ordinære, 62 ekte SQL Server- og 226 Chromium-tilfeller uten hopp.
 Dette endrer ikke den historiske lokale fullportens 224/226 og to grønne isolerte
-etterprøver. Før merge ble UX15 fra main `31bfddb` integrert, med 845 beståtte
+etterprøver. Den leverte EV02-integrasjonen inneholder UX15 fra main `31bfddb`, med 845 beståtte
 ordinære tester og oppdaget samlet inventar på 269 nettleser- og 62 SQL Server-tilfeller.
 De tidligere 823/226/62 navnene er bevart; alle UX15-testklasser er beholdt.
 Målrettet Edge/Kestrel bestod 49/49 EV02-/UX15-forløp uten feil/hopp.
 Den senere UX16-integrasjonen er levert i PR #129 med grønn kandidat-CI som beskrevet nedenfor.
 [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md) inneholder de konkrete bevisene.
+
+EV03 ([#113](https://github.com/depmartin/Budsjettkalender/issues/113)) er kandidat i
+[PR #130](https://github.com/depmartin/Budsjettkalender/pull/130) for daglig oppsummering
+av nye direkte manuelt publiserte frister. Publisering og hendelse er atomiske.
+Varig dagsplan, uttrykkelige hendelseskoblinger, fersk kontrollert mottakertilgang og
+nåværende synlighetsfilter begrenser hver melding. Bekreftede overleveringer gjentas
+ikke etter omstart; uavklart utfall krever avklaring. De to P2-funnene om databaseordnet
+aktiveringsgrense og faktisk innlest planstatus/versjon er rettet og etterprøvd.
+Samlet review, separat sikkerhetsaudit og integrasjonens etterkontroll er fullført.
+Head `e4292caaa7cc7b41ff0592f800ded7649905f64f` bestod
+[CI 40715203714](https://github.com/depmartin/Budsjettkalender/actions/runs/40715203714):
+938 ordinære, 130 ekte SQL Server- og 315 Chromium-tilfeller uten feil/hopp.
+
+Etter levert UX17/PR #131 oppstod faktiske mergekonflikter i CI og dokumentasjon.
+Main `959060c898048da5ebd26bfb2cd5cdb68a1c2271` er nå flettet lokalt uten commit.
+Begge DI-/autorisasjonssett, alle testnavn og EV03s modell/snapshot/migrasjoner er
+bevart. Program har bare de to leverte UX17-registreringene i tillegg til EV03.
+Oppdaget samlet inventar er 956 ordinære, 130 SQL Server- og 322 nettlesertilfeller;
+alle EV03s 938/130/315 og UX17s 901/79/319 navn består uten dubletter.
+Låst restore med aktiv audit og tre Release-bygg har 0 advarsler/feil.
+Full ordinær suite passerer 956/956; målrettet oppstart/autorisasjon/modell 118/118,
+og reelle EV02/EV03/UX17 Edge/Kestrel-forløp 15/15 uten feil/hopp.
+EF-kontrollen finner ingen ventende modellendringer og bekrefter begge kronologiske
+målmodeller og snapshot. Up/Down er uendret. CI krever 130 SQL Server og 322 Chromium
+med uendrede tidsgrenser og artefaktvern. Ny publisert kandidat-CI gjenstår.
+Eier har autorisert merge etter grønn CI; den er ennå ikke utført.
+Konfliktoppfølgingen har ingen ny review eller sikkerhetsaudit.
+[EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) beskriver konkrete bevis og
+grenser. Produksjon sender ingen e-post.
 
 Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) er levert i
 [PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), merget som
@@ -200,8 +229,7 @@ filrundturen, tokenvernet, feilbeviset og de eksterne portene. Ingen deploy er u
 
 Atelier UX16 ([#91](https://github.com/depmartin/Budsjettkalender/issues/91)) er levert i
 [PR #129](https://github.com/depmartin/Budsjettkalender/pull/129), merget som
-`ffef7ab2c671a520635bae73fd71b7486eee58cd`, inklusive EV02-integrasjonen.
-Alle ni interne ruter bruker Atelier og uendret ErSbr-policy.
+`ffef7ab2c671a520635bae73fd71b7486eee58cd`. Alle ni interne ruter bruker Atelier og uendret ErSbr-policy.
 Runder, hurtiginnlegging, komplette oppgave-/regelskjemaer, Mine på tvers av runder,
 flere ID-/fritekstansvarlige, fullføring/gjenåpning og alle fem tidfestingstyper består.
 Hvem/når vises i Oslo-tid. Native bekreftelser, feltfeil, trygg lagringsfeil og fokus
@@ -215,23 +243,14 @@ duplikater med veiledning og bevarer data fremfor automatisk sammenslåing/slett
 En eventuell senere produksjonsmigrering krever sikkerhetskopi og duplikatkontroll.
 Regelendring etter synkens siste lesing blir et nytt forslag ved neste forhåndsvisning;
 UI leser forslagene på nytt etter lagring.
-[UX16-akseptansen](acceptance/2026-10-28-atelier-ux16.md) beskriver rød/grønn, konkrete
-prøvegrenser og migrasjonen. Endelig fullverifikasjon etter ansvarligrettingen passerer
-841/841 ordinære tester og 307/307 faktiske Edge/Kestrel-scenarioer, uten feil eller hopp.
-Dette er historiske lokale resultater før EV02-integrasjonen. De tidligere
-804/264/46 og 841/301/63 navnene er bevart; seks nettleserprøver er lagt til.
-Første feilede fullkjøring og fokuserte 7/7 er bevart separat. Alle 88 bilder og to
-tastaturbilder har uendrede hashverdier og eksisterende visuell inspeksjon uten funn.
-Samlet Standards-/Spec-review fant samme P2 om native reload etter bare endret
-ansvar i begge editorer; separat sikkerhetsaudit hadde ingen funn. En callback
-etter bruker-ID, friteksttillegg og fjerning oppdaterer nå forelderens NavigationLock.
-Seks nye faktiske Edge-regresjoner er røde før rettingen og grønne etterpå; de
-prøver beholdte felt ved avvist reload/Escape, uttrykkelig forkasting og lagring.
-Fire nye desktop-/mobilbilder er inspisert uten funn. Oppdatert samlet verifikasjon
-ligger i `TestResults/91-responsible-final/`. Endelig integrert kandidat bestod
-883 ordinære, 312 Chromium- og alle 79 ekte SQL Server-tilfeller i
-[CI 40705737234](https://github.com/depmartin/Budsjettkalender/actions/runs/40705737234)
-etter samlet Standards-/Spec-review og separat sikkerhetsaudit. Ingen deploy er utført.
+[UX16-akseptansen](acceptance/2026-10-28-atelier-ux16.md) beskriver rød/grønn,
+rollevern, databevaring, ulagrerte ansvarsendringer og migrasjonsprøvene.
+Etter integrasjon med levert EV02 er 883 ordinære, 79 ekte SQL Server- og
+312 Chromium-tilfeller grønne i [CI 40705737234](https://github.com/depmartin/Budsjettkalender/actions/runs/40705737234).
+Samlet Standards-/Spec-review og separat sikkerhetsaudit er fullført uten nye funn
+etter retting og etterkontroll av ansvarsendringene. 100 desktop-/mobilbilder er
+inspisert. Historiske prøveantall og bevisgrenser er beholdt i akseptansen.
+Ingen deploy eller eksterne Azure-/Entra-/M365-porter er utført.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -262,7 +281,7 @@ etter samlet Standards-/Spec-review og separat sikkerhetsaudit. Ingen deploy er 
 | [#88](https://github.com/depmartin/Budsjettkalender/issues/88) | Dokumentvalg, reelt uttrekk, arbeidsår/kilde i kø, bevis og aktiv godkjenning til én publisert frist | Merget i [PR #108](https://github.com/depmartin/Budsjettkalender/pull/108), `84765aa`; [akseptanse](acceptance/2026-10-28-atelier-ux13.md) |
 | [#89](https://github.com/depmartin/Budsjettkalender/issues/89) | Atelier-gruppevedlikehold med stabile referanser og rent, serverfiltrert publisert gruppeinnsyn | Merget i [PR #109](https://github.com/depmartin/Budsjettkalender/pull/109), `61834a0`; [akseptanse](acceptance/2026-10-28-atelier-ux14.md) |
 | [#90](https://github.com/depmartin/Budsjettkalender/issues/90) | Reelle Word-/ICS-filer, serverkontrollert utvalg, løpende abonnement og bekreftet full JSON-overføring | Merget i [PR #127](https://github.com/depmartin/Budsjettkalender/pull/127), `31bfddb`; [akseptanse](acceptance/2026-10-28-atelier-ux15.md) |
-| [#91](https://github.com/depmartin/Budsjettkalender/issues/91) | Atelier-internkalender med runder, gjøremål, regler og bekreftet/beskyttet synk | Lokal kandidat; [akseptanse](acceptance/2026-10-28-atelier-ux16.md) |
+| [#91](https://github.com/depmartin/Budsjettkalender/issues/91) | Atelier-internkalender med runder, gjøremål, regler og bekreftet/beskyttet synk | Merget i [PR #129](https://github.com/depmartin/Budsjettkalender/pull/129), `ffef7ab`; [akseptanse](acceptance/2026-10-28-atelier-ux16.md) |
 
 ## Samlet akseptanse
 
@@ -570,7 +589,7 @@ Outlook/M365, OCR eller komplett PDF-kandidatbehandling. Ingen deploy er utført
 Se [UX16-akseptansen](acceptance/2026-10-28-atelier-ux16.md) og
 [utviklingsveiledningen](development.md).
 
-## UX16 etter integrasjon med EV02
+## Historisk UX16-verifikasjon etter integrasjon med EV02
 
 UX16 `05832c2` er flettet med merget EV02/main `1973ac0` fra PR #126.
 Begge kontrakter, kommandoer og e-post-/internmodell er bevart. Siste migrasjonsmål
@@ -593,10 +612,18 @@ De eksterne driftsportene består.
 Ingen EV-utvidelser, PR #128 eller deploy inngår. Se
 [UX16-akseptansen](acceptance/2026-10-28-atelier-ux16.md).
 
+UX16 er senere levert i PR #129 etter samlet etterkontroll og separat audit uten nye
+funn. Alle tre jobber i [CI 40705737234](https://github.com/depmartin/Budsjettkalender/actions/runs/40705737234)
+er grønne på `fd5548f50a793fc8dc245e9b59f68d4f16bb405b`, med 883 ordinære,
+79 ekte SQL Server- og 312 Chromium-tilfeller. Merge `ffef7ab` inngår i main.
+EV03/PR #130 er fortsatt en egen kandidat og krever egne integrasjonsbevis og ny CI.
+
 ## UX17 – administratoroversikt
 
-Atelier UX17 ([#92](https://github.com/depmartin/Budsjettkalender/issues/92)) er en lokal
-kandidat fra merget UX16. Administrator-innstillinger viser bare appkjente administratorer,
+Atelier UX17 ([#92](https://github.com/depmartin/Budsjettkalender/issues/92)) er levert i
+[PR #131](https://github.com/depmartin/Budsjettkalender/pull/131), merget som
+`959060c898048da5ebd26bfb2cd5cdb68a1c2271` fra levert UX16.
+Administrator-innstillinger viser bare appkjente administratorer,
 med Manuelt tildelt / Forvaltes i Entra og Deg fra stabil autentisert identitet.
 Den nye smale lesespørringen endrer ingen brukere; serverkommandoen håndhever
 ErAdministrator ved hvert kall. Ingen Graph, manuell rolleutnevnelse/-fjerning,
@@ -607,9 +634,10 @@ er prøvd i faktisk Kestrel/Blazor. Alle tidligere 883/312/79 testnavn er behold
 visuelle bevis står i [UX17-akseptansen](acceptance/2026-10-28-atelier-ux17.md).
 901/901 ordinære og hele den faktiske Edge/Kestrel-kjøringen på 319/319 passerer
 uten feil/hopp. Alle tre låste restore/Release-bygg har null advarsler/feil med
-aktiv NuGet-audit. 79 SQL-tilfeller er bygget/oppdaget; faktisk SQL Server gjenstår
-i kandidat-CI. 16 tokenfrie sluttbilder på 1440/390 er visuelt inspisert.
-Samlet review, separat audit og kandidat-CI håndteres av root før levering.
+aktiv NuGet-audit. Samlet review og separat audit er fullført. Alle tre jobber i
+[CI 40717209832](https://github.com/depmartin/Budsjettkalender/actions/runs/40717209832)
+er grønne med 901 ordinære, 79 ekte SQL Server- og 319 Chromium-tilfeller.
+16 tokenfrie sluttbilder på 1440/390 er visuelt inspisert. Ingen deploy er utført.
 
 ## Gjenstående grenser
 

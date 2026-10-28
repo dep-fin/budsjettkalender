@@ -1,0 +1,45 @@
+@page "/demo/epostkjoring"
+@attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+@using Aarshjul.Application.Epost
+@using Aarshjul.Web.Demo
+@inject IServiceProvider Tjenester
+@inject IWebHostEnvironment Miljoe
+@inject IConfiguration Konfigurasjon
+
+<PageTitle>Kontrollert dagskjøring</PageTitle>
+<h1>Kontrollert dagskjøring</h1>
+@if (Tillatt)
+{
+    <p>Bare kontrollert testtransport. Tid oppgis i UTC; oppsummeringen følger Europe/Oslo.</p>
+    <label for="eposttid">Kontrollert UTC-tid</label>
+    <input id="eposttid" type="datetime-local" @bind="_tid" />
+    <button @onclick="SettTid">Sett kontrollert tid</button>
+    <label><input type="checkbox" @bind="_utsett" /> Utsett kontrollert transport</label>
+    <button @onclick="Kjor">Kjør daglig oppsummering</button>
+    <p role="status">@_status</p>
+}
+else
+{
+    <p>Kontrollert kjøring er ikke aktivert i dette miljøet.</p>
+}
+
+@code {
+    private DateTime _tid = new(2030, 1, 1, 7, 0, 0);
+    private string? _status;
+    private bool _utsett;
+    private bool Tillatt => (Miljoe.IsEnvironment("Testing") || Miljoe.IsDevelopment() && Konfigurasjon.GetValue<bool>("Demo") || Miljoe.IsEnvironment("Demo"))
+        && Konfigurasjon.GetValue<bool>("DagligEpost:KontrollertKjoring");
+    private void SettTid()
+    {
+        if (!Tillatt) return;
+        Tjenester.GetRequiredService<KontrollertEpostklokke>().Sett(new DateTimeOffset(DateTime.SpecifyKind(_tid, DateTimeKind.Utc)));
+        _status = "Kontrollert tid er satt.";
+    }
+    private async Task Kjor()
+    {
+        if (!Tillatt) return;
+        Tjenester.GetRequiredService<Aarshjul.Infrastructure.Epost.KontrollertOppsummeringspost>().Stanset = _utsett;
+        var resultat = await Tjenester.GetRequiredService<IDagligEpostoppsummering>().KjorAsync();
+        _status = resultat.FoerSendetid ? "Før sendetid." : $"Kjøring fullført. {resultat.Mottakere.Count(x => x.Status == "Bekreftet")} bekreftet.";
+    }
+}

@@ -1,6 +1,7 @@
 using Aarshjul.Domain;
 using Aarshjul.Application.Faser;
 using Aarshjul.Infrastructure.Faser;
+using Aarshjul.Infrastructure.Epost;
 using Microsoft.EntityFrameworkCore;
 
 namespace Aarshjul.Infrastructure;
@@ -10,6 +11,12 @@ namespace Aarshjul.Infrastructure;
 /// </summary>
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
+    private readonly EpostrekkefolgeLagring _epostrekkefolge = new();
+    internal void KoordinerEpostlagring() => _epostrekkefolge.Aktiv = true;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        => optionsBuilder.AddInterceptors(_epostrekkefolge);
+
     public DbSet<Frist> Frister => Set<Frist>();
     public DbSet<FristSynlighet> FristSynlighet => Set<FristSynlighet>();
     public DbSet<Synlighetsgruppe> Synlighetsgrupper => Set<Synlighetsgruppe>();
@@ -23,6 +30,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<InnhentingsStatus> InnhentingsStatuser => Set<InnhentingsStatus>();
     public DbSet<Kalenderabonnement> Kalenderabonnementer => Set<Kalenderabonnement>();
     public DbSet<Epostabonnement> Epostabonnementer => Set<Epostabonnement>();
+    public DbSet<NyFristHendelse> NyFristHendelser => Set<NyFristHendelse>();
+    public DbSet<Epostoppsummering> Epostoppsummeringer => Set<Epostoppsummering>();
+    public DbSet<Oppsummeringshendelse> Oppsummeringshendelser => Set<Oppsummeringshendelse>();
     internal DbSet<FasemalRad> Fasemaler => Set<FasemalRad>();
 
     // --- Internkalender for SBR (SBR-intern arbeidsliste) ---
@@ -35,6 +45,41 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<Epostrekkefolge>(e =>
+        {
+            e.ToTable("Epostrekkefolge", t => t.HasCheckConstraint("CK_Epostrekkefolge_EnRad", "[Id] = 1"));
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.HasData(new Epostrekkefolge { Id = 1, Verdi = 0 });
+        });
+        b.Entity<Epostaktivering>(e =>
+        {
+            e.ToTable("Epostaktiveringer");
+            e.HasKey(x => x.BrukerId);
+            e.Property(x => x.BrukerId).HasMaxLength(128);
+        });
+        b.Entity<NyFristHendelse>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.FristId).IsUnique();
+            e.HasIndex(x => x.Publiseringssekvens);
+            // Ingen FK til frist: import/sletting skal ikke slette hendelseshistorikken.
+        });
+        b.Entity<Epostoppsummering>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.BrukerId).HasMaxLength(128);
+            e.Property(x => x.Status).HasMaxLength(32).IsConcurrencyToken();
+            e.Property(x => x.Utsettelsesgrunn).HasMaxLength(64);
+            e.Property(x => x.Versjon).IsConcurrencyToken();
+            e.HasIndex(x => new { x.BrukerId, x.LokalDato }).IsUnique();
+        });
+        b.Entity<Oppsummeringshendelse>(e =>
+        {
+            e.HasKey(x => new { x.OppsummeringId, x.HendelseId });
+            e.HasOne(x => x.Oppsummering).WithMany(x => x.Hendelser)
+                .HasForeignKey(x => x.OppsummeringId).OnDelete(DeleteBehavior.Restrict);
+        });
         b.Entity<Epostabonnement>(e =>
         {
             e.HasKey(x => x.BrukerId);

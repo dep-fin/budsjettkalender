@@ -88,6 +88,7 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
         rad.Aktivert = naa;
         rad.Endret = naa;
         FjernBekreftelse(rad);
+        db.KoordinerEpostlagring();
         await LagreAsync(db, rad, ct);
         return TilDto(rad);
     }

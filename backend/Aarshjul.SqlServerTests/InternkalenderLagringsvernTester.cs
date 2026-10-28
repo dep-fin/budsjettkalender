@@ -26,7 +26,12 @@ public sealed class InternkalenderLagringsvernTester : InternkalenderSynkKontrak
         var post = new KontrollertBekreftelsespost();
         var epost = new EpostabonnementTjeneste(database.Fabrikk(), TimeProvider.System, post);
         await epost.MeldPaaAsync("aktiv-foer-ux16", "aktiv@fin.dep.no", true);
-        await epost.BekreftAsync("aktiv-foer-ux16", post.Hent("aktiv-foer-ux16")!.Token);
+        // Autentisk aktiv EV02-rad før EV03s koordinasjonstabeller finnes.
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            var naa = DateTimeOffset.UtcNow;
+            await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE Epostabonnementer SET Status = 'Aktiv', Aktivert = {naa}, Endret = {naa}, BekreftelsesHash = NULL, BekreftelseUtloeper = NULL WHERE BrukerId = 'aktiv-foer-ux16'");
+        }
         var aktivFoer = await epost.HentAsync("aktiv-foer-ux16");
         var venterFoer = await epost.MeldPaaAsync("venter-foer-ux16", "venter@fin.dep.no", true);
         IInternkalender kal = new InternkalenderTjeneste(database.Fabrikk(), TimeProvider.System);
@@ -56,7 +61,8 @@ public sealed class InternkalenderLagringsvernTester : InternkalenderSynkKontrak
         await using (var db = database.Fabrikk().CreateDbContext())
         {
             var anvendte = (await db.Database.GetAppliedMigrationsAsync()).ToArray();
-            Assert.Equal(new[] { "20261028083448_Epostabonnement", "20261028112544_UnikeInternrunder" }, anvendte.TakeLast(2));
+            Assert.Equal(new[] { "20261028083448_Epostabonnement", "20261028112544_UnikeInternrunder",
+                "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering" }, anvendte.TakeLast(4));
         }
     }
 
