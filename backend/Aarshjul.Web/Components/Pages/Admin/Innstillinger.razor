@@ -6,6 +6,47 @@
 <h1>Administrator-innstillinger</h1>
 <p class="ingress">Felles innstillinger og forvaltning av kalenderens lagrede data.</p>
 
+<section class="innstillingskort administratoroversikt" aria-labelledby="administratorer-tittel" aria-busy="@(_laster ? "true" : "false")">
+    <div class="oversiktstopp">
+        <h2 id="administratorer-tittel">Administratorer</h2>
+        <button type="button" class="knapp sekundar" disabled="@_laster" @onclick="LastAsync">Oppdater oversikt</button>
+    </div>
+    <p>Personer med administratortilgang som er kjent i Budsjettkalender.
+        Entra-tilgang oppdateres ved brukerens innlogging. Dette er ingen fullstendig oversikt over Entra-katalogen.</p>
+    @if (_laster)
+    {
+        <p role="status">Laster administratorer …</p>
+    }
+    else if (_feil is not null)
+    {
+        <p class="melding feil" role="alert">@_feil</p>
+    }
+    else if (_administratorer.Count == 0)
+    {
+        <p role="status">Ingen administratorer er registrert i appen. Oppdater oversikten for å prøve igjen.</p>
+    }
+    else
+    {
+        <p class="antall" role="status">@_administratorer.Count @(_administratorer.Count == 1 ? "administrator" : "administratorer")</p>
+        <ul class="administratorliste">
+            @foreach (var administrator in _administratorer)
+            {
+                <li>
+                    <div class="administratornavn">
+                        <strong>@administrator.Navn</strong>
+                        @if (administrator.ErDeg)
+                        {
+                            <span class="egenbruker">Deg</span>
+                        }
+                    </div>
+                    <span class="tilgangskilde">@(administrator.AdminViaEntra ? "Forvaltes i Entra" : "Manuelt tildelt")</span>
+                </li>
+            }
+        </ul>
+    }
+    <p class="forvaltningshjelp">Oversikten er skrivebeskyttet. Manuell utnevnelse og fjerning av administratorer er ikke tilgjengelig her.</p>
+</section>
+
 <section class="innstillingskort">
     <h2>Faseinndeling</h2>
     <p>Vedlikehold navn og månedsgrenser for budsjettløpets fem faser.

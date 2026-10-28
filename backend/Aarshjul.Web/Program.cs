@@ -138,6 +138,8 @@ public partial class Program
         builder.Services.AddSingleton<IDatouttrekk, HeuristiskDatouttrekk>();
         builder.Services.AddScoped<IDokumentopplasting, OpplastingsTjeneste>();
         builder.Services.AddScoped<IBrukeroppslag, BrukeroppslagTjeneste>();
+        builder.Services.AddScoped<IAdministratoroversikt, AdministratoroversiktTjeneste>();
+        builder.Services.AddScoped<AdministratoroversiktKommando>();
         builder.Services.AddScoped<ISynlighetskontekst, HttpSynlighetskontekst>();
         builder.Services.AddScoped<IClaimsTransformation, BrukerClaimsTransformation>();
         builder.Services.AddScoped<Synlighetskontekstkilde>();
