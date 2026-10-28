@@ -249,11 +249,19 @@ public class RegelvalideringTester : IDisposable
             Regeltype = type, Regelparametre = json!
         };
 
-        var resultat = await utveksling.ImporterAsync(new MalDatabase { Regler = [ugyldig, gyldig] });
+        var fil = new MalDatabase { Regler = [ugyldig, gyldig] };
+        var foer = (await utveksling.EksporterAsync()).Regler;
+        var preview = await utveksling.ForhaandsvisAsync(fil);
+        Assert.Equal(1, preview.EksisterendeAntall);
+        Assert.Equal(gyldig, Assert.Single(preview.GyldigeRegler));
+        Assert.Equal(ugyldig, Assert.Single(preview.UtelatteRegler).Regel);
+        Assert.Equal(foer, (await utveksling.EksporterAsync()).Regler);
+        var resultat = await utveksling.ImporterAsync(fil);
 
         Assert.Equal(1, resultat.AntallImportert);
         Assert.Equal(1, resultat.AntallErstattet);
         Assert.Contains("Ugyldig regel", Assert.Single(resultat.Advarsler));
+        Assert.Equal(preview.UtelatteRegler.Select(r => r.Begrunnelse), resultat.Advarsler);
         Assert.Equal(gyldig, Assert.Single((await utveksling.EksporterAsync()).Regler));
     }
 
@@ -301,6 +309,8 @@ public class RegelvalideringTester : IDisposable
             _ => foer with { Regler = [foer.Regler[0], foer.Regler[0]] }
         };
 
+        await Assert.ThrowsAsync<Valideringsfeil>(() => utveksling.ForhaandsvisAsync(database));
+        Assert.Equal(foer.Regler, (await utveksling.EksporterAsync()).Regler);
         await Assert.ThrowsAsync<Valideringsfeil>(() => utveksling.ImporterAsync(database));
 
         Assert.Equal(foer.Regler, (await utveksling.EksporterAsync()).Regler);
@@ -346,6 +356,8 @@ public class RegelvalideringTester : IDisposable
             {"regler":[{"loep":"eldre","regeltype":"FastDato","regelparametre":"{\"maaned\":3,\"dag\":20}"}]}
             """, Aarshjul.Web.Api.FristEndepunkter.DatabaseJson)!;
 
+        var preview = await Datautveksling.ForhaandsvisAsync(database);
+        Assert.Equal("", Assert.Single(preview.GyldigeRegler).Tittel);
         var resultat = await Datautveksling.ImporterAsync(database);
 
         Assert.Equal(1, resultat.AntallImportert);
