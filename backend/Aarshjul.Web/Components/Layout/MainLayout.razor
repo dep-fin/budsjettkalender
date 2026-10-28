@@ -43,6 +43,7 @@
             <AuthorizeView>
                 <Authorized>
                     <span class="brukernavn">@context.User.Identity?.Name</span>
+                    <NavLink href="/epostvarsling">E-postvarsling</NavLink>
                     <a href="@LoggUtUrl" data-enhance-nav="false">Logg ut</a>
                 </Authorized>
                 <NotAuthorized>

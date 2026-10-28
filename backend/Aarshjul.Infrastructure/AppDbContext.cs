@@ -22,6 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Varsel> Varsler => Set<Varsel>();
     public DbSet<InnhentingsStatus> InnhentingsStatuser => Set<InnhentingsStatus>();
     public DbSet<Kalenderabonnement> Kalenderabonnementer => Set<Kalenderabonnement>();
+    public DbSet<Epostabonnement> Epostabonnementer => Set<Epostabonnement>();
     internal DbSet<FasemalRad> Fasemaler => Set<FasemalRad>();
 
     // --- Internkalender for SBR (SBR-intern arbeidsliste) ---
@@ -34,6 +35,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<Epostabonnement>(e =>
+        {
+            e.HasKey(x => x.BrukerId);
+            e.Property(x => x.BrukerId).HasMaxLength(128);
+            e.Property(x => x.Adresse).HasMaxLength(254);
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.BekreftelsesHash).HasMaxLength(64);
+            e.Property(x => x.Versjon).IsConcurrencyToken();
+        });
         b.Entity<FasemalRad>(e =>
         {
             e.ToTable("Fasemaler", t => t.HasCheckConstraint("CK_Fasemaler_EnFellesMal", "[Id] = 1"));

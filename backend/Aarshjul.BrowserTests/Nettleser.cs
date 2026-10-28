@@ -219,5 +219,9 @@ internal sealed class Nettleser
     public void BekreftIngenKretsfeil() => Assert.True(_feil.IsEmpty, string.Join("; ", _feil.Distinct()));
 
     private static string RedigerHemmelighet(string tekst)
-        => System.Text.RegularExpressions.Regex.Replace(tekst, @"/kalender/feed/[^\s'""<>]+", "/kalender/feed/[skjult]");
+    {
+        tekst = System.Text.RegularExpressions.Regex.Replace(tekst, @"/kalender/feed/[^\s'""<>]+", "/kalender/feed/[skjult]");
+        tekst = System.Text.RegularExpressions.Regex.Replace(tekst, @"/epostvarsling/bekreft[^\s'""<>]*", "/epostvarsling/bekreft[skjult]");
+        return System.Text.RegularExpressions.Regex.Replace(tekst, @"\b[0-9A-Fa-f]{64}\b", "[skjult bekreftelse]");
+    }
 }

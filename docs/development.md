@@ -23,10 +23,39 @@ seedet felles mal. Eksisterende demofiler må derfor sikkerhetskopieres/gjenskap
 bruk av denne modellen; bevar andre kjørende demoers filer. Produksjon bruker den additive
 EF-migrasjonen FellesFasemal. Migrate/Startdata overskriver ikke en redigert fasemal.
 
+EV02 legger i tillegg til `Epostabonnementer`. Bevar tidligere SQLite-filer før en ny
+demodatabase opprettes; `EnsureCreated` oppgraderer fortsatt ikke gamle filer.
+Produksjonsmigrasjonen `20261028083448_Epostabonnement` er additiv og oppretter ingen
+abonnementer for eksisterende brukere. [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md)
+skiller SQLite-operasjonsprøven fra den reelle SQL Server-migrasjonsporten.
+
+## Kontrollert e-postpåmelding (EV02)
+
+Start en ny, disponibel demo med vanlig demoprofil. Logg inn som valgfri persona og
+åpne E-postvarsling ved brukernavnet. Registrer en syntetisk egen adresse på et
+`.dep.no`-domene og bekreft standardvalgene. Åpne deretter «kontrollert testmottaker»
+fra den ventende påmeldingen, følg lenken og bekreft som samme innloggede persona.
+Påmeldingen er varig og kan meldes av i samme flate. Ingen ekstern e-post sendes.
+
+Den kontrollerte mottakeren lagrer siste bekreftelsesmelding per bruker bare i minnet.
+Etter omstart bevares påmelding og engangsbekreftelse i databasen, men selve meldingen
+må allerede være hentet eller bestilles på nytt. Nyutsending krever ett minutts pause
+og tillater høyst fem meldinger per bruker i et fast timevindu fra første utsending.
+Lenken varer 15 minutter. Fem mislykkede forsøk sperrer den gjeldende lenken; en ny
+lenke erstatter den gamle. Avmelding fjerner muligheten til å aktivere med gammel lenke.
+
+Hemmeligheten ligger i URL-fragmentet og fjernes fra nettleserhistorikken før
+bekreftelse. Bare SHA-256-avtrykket lagres i databasen. Ikke kopier meldinger, lenker,
+databaser eller rå nettleserspor til logger eller CI-artefakter. Testene holder lenker
+i minnet og erstatter også oppryddingsfeil med trygge meldinger før TRX. Den lokale
+testmottakeren kan bare vises i demo for samme innloggede bruker. I produksjon er
+bekreftelsestransporten utilgjengelig; EV02 setter ingen e-posttjeneste i drift.
+
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 264 scenarioer bruker disponible Kestrel-verter.
+eksisterende app eller database: 269 scenarioer bruker disponible Kestrel-verter,
+inklusive de fem fra EV02.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
 Kestrel, SQLite i minnet og testautentisering.
@@ -71,11 +100,18 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 264 beståtte scenarioer uten hopp.
-Jobbens samlede tidsbudsjett er 20 minutter som et avgrenset forsøk etter at første
-UX15-kandidat-CI ble avbrutt ved 15 minutter uten fullført testantall eller TRX.
-Ingen forventningstimeout eller kontroll av manglende TRX er endret. Ny kandidat-CI
-må vise om budsjettet er tilstrekkelig; et nytt tidsavbrudd krever ny diagnose før ytterligere økning.
+installerer systemavhengigheter og krever nøyaktig 269 beståtte scenarioer uten hopp.
+Den samlede EV02/UX15-kandidaten beholder EV02-grenens jobbgrense på 45 minutter.
+Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
+EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
+De lokale tidene begrunner rom for testene og oppsettet, men måler ikke Chromium.
+Ren EV02-CI [40673623216](https://github.com/depmartin/Budsjettkalender/actions/runs/40673623216)
+fullførte senere 226 Chromium-scenarioer: teststeget tok 11:57 og jobben 13:08.
+Den målingen dekker ikke de 269 integrerte tilfellene. UX15s tidligere
+20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
+ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
+Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
+Ny kandidat-CI må fullføre alle 269; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -89,7 +125,8 @@ og [UX09-prøvene](acceptance/2026-10-27-atelier-ux09.md), samt
 [UX10-prøvene](acceptance/2026-10-27-atelier-ux10.md), [UX11-prøvene](acceptance/2026-10-27-atelier-ux11.md)
 og [UX12-prøvene](acceptance/2026-10-28-atelier-ux12.md), samt
 [UX13-prøvene](acceptance/2026-10-28-atelier-ux13.md), [UX14-prøvene](acceptance/2026-10-28-atelier-ux14.md)
-og [UX15-prøvene](acceptance/2026-10-28-atelier-ux15.md) for faktisk prøvd scope og eksterne grenser.
+og [UX15-prøvene](acceptance/2026-10-28-atelier-ux15.md), samt
+[EV02-prøvene](acceptance/2026-10-28-epost-ev02.md) for faktisk prøvd scope og eksterne grenser.
 
 ## Obligatorisk SQL Server-kontroll i CI
 
@@ -115,6 +152,12 @@ En ny operasjon på samme tjeneste lykkes etter at feilen er fjernet. Generert
 månedsgodkjenning prøver aktivt POL-valg, serveravvisning av ugyldige grupper,
 én publisert identitet gjennom leseporten og avvisning av en slettet gammel forslag-ID.
 
+EV02 legger til 15 delte e-postabonnementstilfeller og én oppgradering fra FellesFasemal
+med bevart frist-/forslags-/kilde-/synlighetsinnhold. Eierskap, eksplisitte standarder,
+varig starttidspunkt, utløp, engangsbruk, forsøkstak, nyutsending og to samtidige
+instanser prøves gjennom `IEpostabonnement`, også avmelding/aktivering mens transporten
+fullfører en overlevering. Prosjektet har dermed 62 tilfeller.
+
 Prosjektet ligger bevisst utenfor `backend/Aarshjul.slnx`. De ordinære lokale kommandoene
 krever derfor verken SQL Server eller Docker. SQL-testene krever en disponibel testinstans
 med rettighet til å opprette og slette databaser. Oppgi tilkobling til `master`, aldri en
@@ -136,7 +179,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 46 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 62 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

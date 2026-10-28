@@ -5,6 +5,23 @@ gjenstående grenser. GitHub-lenkene er kilden for oppgavenes og PR-enes livslø
 [Gjennomgangen fra 20. oktober](reviews/2026-10-20.md) er et datert utgangspunkt,
 ikke en liste over dagens urettede kodefeil.
 
+E-postvarsling EV02 ([#112](https://github.com/depmartin/Budsjettkalender/issues/112)) er
+implementert som leveransekandidat med egen påmelding for alle tre funksjonsroller,
+servervalidert `.dep.no`-adresse, kontrollert testmottaker, engangsbekreftelse, varig
+aktivering og avmelding. Standardutvalget Nye frister, Alle budsjettår og Alle kategorier
+lagres uttrykkelig. Ingen eksisterende bruker meldes automatisk på. Produksjonstransport,
+fristoppsummering, adressebytte, utvidede valg og administratoroversikt tilhører senere
+EV-tickets under [#110](https://github.com/depmartin/Budsjettkalender/issues/110).
+Ren EV02-kandidat `a6d3f2a` bestod [CI 40673623216](https://github.com/depmartin/Budsjettkalender/actions/runs/40673623216)
+med 823 ordinære, 62 ekte SQL Server- og 226 Chromium-tilfeller uten hopp.
+Dette endrer ikke den historiske lokale fullportens 224/226 og to grønne isolerte
+etterprøver. Kandidaten integrerer nå merget UX15 fra main `31bfddb`, med 845 beståtte
+ordinære tester og oppdaget samlet inventar på 269 nettleser- og 62 SQL Server-tilfeller.
+De tidligere 823/226/62 navnene er bevart; alle UX15-testklasser er beholdt.
+Målrettet Edge/Kestrel bestod 49/49 EV02-/UX15-forløp uten feil/hopp.
+Ny samlet Chromium-/SQL Server-CI kreves på integrasjonens publiserte head.
+[EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md) inneholder de konkrete bevisene.
+
 Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) er levert i
 [PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), merget som
 `c1f250ea4e6ddbf05075059e0d1fc47f582d805b`, med felles skall, rollebasert hovedmeny, seks virksomme
@@ -168,8 +185,9 @@ sikkerhetsaudit hadde ingen funn. Fokusert etterkontroll av Spec-rettingen hadde
 åpne funn; [CI 40651897387](https://github.com/depmartin/Budsjettkalender/actions/runs/40651897387)
 passerte ordinære tester, alle 46 ekte SQL Server-prøver og 221 Chromium-scenarioer.
 
-Atelier UX15 ([#90](https://github.com/depmartin/Budsjettkalender/issues/90)) har en lokal
-kandidat med Atelier-flater for faktiske Word-/ICS-filer, løpende abonnement og full
+Atelier UX15 ([#90](https://github.com/depmartin/Budsjettkalender/issues/90)) er levert i
+[PR #127](https://github.com/depmartin/Budsjettkalender/pull/127), merget som
+`31bfddbe38feb6088f907d38f2a28357b856e320`, med Atelier-flater for faktiske Word-/ICS-filer, løpende abonnement og full
 JSON-overføring. Eksportkontrollen deler serverfiltrert gruppe-/periodeutvalg med de
 bevarte filendepunktene. Fristimport viser den faktiske filas fulle kandidat, ukjente
 grupper og erstatt-alt-konsekvens før native bekreftelse; Avbryt og atomisk lagringsfeil
@@ -192,11 +210,11 @@ CI-antallet er 264. Faktisk kandidat-CI `40672069748` bestod **804/804 ordinære
 uten rapportert assertfeil, fullført testantall eller TRX. Teststeget hadde da kjørt i
 14 minutter og 4 sekunder. Det er fortsatt uavklart om årsaken er samlet kjøretid
 eller en hengende test.
-Nettleserjobbens tidsbudsjett økes til **20 minutter** som et avgrenset forsøk med alle
-testkrav og forventningstimeouter bevart. Ny kandidat-CI må bekrefte tilstrekkelig budsjett
-og full Chromium-akseptanse; ny timeout krever ny diagnose før ytterligere økning.
-Sluttvurdering og eventuell merge håndteres av root. #42/#43/#48/#55 består som egne
-eksterne porter, og ingen deploy er utført.
+UX15 økte deretter nettleserjobbens tidsbudsjett til **20 minutter** som et avgrenset
+forsøk med alle testkrav og forventningstimeouter bevart. Dette er den leverte UX15s
+historikk. EV02-integrasjonen ovenfor beholder sin tidligere 45-minuttersgrense og
+krever det samlede inventaret på 269; se [utviklingsveiledningen](development.md).
+#42/#43/#48/#55 består som egne eksterne porter, og ingen deploy er utført.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -226,7 +244,7 @@ eksterne porter, og ingen deploy er utført.
 | [#87](https://github.com/depmartin/Budsjettkalender/issues/87) | Hel maleksport, sideeffektfri importpreview, kompatibilitet, eksplisitt erstatning/tømming og atomisk gjenoppretting | Merget i [PR #107](https://github.com/depmartin/Budsjettkalender/pull/107), `092b22b`; [akseptanse](acceptance/2026-10-28-atelier-ux12.md) |
 | [#88](https://github.com/depmartin/Budsjettkalender/issues/88) | Dokumentvalg, reelt uttrekk, arbeidsår/kilde i kø, bevis og aktiv godkjenning til én publisert frist | Merget i [PR #108](https://github.com/depmartin/Budsjettkalender/pull/108), `84765aa`; [akseptanse](acceptance/2026-10-28-atelier-ux13.md) |
 | [#89](https://github.com/depmartin/Budsjettkalender/issues/89) | Atelier-gruppevedlikehold med stabile referanser og rent, serverfiltrert publisert gruppeinnsyn | Merget i [PR #109](https://github.com/depmartin/Budsjettkalender/pull/109), `61834a0`; [akseptanse](acceptance/2026-10-28-atelier-ux14.md) |
-| [#90](https://github.com/depmartin/Budsjettkalender/issues/90) | Reelle Word-/ICS-filer, serverkontrollert utvalg, løpende abonnement og bekreftet full JSON-overføring | Lokal kandidat; [akseptanse](acceptance/2026-10-28-atelier-ux15.md) |
+| [#90](https://github.com/depmartin/Budsjettkalender/issues/90) | Reelle Word-/ICS-filer, serverkontrollert utvalg, løpende abonnement og bekreftet full JSON-overføring | Merget i [PR #127](https://github.com/depmartin/Budsjettkalender/pull/127), `31bfddb`; [akseptanse](acceptance/2026-10-28-atelier-ux15.md) |
 
 ## Samlet akseptanse
 

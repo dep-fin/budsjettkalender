@@ -1,0 +1,44 @@
+@page "/epostvarsling/bekreft"
+@attribute [Authorize]
+@using Aarshjul.Application.Epost
+@inject EpostabonnementKommando Kommando
+@inject IJSRuntime JS
+
+<PageTitle>Bekreft jobbadresse</PageTitle>
+<h1>Bekreft jobbadresse</h1>
+<p>Bekreft bare når du selv har bedt om denne meldingen. Du må være innlogget som brukeren som startet påmeldingen.</p>
+@if (_feil is not null) { <p class="feil" role="alert">@_feil</p> }
+@if (_melding is not null) { <p class="melding" role="status">@_melding</p> }
+@if (_melding is null)
+{
+    <button class="knapp primaer" @onclick="Bekreft" disabled="@(!_interaktiv || _arbeider || string.IsNullOrEmpty(_token))">Bekreft min jobbadresse</button>
+}
+<p><a href="/epostvarsling">Til e-postvarsling</a></p>
+
+@code {
+    private string? _token, _feil, _melding;
+    private bool _interaktiv, _arbeider;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            var modul = await JS.InvokeAsync<IJSObjectReference>("import", "./epostbekreftelse.js");
+            await using (modul) { _token = await modul.InvokeAsync<string>("hentOgFjern"); }
+            if (string.IsNullOrEmpty(_token)) _feil = "Bekreftelseslenken mangler. Åpne lenken i bekreftelsesmeldingen eller be om en ny.";
+        }
+        catch (Exception) { _feil = "Bekreftelseslenken kunne ikke åpnes. Prøv igjen fra meldingen."; }
+        _interaktiv = true;
+        StateHasChanged();
+    }
+    private async Task Bekreft()
+    {
+        if (_arbeider || string.IsNullOrEmpty(_token)) return;
+        _arbeider = true; _feil = null;
+        try { await Kommando.BekreftAsync(_token); _token = null; _melding = "Jobbadressen er bekreftet. Abonnementet er aktivt."; }
+        catch (Aarshjul.Application.Valideringsfeil feil) { _feil = feil.Message; }
+        catch (EpostabonnementKonflikt feil) { _feil = feil.Message; }
+        catch (Exception) { _feil = "Bekreftelsen kunne ikke behandles. Gå til e-postvarsling og kontroller status."; }
+        finally { _arbeider = false; }
+    }
+}

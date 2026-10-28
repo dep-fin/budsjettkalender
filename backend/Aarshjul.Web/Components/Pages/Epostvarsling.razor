@@ -1,0 +1,93 @@
+@page "/epostvarsling"
+@attribute [Authorize]
+@using Aarshjul.Application.Epost
+@inject EpostabonnementKommando Kommando
+@inject IBekreftelsespost Post
+@inject IConfiguration Konfigurasjon
+@inject IWebHostEnvironment Miljoe
+
+<PageTitle>E-postvarsling</PageTitle>
+<h1>E-postvarsling</h1>
+<p>Registrer og bekreft din egen jobbadresse for å melde deg på.</p>
+<p>Påmeldingen lagres med Nye frister, Alle budsjettår og Alle kategorier. Daglige fristoppsummeringer kommer i en senere leveranse.</p>
+@if (_feil is not null) { <p class="feil" role="alert">@_feil</p> }
+@if (_melding is not null) { <p class="melding" role="status">@_melding</p> }
+@if (_status is null)
+{
+    <p class="melding">Laster …</p>
+    @if (_feil is not null) { <button class="knapp" @onclick="Last" disabled="@_arbeider">Prøv igjen</button> }
+}
+else
+{
+    <section class="epoststatus" aria-label="Abonnementsstatus">
+        <p><strong>Status: @Statusnavn</strong></p>
+        @if (_status.Adresse is not null) { <p>Jobbadresse: @_status.Adresse</p> }
+        @if (_status.Status == "Aktiv") { <p>Aktivert: @_status.Aktivert?.ToString("dd.MM.yyyy HH:mm 'UTC'")</p> }
+    </section>
+    @if (!Post.Tilgjengelig)
+    {
+        <p class="melding">Adressebekreftelse er ikke satt i drift. Påmelding er foreløpig bare tilgjengelig med kontrollert testmottaker i demo.</p>
+    }
+    else if (_status.Status is "IkkePaameldt" or "Avmeldt")
+    {
+        <form class="skjema" aria-label="Påmelding til e-postvarsling" @onsubmit="MeldPaa" @onsubmit:preventDefault="true" novalidate>
+            <fieldset disabled="@_arbeider">
+                <legend>Påmelding med standardvalg</legend>
+                <label for="jobbadresse">Egen jobbadresse</label>
+                <input id="jobbadresse" type="email" autocomplete="email" maxlength="254" @bind="_adresse" @bind:event="oninput" aria-describedby="adressehjelp" />
+                <p id="adressehjelp">Bruk én adresse på et departementsdomene, for eksempel navn@fin.dep.no.</p>
+                <label><input type="checkbox" @bind="_godtar" /> Jeg bekrefter at dette er min egen jobbadresse og velger Nye frister, Alle budsjettår og Alle kategorier.</label>
+                <button class="knapp primaer" type="submit">@(_arbeider ? "Sender …" : "Meld meg på")</button>
+            </fieldset>
+        </form>
+    }
+    else if (_status.Status == "VenterPaaBekreftelse")
+    {
+        <p>Åpne bekreftelsesmeldingen og bekreft adressen mens du er innlogget som samme bruker. Lenken varer i 15 minutter og kan brukes én gang.</p>
+        <p>Ny bekreftelse kan bestilles etter ett minutt, høyst fem ganger per time. En ny lenke erstatter den gamle.</p>
+        <button class="knapp" @onclick="SendNy" disabled="@_arbeider">Send ny bekreftelseslenke</button>
+    }
+    @if (_status.Status is "Aktiv" or "VenterPaaBekreftelse")
+    {
+        <button class="knapp" @onclick="MeldAv" disabled="@_arbeider">Meld meg av</button>
+    }
+    @if (ErDemo && _status.Status == "VenterPaaBekreftelse")
+    {
+        <p class="melding">Demo sender bare til en kontrollert testmottaker i denne appen. Ingen ekstern e-post sendes.</p>
+        <p><a href="/demo/epostmottaker" data-enhance-nav="false">Åpne kontrollert testmottaker</a></p>
+    }
+}
+
+@code {
+    private EpostabonnementDto? _status;
+    private string _adresse = "";
+    private bool _godtar, _arbeider;
+    private string? _feil, _melding;
+    private bool ErDemo => Miljoe.IsDevelopment() && Konfigurasjon.GetValue<bool>("Demo") || Miljoe.IsEnvironment("Demo");
+    private string Statusnavn => _status?.Status switch { "Aktiv" => "Aktiv", "Avmeldt" => "Avmeldt", "VenterPaaBekreftelse" => "Venter på bekreftelse", _ => "Ikke påmeldt" };
+    protected override Task OnInitializedAsync() => Last();
+    private Task Last() => Kjor(() => Kommando.HentAsync());
+    private Task MeldPaa() => Kjor(() => Kommando.MeldPaaAsync(_adresse, _godtar), status => status.Status switch
+    {
+        "Aktiv" => "Abonnementet er allerede aktivt.",
+        "Avmeldt" => "Abonnementet er avmeldt.",
+        _ => "Påmeldingen venter på bekreftelse av jobbadressen."
+    });
+    private Task SendNy() => Kjor(() => Kommando.SendNyAsync(), _ => "En ny bekreftelsesmelding er overlevert.");
+    private Task MeldAv() => Kjor(() => Kommando.MeldAvAsync(), _ => "Du er avmeldt. Ingen nye fristvarsler vil bli sendt.");
+    private async Task Kjor(Func<Task<EpostabonnementDto>> handling, Func<EpostabonnementDto, string>? melding = null)
+    {
+        if (_arbeider) return;
+        _arbeider = true; _feil = null; _melding = null;
+        try { _status = await handling(); _adresse = _status.Adresse ?? _adresse; _melding = melding?.Invoke(_status); }
+        catch (Aarshjul.Application.Valideringsfeil feil) { _feil = feil.Message; await OppdaterStatusEtterFeil(); }
+        catch (EpostabonnementKonflikt feil) { _feil = feil.Message; await OppdaterStatusEtterFeil(); }
+        catch (Exception) { _feil = "Abonnementet kunne ikke behandles. Last inn siden og prøv igjen."; }
+        finally { _arbeider = false; }
+    }
+    private async Task OppdaterStatusEtterFeil()
+    {
+        try { _status = await Kommando.HentAsync(); }
+        catch (Exception) { _feil += " Status kunne ikke hentes. Last inn siden på nytt."; }
+    }
+}

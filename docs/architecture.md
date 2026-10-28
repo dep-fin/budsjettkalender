@@ -21,6 +21,15 @@ Mal → genererte forslag → egen gjennomgang → frist.
 Lesing → synlighetsfilter i SQL → DTO → HTTP/Blazor/eksport.
 Internkalenderens gjøremål behandles separat bak `ErSbr`.
 
+E-postpåmelding → kontrollert adressebekreftelse → egen aktiv status → avmelding går
+gjennom `IEpostabonnement`. Web henter stabil brukeridentitet fra innlogging ved hvert
+HTTP-/Blazor-kall; ingen operasjon tar en mottatt identitet som eier fra skjemaet.
+Infrastructure lagrer ett abonnement per identitet med versjonskontroll og skjuler
+bekreftelsestransporten bak `IBekreftelsespost`. Bare demo/Testing registrerer den
+kontrollerte mottakeren. Produksjon registrerer en utilgjengelig transport og kan ikke
+opprette påmelding. Ingen fristdata eller oppsummeringsjobb er koblet til denne grensen.
+Se [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md).
+
 HTTP-policyer og Blazor-sideautorisasjon er tilgangsgrensen for skrivetjenestene.
 Tjenestegrensesnittene i seg selv er ikke en ekstra autorisasjonsgrense.
 Ved nye innganger må policyene håndheves og testes der.

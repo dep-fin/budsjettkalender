@@ -128,7 +128,7 @@ public class TestAuthHandler(
 
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, "test-bruker"),
+            new(ClaimTypes.NameIdentifier, Request.Headers["X-Test-Bruker"].FirstOrDefault() ?? "test-bruker"),
             new(Brukerclaims.Rolle, rolle.ToString())
         };
 
