@@ -15,7 +15,7 @@ Atelier UX01–UX17 / #76–#92 er levert og merget. UX17/PR #131 ble levert som
 chat som daværende main `93b1aea3f0953535e3144d22b36991e88ead7852`,
 28. oktober 2026 kl. 17.33.10 +01:00. Denne mergede hovedgrenen er nødvendig
 integrert i UX18 før samlet review. [UX18s leveranseregister](acceptance/2026-10-28-atelier-ux18.md#leveranseregister)
-bevarer de enkelte leveransenes historiske PR-/CI-bevis. Nytt EV-arbeid er ikke bestilt.
+bevarer de enkelte leveransenes historiske PR-/CI-bevis. Senere EV-arbeid har egne autoriserte undertickets.
 
 EV03 ([#113](https://github.com/depmartin/Budsjettkalender/issues/113)) er levert i
 [PR #130](https://github.com/depmartin/Budsjettkalender/pull/130), bekreftet merget som
@@ -30,6 +30,7 @@ EV04 ([#114](https://github.com/depmartin/Budsjettkalender/issues/114)) er deret
 merget i [PR #133](https://github.com/depmartin/Budsjettkalender/pull/133) som faktisk
 main `926ffe74e62999714f6e711327636ecce2070317` 28. oktober 2026 kl. 20.24.08 +01:00.
 Denne mergede hovedgrenen er nødvendig integrert i UX18 etter mergekonflikt.
+EV04s slutt-CI bestod 1018 ordinære, 186 ekte SQL Server- og 326 Chromium-tilfeller uten feil/hopp.
 Brukeren velger nye frister, vesentlige endringer eller begge, med
 versjonskontroll og egen aktiveringsgrense per type. Direkte administratorredigering
 varsler semantisk dato-/periode-, budsjettår- og kategoriendring automatisk.
@@ -39,6 +40,17 @@ Additiv migrasjon og idempotent demooppgradering bevarer EV03-data uten tilbakef
 [EV04-akseptansen](acceptance/2026-10-28-epost-ev04.md) bevarer leveransens daterte
 lokale prøver og daværende porter; gjeldende livsløp står i PR #133. Kø/generering, import/sletting
 og produksjonsporter tilhører senere EV-tickets. Ingen deploy er utført.
+
+EV05 ([#115](https://github.com/depmartin/Budsjettkalender/issues/115)) er publisert i
+[PR #134](https://github.com/depmartin/Budsjettkalender/pull/134), med eget budsjettår-/kategoriutvalg
+ved påmelding og versjonskontrollerte innstillinger. Null/tomt betyr Alle, også
+fremtidige år. Utvidelser beholder ventende treff uten historisk tilbakefylling;
+innsnevring håndheves før overlevering. Endringer matcher hele før- eller
+etterutvalget innen dagens synlighet og ferske mottakertilgang. Additiv migrasjon
+og demooppgradering bevarer EV02–EV04. Den publiserte kandidaten avstemmes nå med
+levert UX18 på faktisk main `134857de41527e4442ed3f7009620487f13f82f4`.
+[EV05-akseptansen](acceptance/2026-10-28-epost-ev05.md) skiller opprinnelige lokale
+bevis fra integrasjonsprøver og ny kandidat-CI. Ingen deploy inngår.
 
 ## UX18 – samlet akseptanse og publisering
 
@@ -52,11 +64,11 @@ Direkte administratoroppretting/redigering har samme identitet og verdier i alle
 seks flater. Hele HTTP-svar prøves med anonym, FAG, POL, FA, FIN-FAG og administrator;
 gamle innganger, seks adminområder, interne data og skjult metadata er med.
 
-PR #132 er fortsatt **ikke merget**. Før EV04-integrasjonen bestod publisert head
+PR #132 er nå merget som `134857de41527e4442ed3f7009620487f13f82f4`. De følgende tallene er historiske bevis fra før denne mergen. Før EV04-integrasjonen bestod publisert head
 `6acf357efdb7498281b3bdf970e3cc48e543de03`
 [CI 40752611386](https://github.com/depmartin/Budsjettkalender/actions/runs/40752611386)
 med **962 ordinære, 130 ekte SQL Server- og 328 Chromium-tilfeller**, uten feil/hopp.
-Ny faktisk kandidat-CI og bekreftet UX18-merge kreves etter integrasjonen.
+UX18s PR viser slutt-CI og bekreftet merge etter EV04-integrasjonen; de daterte lokale bevisene følger nedenfor.
 Den nye fulle lokale kjøringen passerer **1024/1024 ordinære og 332/332 faktiske
 Edge/Kestrel-scenarioer**, uten feil/hopp. **186 SQL Server-tilfeller** er bygget/oppdaget.
 Alle tidligere 962/328/130 UX18-navn og 1018/326/186 EV04-navn består eksakt.

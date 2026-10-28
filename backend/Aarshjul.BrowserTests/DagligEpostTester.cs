@@ -6,6 +6,94 @@ namespace Aarshjul.BrowserTests;
 public sealed class DagligEpostTester
 {
     [Theory]
+    [InlineData(390)]
+    [InlineData(1280)]
+    public async Task EV05_selvbetjent_utvalg_bevares_og_er_uavhengig_av_kalenderen(int bredde)
+        => await Trygt(async n =>
+        {
+            await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-01T06:00");
+            await n.OpprettFrist("EV05 historisk 2031", "FAG");
+            await n.OpprettFrist("EV05 historisk 2032", "FAG", budsjettaar: 2032);
+            await n.OpprettFrist("EV05 skjult år", "POL", budsjettaar: 2041);
+            await n.LoggInn("demo-fag"); await n.Side.SetViewportSizeAsync(bredde, 844); await n.Gaa("/epostvarsling");
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Alle budsjettår", Exact = true })).ToBeCheckedAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjettår 2041", Exact = true })).ToHaveCountAsync(0);
+            await n.Side.GetByLabel("Egen jobbadresse", new() { Exact = true }).FillAsync("ev05@fin.dep.no");
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjettår 2031", Exact = true }).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjett", Exact = true }).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Jeg bekrefter at dette er min egen jobbadresse og bekrefter varselvalgene.", Exact = true }).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Meld meg på", Exact = true }).FocusAsync(); await n.Side.Keyboard.PressAsync("Enter");
+            await Expect(n.Side.GetByText("Status: Venter på bekreftelse", new() { Exact = true })).ToBeVisibleAsync();
+            await n.Gaa("/demo/epostmottaker"); await n.Side.GetByRole(AriaRole.Link, new() { Name = "Bekreft jobbadressen", Exact = true }).ClickAsync();
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Bekreft min jobbadresse" }).ClickAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Status)).ToContainTextAsync("Jobbadressen er bekreftet");
+            await n.Side.SetViewportSizeAsync(1280, 900); await n.Gaa("/kalender");
+            var kalenderfilter = n.Side.GetByRole(AriaRole.Complementary, new() { Name = "Fristutvalg", Exact = true });
+            await kalenderfilter.GetByRole(AriaRole.Checkbox, new() { Name = "2032", Exact = true }).CheckAsync();
+            await kalenderfilter.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjett", Exact = true }).UncheckAsync();
+            await n.Gaa("/epostvarsling"); await n.Side.SetViewportSizeAsync(bredde, 844);
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjettår 2031", Exact = true })).ToBeCheckedAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjettår 2032", Exact = true })).Not.ToBeCheckedAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjett", Exact = true })).ToBeCheckedAsync();
+            Assert.True(await n.Side.EvaluateAsync<bool>("document.documentElement.scrollWidth <= window.innerWidth"));
+            await n.Side.ScreenshotAsync(new() { Path = Path.Combine(n.Mappe, $"ev05-lagret-{bredde}.png"), FullPage = true });
+            await n.OmstartAsync(); await n.LoggInn("demo-fag"); await n.Gaa("/epostvarsling");
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjettår 2031", Exact = true })).ToBeCheckedAsync();
+            await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-01T06:30");
+            await n.OpprettFrist("EV05 relevant ny", "FAG");
+            await n.OpprettFrist("EV05 utelatt kategori", "FAG", kategori: "Regnskap");
+            await n.OpprettFrist("EV05 utelatt år", "FAG", budsjettaar: 2032);
+            await n.OpprettFrist("EV05 fremtid før utvidelse", "FAG", budsjettaar: 2040);
+            await SettTid(n, "2030-01-01T07:00"); await Kjor(n, "1 bekreftet");
+            await n.LoggInn("demo-fag"); await n.Gaa("/demo/epostmottaker");
+            var melding = n.Side.GetByRole(AriaRole.Article, new() { Name = "Daglig oppsummering" });
+            await Expect(melding).ToContainTextAsync("EV05 relevant ny"); await Expect(melding).Not.ToContainTextAsync("EV05 utelatt");
+            await Expect(melding).Not.ToContainTextAsync("EV05 historisk"); await Expect(melding).Not.ToContainTextAsync("EV05 fremtid før utvidelse");
+            await n.Gaa("/epostvarsling"); await n.Side.SetViewportSizeAsync(bredde, 844);
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Alle budsjettår", Exact = true }).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Alle kategorier", Exact = true }).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre varselvalg", Exact = true }).FocusAsync(); await n.Side.Keyboard.PressAsync("Enter");
+            await Expect(n.Side.GetByRole(AriaRole.Status)).ToContainTextAsync("Varselvalgene er lagret");
+            await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-02T07:00");
+            await n.OpprettFrist("EV05 nytt fremtidig år", "FAG", budsjettaar: 2042, kategori: "Regnskap");
+            await n.Gaa("/demo/epostkjoring"); await Kjor(n, "1 bekreftet");
+            await n.LoggInn("demo-fag"); await n.Gaa("/demo/epostmottaker");
+            melding = n.Side.GetByRole(AriaRole.Article, new() { Name = "Daglig oppsummering" }).Filter(new() { HasText = "EV05 nytt fremtidig år" });
+            await Expect(melding).ToHaveCountAsync(1);
+            await Expect(melding).ToContainTextAsync("EV05 nytt fremtidig år");
+            await Expect(melding).Not.ToContainTextAsync("EV05 utelatt"); await Expect(melding).Not.ToContainTextAsync("EV05 fremtid før utvidelse");
+        });
+
+    [Theory]
+    [InlineData(390)]
+    [InlineData(1280)]
+    public async Task EV05_endret_frist_varsles_ved_utflytting_med_lagret_aarsvalg(int bredde)
+        => await Trygt(async n =>
+        {
+            await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-01T06:00"); await n.OpprettFrist("EV05 flyttes ut", "FAG");
+            await n.LoggInn("demo-fag"); await MeldPaa(n, false, true); await n.Gaa("/epostvarsling");
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjettår 2031", Exact = true }).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjett", Exact = true }).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre varselvalg", Exact = true }).ClickAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Status)).ToContainTextAsync("Varselvalgene er lagret");
+            await n.Gaa("/demo/epostmottaker"); await n.Side.GetByRole(AriaRole.Link, new() { Name = "Bekreft jobbadressen", Exact = true }).ClickAsync();
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Bekreft min jobbadresse" }).ClickAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Status)).ToContainTextAsync("Jobbadressen er bekreftet");
+            await n.LoggInn("demo-admin"); await n.Gaa("/admin/frister?aar=2031");
+            await n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "EV05 flyttes ut" }).GetByRole(AriaRole.Link, new() { Name = "Rediger", Exact = true }).ClickAsync();
+            await n.Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync("2032");
+            await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Kategori", Exact = true }).SelectOptionAsync("Regnskap");
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
+            await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Frister", Exact = true })).ToBeVisibleAsync();
+            await SettTid(n, "2030-01-01T07:00"); await Kjor(n, "1 bekreftet");
+            await n.LoggInn("demo-fag"); await n.Gaa("/demo/epostmottaker");
+            await Expect(n.Side.GetByRole(AriaRole.Article)).ToContainTextAsync("Vesentlig endring: EV05 flyttes ut");
+            await Expect(n.Side.GetByRole(AriaRole.Article)).ToContainTextAsync("Budsjettår 2031");
+            await Expect(n.Side.GetByRole(AriaRole.Article)).ToContainTextAsync("Budsjettår 2032");
+            await n.Gaa("/epostvarsling"); await n.Side.SetViewportSizeAsync(bredde, 844);
+            await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Budsjettår 2031", Exact = true })).ToBeCheckedAsync();
+        });
+    [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]

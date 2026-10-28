@@ -1,5 +1,20 @@
 # Utvikling
 
+EV05-kandidaten er avstemt med levert UX18 på faktisk main
+`134857de41527e4442ed3f7009620487f13f82f4`. Oppdaget inventar er **1063 ordinære
+tester, 216 SQL Server-tilfeller og 336 nettleserscenarioer**. Alle navn fra både
+publisert EV05 (1057/216/330) og levert UX18 (1024/186/332) er bevart eksakt uten
+dubletter. CI krever nøyaktig **216 SQL- og 336 Chromium-resultater** uten feil/hopp;
+antalls-, tids- og artefaktvern består. De daterte EV02–EV04- og UX18-resultatene
+nedenfor er historiske. Se [EV05-akseptansen](acceptance/2026-10-28-epost-ev05.md)
+for integrasjonsprøver og gjenstående kandidat-CI.
+
+Migrasjonen `20261028193853_Abonnementsutvalg` legger til nullable `UtvalgJson` i
+e-postabonnementet. Produksjon bruker vanlig EF-migrasjon; `Demoskjema.SikreAsync`
+oppgraderer eksisterende EV02-, EV03- og EV04-demoer atomisk og idempotent. Ingen
+abonnementer eller historiske hendelser opprettes av oppgraderingen. Eldre demoer
+enn EV02 må fortsatt håndteres etter veiledningen nedenfor.
+
 Krever SDK-versjonen i `global.json` (10.0.402). Kjør fra repo-roten.
 SDK-en er eksakt låst fordi Blazor legger til en SDK-avhengig asset-pakke i avhengighetsgrafen.
 CI, deploy og devcontainer bruker samme versjon. Ved SDK-oppdatering endres også
@@ -224,7 +239,7 @@ tokenfrie 1440-/390-bilder og verifikasjonsgrenser. Jobbgrensen på 45 minutter 
 403 kildefiler og 1518 runtimefiler har ingen drift mellom manifestopptakene;
 hele kandidaten på 471 filer og 16 visuelt inspiserte sluttbilder har SHA-256-bevis.
 
-## UX18 – nødvendig EV04-mainintegrasjon i CI-løkken
+## Historisk UX18 – nødvendig EV04-mainintegrasjon i CI-løkken
 
 PR #132 er publisert og fortsatt ikke merget. Dens head før integrasjonen,
 `6acf357efdb7498281b3bdf970e3cc48e543de03`, bestod
@@ -250,7 +265,7 @@ De 56 tidligere UX18-bildene og seks fokusbildene
 er hashbevart; de viser ikke nye EV04-varselfelter. Modellprøven kontrollerer siste
 SQL Server-mål/snapshot og `HasPendingModelChanges=false` uten databaseforbindelse.
 SQL Server er bygget/oppdaget lokalt; ny faktisk kandidat-CI med SQL Server og
-Chromium kreves før UX18-merge. CI krever nøyaktig **332/186**, uten hopp eller
+Chromium krevdes før den senere bekreftede UX18-mergen. Daværende CI krevde nøyaktig **332/186**, uten hopp eller
 manglende TRX, med uendrede 15/20/45 minutter, aktiv audit og bare TRX-artefakter.
 Denne avgrensede CI-konfliktrunden har ingen ny full gjennomgang eller sikkerhetsaudit.
 
@@ -281,6 +296,10 @@ Samlet review og separat audit ble senere avsluttet med 0 funn på det angitte
 grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gjenstår.
 
 ## Obligatorisk nettleserakseptanse
+
+Gjeldende EV05/UX18-kandidat krever nøyaktig **336 beståtte Chromium-scenarioer**
+uten hopp eller manglende TRX. **216 ekte SQL Server-tilfeller** kreves i den
+separate SQL-porten. De daterte kjøringene nedenfor viser tidligere kandidatgrunnlag.
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
 eksisterende app eller database: 332 scenarioer bruker disponible Kestrel-verter,
@@ -361,8 +380,8 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 332 beståtte scenarioer uten hopp.
-UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
+installerer systemavhengigheter og krever nøyaktig 336 beståtte scenarioer uten hopp.
+EV05/UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
 De lokale tidene begrunner rom for testene og oppsettet, men måler ikke Chromium.
@@ -372,7 +391,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 332; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 336; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -472,7 +491,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 186 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 216 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

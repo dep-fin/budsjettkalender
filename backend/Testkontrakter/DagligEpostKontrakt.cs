@@ -16,6 +16,184 @@ namespace Aarshjul.Testkontrakter;
 
 public abstract class DagligEpostKontrakt
 {
+    private static async Task VelgUtvalg(Proeve p, int[]? aar, Kategori[]? kategorier, bool nye = true, bool endringer = false)
+    {
+        var status = await p.Abonnement.HentAsync("a");
+        await p.Abonnement.EndreValgAsync("a", nye, endringer, status.Versjon, aar, kategorier);
+    }
+    private static FristInndata Utvalgsfrist(string tittel, int aar, Kategori kategori = Kategori.Budsjett)
+    { var input = Inndata(tittel); input.Budsjettaar = aar; input.Kategori = kategori; return input; }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Abonnementets_utvalg_er_union_innen_dimensjonen_og_snitt_mellom_dem(bool alle)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await VelgUtvalg(p, alle ? null : [2031, 2032], alle ? [] : [Kategori.Budsjett, Kategori.Gulbok]);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Treff A", 2031));
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Treff B", 2032, Kategori.Gulbok));
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Bare år", 2031, Kategori.Regnskap));
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Bare kategori og fremtidig år", 2040));
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Kalenderåret er ikke budsjettår", 2030));
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Ingen dimensjoner", 2040, Kategori.Regnskap));
+        await p.Skriv.OpprettAsync(new() { Tittel = "Skjult POL", Budsjettaar = 2031, Dato = new(2030, 11, 20), Synlighetskoder = ["POL"] });
+        await p.Jobb().KjorAsync(); var tekst = Assert.Single(p.Post.Hent("a")).Tekst;
+        Assert.Contains("Treff A", tekst); Assert.Contains("Treff B", tekst);
+        foreach (var tittel in new[] { "Bare år", "Bare kategori og fremtidig år", "Kalenderåret er ikke budsjettår", "Ingen dimensjoner" })
+            Assert.Equal(alle, tekst.Contains(tittel, StringComparison.Ordinal));
+        Assert.DoesNotContain("Skjult POL", tekst);
+    }
+
+    [Fact]
+    public async Task Filterutvidelser_bevarer_tidligere_ventende_treff_uten_historisk_tilbakefylling()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await VelgUtvalg(p, [2031], [Kategori.Budsjett]);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Bevar første", 2031));
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Utelat gammel andre", 2032));
+        await VelgUtvalg(p, [2031, 2032], [Kategori.Budsjett]);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Bevar andre", 2032));
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Utelat gammel tredje", 2033));
+        await VelgUtvalg(p, [2031, 2032, 2033], [Kategori.Budsjett, Kategori.Regnskap]);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Ny tredje", 2033, Kategori.Regnskap));
+        await p.Jobb().KjorAsync(); var tekst = Assert.Single(p.Post.Hent("a")).Tekst;
+        Assert.Contains("Bevar første", tekst); Assert.Contains("Bevar andre", tekst); Assert.Contains("Ny tredje", tekst);
+        Assert.DoesNotContain("Utelat gammel", tekst);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Innsnevring_og_gjenutvidelse_faar_ny_grense_ogsaa_fra_Alle(bool fraAlle)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await VelgUtvalg(p, fraAlle ? null : [2031, 2032], null);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Mistet ved innsnevring", 2032));
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Bevart ved innsnevring", 2031));
+        await VelgUtvalg(p, [2031], [Kategori.Budsjett]);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Fra avslått periode", 2032));
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Fra avslått kategori", 2031, Kategori.Regnskap));
+        await VelgUtvalg(p, null, null);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Ny fremtidig", 2040, Kategori.Regnskap));
+        await p.Jobb().KjorAsync(); var tekst = Assert.Single(p.Post.Hent("a")).Tekst;
+        Assert.Contains("Bevart ved innsnevring", tekst); Assert.Contains("Ny fremtidig", tekst);
+        Assert.DoesNotContain("Mistet ved innsnevring", tekst); Assert.DoesNotContain("Fra avslått", tekst);
+    }
+
+    [Fact]
+    public async Task Tomt_internt_snitt_gir_ingen_gamle_treff_ved_skifte_av_begge_dimensjoner()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await VelgUtvalg(p, [2031], [Kategori.Budsjett]);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Gammelt opprinnelig", 2031));
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Gammelt nytt utvalg", 2032, Kategori.Regnskap));
+        await VelgUtvalg(p, [2032], [Kategori.Regnskap]);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Nytt valgt", 2032, Kategori.Regnskap));
+        await p.Jobb().KjorAsync(); var tekst = Assert.Single(p.Post.Hent("a")).Tekst;
+        Assert.Contains("Nytt valgt", tekst); Assert.DoesNotContain("Gammelt", tekst);
+    }
+
+    [Theory]
+    [InlineData(2031, Kategori.Budsjett, 2032, Kategori.Regnskap, true)]
+    [InlineData(2032, Kategori.Regnskap, 2031, Kategori.Budsjett, true)]
+    [InlineData(2031, Kategori.Budsjett, 2031, Kategori.Budsjett, true)]
+    [InlineData(2032, Kategori.Regnskap, 2033, Kategori.Gulbok, false)]
+    [InlineData(2031, Kategori.Regnskap, 2032, Kategori.Budsjett, false)]
+    public async Task Endring_krever_hele_foer_eller_hele_etter_uten_krysstreff(int foerAar, Kategori foerKategori, int etterAar, Kategori etterKategori, bool treff)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Utvalgsfrist("Flyttet frist", foerAar, foerKategori); var id = await p.Skriv.OpprettAsync(input);
+        await p.Aktiver(); await VelgUtvalg(p, [2031], [Kategori.Budsjett], false, true);
+        input.Budsjettaar = etterAar; input.Kategori = etterKategori; input.Dato = new(2030, 12, 1);
+        await p.Skriv.OppdaterAsync(id, input); await p.Jobb().KjorAsync();
+        Assert.Equal(treff ? 1 : 0, p.Post.Hent("a").Count);
+        if (treff) { var tekst = Assert.Single(p.Post.Hent("a")).Tekst; Assert.Contains("Flyttet frist", tekst); Assert.Contains("Tidligere:", tekst); }
+    }
+
+    [Fact]
+    public async Task Filtrering_skjer_foer_gruppering_foerverdi_og_forklaringer()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Utvalgsfrist("Samlet frist", 2032, Kategori.Regnskap); var id = await p.Skriv.OpprettAsync(input);
+        await p.Aktiver(); await VelgUtvalg(p, [2031], [Kategori.Budsjett], false, true);
+        input.Dato = new(2030, 11, 21); input.Notat = "Første"; input.VesentligEndring = true; input.Endringsforklaring = "Utelatt forklaring én";
+        await p.Skriv.OppdaterAsync(id, input);
+        input.Budsjettaar = 2031; input.Kategori = Kategori.Budsjett; input.Dato = new(2030, 11, 22); input.Endringsforklaring = "Relevant innflytting";
+        await p.Skriv.OppdaterAsync(id, input);
+        input.Budsjettaar = 2032; input.Kategori = Kategori.Regnskap; input.Dato = new(2030, 11, 23); input.Endringsforklaring = "Relevant utflytting";
+        await p.Skriv.OppdaterAsync(id, input);
+        input.Dato = new(2030, 11, 24); input.Notat = "Siste"; input.Endringsforklaring = "Utelatt forklaring to";
+        await p.Skriv.OppdaterAsync(id, input); await p.Jobb().KjorAsync();
+        var tekst = Assert.Single(p.Post.Hent("a")).Tekst;
+        Assert.Contains("Tidligere: 21.11.2030", tekst); Assert.Contains("Nå: 24.11.2030", tekst);
+        Assert.Contains("Relevant innflytting", tekst); Assert.Contains("Relevant utflytting", tekst);
+        Assert.DoesNotContain("Utelatt forklaring", tekst); Assert.DoesNotContain("Tidligere: 20.11.2030", tekst);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Innsnevring_foer_adapteren_stanser_allerede_planlagt_innhold(bool vedSisteKontroll)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Skal stanses", 2031));
+        var antall = 0;
+        var port = new FoerLagring(async kontekst =>
+        {
+            var sending = kontekst.ChangeTracker.Entries<Epostoppsummering>().Any(x => x.Entity.Status == "UnderSending");
+            if (sending && ++antall == (vedSisteKontroll ? 2 : 1)) await VelgUtvalg(p, [2032], [Kategori.Regnskap]);
+        });
+        await p.Jobb(port).KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+    }
+
+    [Theory]
+    [InlineData(false, -1)]
+    [InlineData(false, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, -1)]
+    [InlineData(true, 0)]
+    [InlineData(true, 1)]
+    public async Task Filterutvidelse_og_publisering_ordnes_etter_commit_uavhengig_av_UTC_ticks(bool utvidelseForsinket, int ticks)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await VelgUtvalg(p, [2031], null); await p.Skriv.OpprettAsync(Utvalgsfrist("Gammelt relevant beholdes", 2031));
+        var status = await p.Abonnement.HentAsync("a");
+        var ankommet = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fortsett = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var port = new FoerLagring(async _ => { ankommet.TrySetResult(); await fortsett.Task.WaitAsync(TimeSpan.FromSeconds(15)); });
+        Task ventende = utvidelseForsinket
+            ? new EpostabonnementTjeneste(db.Fabrikk(port), p.Klokke, p.Bekreftelsespost).EndreValgAsync("a", true, false, status.Versjon, null, null)
+            : new FristskrivingTjeneste(db.Fabrikk(port), p.Klokke).OpprettAsync(Utvalgsfrist("Nytilvalgt år", 2032));
+        try
+        {
+            await ankommet.Task.WaitAsync(TimeSpan.FromSeconds(15)); p.Klokke.Flytt(TimeSpan.FromTicks(ticks));
+            if (utvidelseForsinket) await p.Skriv.OpprettAsync(Utvalgsfrist("Nytilvalgt år", 2032));
+            else await VelgUtvalg(p, null, null);
+            fortsett.TrySetResult(); await ventende; await p.Jobb().KjorAsync();
+            var tekst = Assert.Single(p.Post.Hent("a")).Tekst;
+            Assert.Contains("Gammelt relevant beholdes", tekst);
+            Assert.Equal(!utvidelseForsinket, tekst.Contains("Nytilvalgt år", StringComparison.Ordinal));
+        }
+        finally { fortsett.TrySetResult(); await ventende; }
+    }
+
+    [Fact]
+    public async Task Samtidig_type_og_filterutvidelse_bevarer_kun_tidligere_aktive_valgs_hendelser()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await VelgUtvalg(p, [2031], [Kategori.Budsjett]);
+        var id = await p.Skriv.OpprettAsync(Utvalgsfrist("Gammel relevant Ny", 2031));
+        var input = Utvalgsfrist("Gammel relevant Ny", 2031); input.Dato = new(2030, 12, 1); await p.Skriv.OppdaterAsync(id, input);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Gammel nytilvalgt Ny", 2032));
+        await VelgUtvalg(p, null, null, true, true);
+        await p.Skriv.OpprettAsync(Utvalgsfrist("Ny efter begge udvidelser", 2032));
+        await p.Jobb().KjorAsync(); var tekst = Assert.Single(p.Post.Hent("a")).Tekst;
+        Assert.Contains("Gammel relevant Ny", tekst); Assert.Contains("Ny efter begge udvidelser", tekst);
+        Assert.DoesNotContain("Gammel nytilvalgt Ny", tekst); Assert.DoesNotContain("Vesentlig endring:", tekst);
+    }
+
     [Fact]
     public async Task Endringer_alene_samler_foerste_foer_og_siste_etter_uten_aa_kreve_ny_publisering()
     {

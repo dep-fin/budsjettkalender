@@ -24,7 +24,7 @@ public sealed class InternkalenderLagringsvernTester : InternkalenderSynkKontrak
         await FasedataBevis.LeggTilHistorikkAsync(database.Fabrikk());
         var fristerFoer = await FasedataBevis.HentAsync(database.Fabrikk());
         var post = new KontrollertBekreftelsespost();
-        var epost = new EpostabonnementTjeneste(database.Fabrikk(), TimeProvider.System, post);
+        var epost = new EpostabonnementTjeneste(EpostoppgraderingBevis.HistoriskFabrikk(database.Fabrikk()), TimeProvider.System, post);
         await epost.MeldPaaAsync("aktiv-foer-ux16", "aktiv@fin.dep.no", true);
         // Autentisk aktiv EV02-rad før EV03s koordinasjonstabeller finnes.
         await using (var db = database.Fabrikk().CreateDbContext())
@@ -50,6 +50,7 @@ public sealed class InternkalenderLagringsvernTester : InternkalenderSynkKontrak
         var oppgaverFoer = JsonSerializer.Serialize(await kal.HentGjoeremaalAsync(runde, null));
         var ovrigFoer = JsonSerializer.Serialize(await kal.HentGjoeremaalAsync(ovrig, null));
         await using (var db = database.Fabrikk().CreateDbContext()) await db.Database.MigrateAsync();
+        epost = new EpostabonnementTjeneste(database.Fabrikk(), TimeProvider.System, post);
         Assert.Equal(runderFoer, JsonSerializer.Serialize(await kal.HentRunderAsync()));
         Assert.Equal(oppgaverFoer, JsonSerializer.Serialize(await kal.HentGjoeremaalAsync(runde, null)));
         Assert.Equal(ovrigFoer, JsonSerializer.Serialize(await kal.HentGjoeremaalAsync(ovrig, null)));
@@ -63,7 +64,7 @@ public sealed class InternkalenderLagringsvernTester : InternkalenderSynkKontrak
             var anvendte = (await db.Database.GetAppliedMigrationsAsync()).ToArray();
             Assert.Equal(new[] { "20261028083448_Epostabonnement", "20261028112544_UnikeInternrunder",
                 "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering",
-                "20261028165341_VarseltyperOgEndringer" }, anvendte.TakeLast(5));
+                "20261028165341_VarseltyperOgEndringer", "20261028193853_Abonnementsutvalg" }, anvendte.TakeLast(6));
         }
     }
 

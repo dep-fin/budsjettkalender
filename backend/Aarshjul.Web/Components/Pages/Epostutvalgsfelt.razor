@@ -1,0 +1,32 @@
+@using Aarshjul.Domain
+
+<fieldset aria-describedby="epostaarhjelp">
+    <legend>Budsjettår</legend>
+    <p id="epostaarhjelp">Budsjettår gjelder budsjettet og kan avvike fra fristens kalenderår. Ingen konkrete valg betyr Alle, også senere nye år.</p>
+    <label><input type="checkbox" @bind:get="AlleAar" @bind:set="VelgAlleAar" /> Alle budsjettår</label>
+    @foreach (var aar in TilgjengeligeAar.Concat(ValgteAar).Distinct().Order())
+    {
+        <label><input type="checkbox" checked="@ValgteAar.Contains(aar)" @onchange="e => VelgAar(aar, e.Value is true)" /> Budsjettår @aar</label>
+    }
+</fieldset>
+<fieldset aria-describedby="epostkategorihjelp">
+    <legend>Kategorier</legend>
+    <p id="epostkategorihjelp">Ingen konkrete valg betyr Alle kategorier. En frist må passe både budsjettår og kategori.</p>
+    <label><input type="checkbox" @bind:get="AlleKategorier" @bind:set="VelgAlleKategorier" /> Alle kategorier</label>
+    @foreach (var kategori in Enum.GetValues<Kategori>())
+    {
+        <label><input type="checkbox" checked="@ValgteKategorier.Contains(kategori)" @onchange="e => VelgKategori(kategori, e.Value is true)" /> @Visningformat.KategoriNavn(kategori)</label>
+    }
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<int> TilgjengeligeAar { get; set; } = [];
+    [Parameter, EditorRequired] public HashSet<int> ValgteAar { get; set; } = [];
+    [Parameter, EditorRequired] public HashSet<Kategori> ValgteKategorier { get; set; } = [];
+    private bool AlleAar => ValgteAar.Count == 0;
+    private bool AlleKategorier => ValgteKategorier.Count == 0;
+    private void VelgAlleAar(bool _) => ValgteAar.Clear();
+    private void VelgAlleKategorier(bool _) => ValgteKategorier.Clear();
+    private void VelgAar(int aar, bool valgt) { if (valgt) ValgteAar.Add(aar); else ValgteAar.Remove(aar); }
+    private void VelgKategori(Kategori kategori, bool valgt) { if (valgt) ValgteKategorier.Add(kategori); else ValgteKategorier.Remove(kategori); }
+}

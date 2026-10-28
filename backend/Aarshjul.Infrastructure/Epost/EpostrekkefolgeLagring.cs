@@ -21,7 +21,8 @@ internal sealed class EpostrekkefolgeLagring : SaveChangesInterceptor
             && (x.State == EntityState.Added || x.State == EntityState.Modified &&
                 (x.Property(r => r.Status).OriginalValue != "Aktiv"
                  || x.Entity.NyeFrister && !x.Property(r => r.NyeFrister).OriginalValue
-                 || x.Entity.VesentligeEndringer && !x.Property(r => r.VesentligeEndringer).OriginalValue))).ToList();
+                 || x.Entity.VesentligeEndringer && !x.Property(r => r.VesentligeEndringer).OriginalValue
+                 || x.Entity.UtvalgJson != x.Property(r => r.UtvalgJson).OriginalValue))).ToList();
         if (hendelser.Count == 0 && aktiveringer.Count == 0) return result;
         try
         {
@@ -34,6 +35,8 @@ internal sealed class EpostrekkefolgeLagring : SaveChangesInterceptor
             foreach (var rad in aktiveringer)
             {
                 var nyAktivering = rad.State == EntityState.Added || rad.Property(r => r.Status).OriginalValue != "Aktiv";
+                var utvalg = Abonnementsutvalg.Les(rad.Entity.UtvalgJson);
+                rad.Entity.UtvalgJson = utvalg.Aktiver(Abonnementsutvalg.Les(rad.Property(r => r.UtvalgJson).OriginalValue), sekvens, nyAktivering).Json();
                 var nye = nyAktivering || rad.Entity.NyeFrister && !rad.Property(r => r.NyeFrister).OriginalValue;
                 var endringer = nyAktivering || rad.Entity.VesentligeEndringer && !rad.Property(r => r.VesentligeEndringer).OriginalValue;
                 var endret = await db.Database.ExecuteSqlInterpolatedAsync(

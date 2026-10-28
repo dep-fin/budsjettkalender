@@ -13,6 +13,23 @@ namespace Aarshjul.SqlServerTests;
 public sealed class DagligEpostTester : DagligEpostKontrakt
 {
     [Fact]
+    public async Task EV05_migrasjon_bevarer_EV04_og_fullfoerer_ventende_plan_med_legacy_metadata()
+    {
+        await using var database = new Sqldatabase(); await database.OpprettAsync("20261028165341_VarseltyperOgEndringer");
+        await EpostoppgraderingBevis.LeggTilAsync(database);
+        var plan = await EpostoppgraderingBevis.LeggTilEV04PlanAsync(database);
+        var foer = await EpostoppgraderingBevis.HentAsync(database);
+        var varslingFoer = await EpostoppgraderingBevis.HentVarslingsdataAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            await db.Database.MigrateAsync(); await db.Database.MigrateAsync();
+            Assert.All(await db.Epostabonnementer.ToListAsync(), a => Assert.Null(a.UtvalgJson));
+        }
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+        Assert.Equal(varslingFoer, await EpostoppgraderingBevis.HentVarslingsdataAsync(database));
+        await EpostoppgraderingBevis.BekreftEV05PlanAsync(database, plan);
+    }
+    [Fact]
     public async Task EV04_migrasjon_fra_levert_EV03_bevarer_hendelser_planer_koblinger_og_sekvensgrenser()
     {
         await using var database = new Sqldatabase(); await database.OpprettAsync("20261028142358_OrdnetEpostaktivering");
@@ -46,8 +63,8 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
         await using (var db = database.Fabrikk().CreateDbContext())
         {
             await db.Database.MigrateAsync();
-            Assert.Equal(new[] { "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering", "20261028165341_VarseltyperOgEndringer" },
-                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(3));
+            Assert.Equal(new[] { "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering", "20261028165341_VarseltyperOgEndringer", "20261028193853_Abonnementsutvalg" },
+                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(4));
         }
         Assert.True(foer == await EpostoppgraderingBevis.HentAsync(database), "Leverte UX16-/EV02-data må bevares gjennom EV03-oppgraderingen.");
         await EpostoppgraderingBevis.BekreftInternvern(database);

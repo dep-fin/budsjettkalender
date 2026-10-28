@@ -164,6 +164,9 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
+                    b.Property<string>("UtvalgJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid>("Versjon")
                         .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");

@@ -1,15 +1,19 @@
 @page "/epostvarsling"
 @attribute [Authorize]
 @using Aarshjul.Application.Epost
+@using Aarshjul.Application.Frister
+@using Aarshjul.Domain
 @inject EpostabonnementKommando Kommando
 @inject IBekreftelsespost Post
 @inject IConfiguration Konfigurasjon
 @inject IWebHostEnvironment Miljoe
+@inject IFristlesing Lesing
+@inject Synlighetskontekstkilde Kontekstkilde
 
 <PageTitle>E-postvarsling</PageTitle>
 <h1>E-postvarsling</h1>
 <p>Registrer og bekreft din egen jobbadresse for å melde deg på.</p>
-<p>Velg nye frister, vesentlige endringer eller begge. Oppsummeringen gjelder alle budsjettår og kategorier innenfor din tilgang.</p>
+<p>Velg nye frister, vesentlige endringer eller begge, og et eget utvalg av budsjettår og kategorier innenfor din tilgang. Kalenderens visningsfiltre endrer ikke abonnementet.</p>
 <p>Vesentlige endringer omfatter endret dato, klokkeslett, tentativ periode, budsjettår og kategori. Datoendring og sletting/avlysning er ett samlet varselvalg. Varsling av sletting kommer i en senere leveranse.</p>
 @if (_feil is not null) { <p class="feil" role="alert">@_feil</p> }
 @if (_melding is not null) { <p class="melding" role="status">@_melding</p> }
@@ -39,6 +43,7 @@ else
                 <p id="adressehjelp">Bruk én adresse på et departementsdomene, for eksempel navn@fin.dep.no.</p>
                 <label><input type="checkbox" @bind="_nye" /> Nye frister</label>
                 <label><input type="checkbox" @bind="_endringer" /> Vesentlige endringer</label>
+                <Epostutvalgsfelt TilgjengeligeAar="_tilgjengeligeAar" ValgteAar="_aar" ValgteKategorier="_kategorier" />
                 <label><input type="checkbox" @bind="_godtar" /> Jeg bekrefter at dette er min egen jobbadresse og bekrefter varselvalgene.</label>
                 <button class="knapp primaer" type="submit">@(_arbeider ? "Sender …" : "Meld meg på")</button>
             </fieldset>
@@ -58,6 +63,8 @@ else
                 <label><input type="checkbox" @bind="_nye" /> Nye frister</label>
                 <label><input type="checkbox" @bind="_endringer" /> Vesentlige endringer</label>
                 <p>Nye valg gjelder fra aktivering. Avslåtte valg tas ut før sending.</p>
+                <p>Et utvidet utvalg gjelder fra lagringen og gir ingen historiske varsler. Lagrede valg vises i skjemaet.</p>
+                <Epostutvalgsfelt TilgjengeligeAar="_tilgjengeligeAar" ValgteAar="_aar" ValgteKategorier="_kategorier" />
                 <button class="knapp" type="submit">Lagre varselvalg</button>
             </fieldset>
         </form>
@@ -75,19 +82,27 @@ else
     private string _adresse = "";
     private bool _godtar, _arbeider;
     private bool _nye = true, _endringer;
+    private IReadOnlyList<int> _tilgjengeligeAar = [];
+    private readonly HashSet<int> _aar = [];
+    private readonly HashSet<Kategori> _kategorier = [];
     private string? _feil, _melding;
     private bool ErDemo => Miljoe.IsDevelopment() && Konfigurasjon.GetValue<bool>("Demo") || Miljoe.IsEnvironment("Demo");
     private string Statusnavn => _status?.Status switch { "Aktiv" => "Aktiv", "Avmeldt" => "Avmeldt", "VenterPaaBekreftelse" => "Venter på bekreftelse", _ => "Ikke påmeldt" };
     protected override Task OnInitializedAsync() => Last();
-    private Task Last() => Kjor(() => Kommando.HentAsync());
-    private Task MeldPaa() => Kjor(() => Kommando.MeldPaaAsync(_adresse, _godtar, _nye, _endringer), status => status.Status switch
+    private Task Last() => Kjor(async () =>
+    {
+        var status = await Kommando.HentAsync();
+        _tilgjengeligeAar = await Lesing.HentTilgjengeligeBudsjettaarAsync(await Kontekstkilde.HentAsync(), inkluderHistorikk: true);
+        return status;
+    });
+    private Task MeldPaa() => Kjor(() => Kommando.MeldPaaAsync(_adresse, _godtar, _nye, _endringer, _aar, _kategorier), status => status.Status switch
     {
         "Aktiv" => "Abonnementet er allerede aktivt.",
         "Avmeldt" => "Abonnementet er avmeldt.",
         _ => "Påmeldingen venter på bekreftelse av jobbadressen."
     });
     private Task SendNy() => Kjor(() => Kommando.SendNyAsync(), _ => "En ny bekreftelsesmelding er overlevert.");
-    private Task LagreValg() => Kjor(() => Kommando.EndreValgAsync(_nye, _endringer, _status!.Versjon), _ => "Varselvalgene er lagret.");
+    private Task LagreValg() => Kjor(() => Kommando.EndreValgAsync(_nye, _endringer, _status!.Versjon, _aar, _kategorier), _ => "Varselvalgene er lagret.");
     private Task MeldAv() => Kjor(() => Kommando.MeldAvAsync(), _ => "Du er avmeldt. Ingen nye fristvarsler vil bli sendt.");
     private async Task Kjor(Func<Task<EpostabonnementDto>> handling, Func<EpostabonnementDto, string>? melding = null)
     {
@@ -107,6 +122,10 @@ else
     private void VisLagredeValg()
     {
         if (_status?.Status is "Aktiv" or "VenterPaaBekreftelse")
-        { _nye = _status.NyeFrister; _endringer = _status.VesentligeEndringer; }
+        {
+            _nye = _status.NyeFrister; _endringer = _status.VesentligeEndringer;
+            _aar.Clear(); _aar.UnionWith(_status.Budsjettaar ?? []);
+            _kategorier.Clear(); _kategorier.UnionWith(_status.Kategorier ?? []);
+        }
     }
 }
