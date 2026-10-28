@@ -16,7 +16,393 @@ namespace Aarshjul.Testkontrakter;
 
 public abstract class DagligEpostKontrakt
 {
+    [Fact]
+    public async Task Endringer_alene_samler_foerste_foer_og_siste_etter_uten_aa_kreve_ny_publisering()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var id = await p.Skriv.OpprettAsync(Inndata("Etablert frist"));
+        await p.Aktiver();
+        var aktiv = await p.Abonnement.HentAsync("a");
+        await p.Abonnement.EndreValgAsync("a", false, true, aktiv.Versjon);
+        var input = Inndata("Etablert frist"); input.Dato = new(2030, 11, 21);
+        await p.Skriv.OppdaterAsync(id, input);
+        input.Dato = new(2030, 12, 5); await p.Skriv.OppdaterAsync(id, input);
+        await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains("Vesentlig endring: Etablert frist", melding.Tekst);
+        Assert.Contains("Tidligere: 20.11.2030 kl. 13:45", melding.Tekst);
+        Assert.Contains("Nå: 05.12.2030 kl. 13:45", melding.Tekst);
+        Assert.DoesNotContain("21.11.2030", melding.Tekst);
+        Assert.Equal(1, melding.Tekst.Split("Etablert frist").Length - 1);
+    }
     protected abstract Task<Epostdatabase> OpprettAsync();
+
+    [Theory]
+    [InlineData("dato", true)]
+    [InlineData("tid", true)]
+    [InlineData("heldag", true)]
+    [InlineData("presisjon", true)]
+    [InlineData("maaned", true)]
+    [InlineData("kvalifikator", true)]
+    [InlineData("fjernKvalifikator", true)]
+    [InlineData("aar", true)]
+    [InlineData("kategori", true)]
+    [InlineData("referansedag", false)]
+    [InlineData("tentativTid", false)]
+    [InlineData("dagKvalifikator", false)]
+    [InlineData("tittel", false)]
+    [InlineData("notat", false)]
+    [InlineData("loep", false)]
+    [InlineData("uendret", false)]
+    public async Task Semantisk_vesentlighet_haandheves_i_direkte_publisering_og_daglig_post(string endring, bool varsles)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Semantisk frist");
+        if (endring is "maaned" or "kvalifikator" or "fjernKvalifikator" or "referansedag" or "tentativTid")
+        { input.Datopresisjon = Datopresisjon.Maaned; input.Datokvalifikator = Datokvalifikator.Medio; }
+        var id = await p.Skriv.OpprettAsync(input); await p.Aktiver();
+        var aktiv = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", false, true, aktiv.Versjon);
+        switch (endring)
+        {
+            case "dato": input.Dato = new(2030, 11, 21); break;
+            case "tid": input.Klokkeslett = new(14, 0); break;
+            case "heldag": input.Klokkeslett = null; break;
+            case "presisjon": input.Datopresisjon = Datopresisjon.Maaned; break;
+            case "maaned": input.Dato = new(2030, 12, 20); break;
+            case "kvalifikator": input.Datokvalifikator = Datokvalifikator.Primo; break;
+            case "fjernKvalifikator": input.Datokvalifikator = null; break;
+            case "aar": input.Budsjettaar = 2032; break;
+            case "kategori": input.Kategori = Kategori.Regnskap; break;
+            case "referansedag": input.Dato = new(2030, 11, 5); break;
+            case "tentativTid": input.Klokkeslett = new(23, 0); break;
+            case "dagKvalifikator": input.Datokvalifikator = Datokvalifikator.Ultimo; break;
+            case "tittel": input.Tittel = "Korrektur"; break;
+            case "notat": input.Notat = "Rettet notat"; break;
+            case "loep": input.Loep = "  rammefordeling  "; break;
+        }
+        await p.Skriv.OppdaterAsync(id, input); await p.Jobb().KjorAsync();
+        Assert.Equal(varsles ? 1 : 0, p.Post.Hent("a").Count);
+        if (varsles)
+        {
+            var melding = Assert.Single(p.Post.Hent("a"));
+            Assert.Contains("Vesentlig endring", melding.Tekst); Assert.Contains("Tidligere:", melding.Tekst);
+            if (input.Datopresisjon == Datopresisjon.Maaned) Assert.DoesNotContain("20.12.2030", melding.Tekst);
+        }
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Ny_og_endret_frist_vises_en_gang_med_siste_tilstand_for_hvert_varselvalg(bool nye, bool endringer)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        var aktiv = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", nye, endringer, aktiv.Versjon);
+        var id = await p.Skriv.OpprettAsync(Inndata("Ny med endring"));
+        var input = Inndata("Ny med endring"); input.Dato = new(2030, 12, 5);
+        await p.Skriv.OppdaterAsync(id, input); await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Equal(1, melding.Tekst.Split("Ny med endring").Length - 1);
+        Assert.Contains("05.12.2030", melding.Tekst);
+        Assert.Contains(nye ? "Ny frist:" : "Vesentlig endring:", melding.Tekst);
+        if (!nye) Assert.Contains("20.11.2030", melding.Tekst);
+        else Assert.DoesNotContain("20.11.2030", melding.Tekst);
+        p.Klokke.Flytt(TimeSpan.FromDays(1)); await p.Jobb().KjorAsync(); Assert.Single(p.Post.Hent("a"));
+    }
+
+    [Theory]
+    [InlineData("", true)]
+    [InlineData("Begrunnelse", false)]
+    [InlineData("forLang", true)]
+    [InlineData("linje\nny", true)]
+    public async Task Manuell_markering_krever_faktisk_innholdsendring_og_kort_forklaring(string forklaring, bool endre)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Urørt"); var id = await p.Skriv.OpprettAsync(input); await p.Aktiver();
+        input.VesentligEndring = true; input.Endringsforklaring = forklaring == "forLang" ? new string('x', 301) : forklaring;
+        if (endre) input.Notat = "Nytt innhold";
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Skriv.OppdaterAsync(id, input));
+        Assert.Null((await p.Skriv.HentForRedigeringAsync(id))!.Notat); await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+    }
+
+    [Fact]
+    public async Task Manuell_vesentlig_tekstendring_viser_forklaring_som_tekst_og_overlever_omstart()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var id = await p.Skriv.OpprettAsync(Inndata("Innholdsendring")); await p.Aktiver();
+        var aktiv = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", false, true, aktiv.Versjon);
+        var input = Inndata("Innholdsendring"); input.Notat = "Nye oppgaver";
+        input.VesentligEndring = true; input.Endringsforklaring = "<script>Oppgavene er utvidet</script>";
+        await p.Skriv.OppdaterAsync(id, input);
+        await p.Jobb(post: new UtilgjengeligOppsummeringspost()).KjorAsync();
+        await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains(input.Endringsforklaring, melding.Tekst);
+        Assert.Contains("&lt;script&gt;", melding.Html); Assert.DoesNotContain("<script>", melding.Html);
+    }
+
+    [Theory]
+    [InlineData("tittel", "Tittel")]
+    [InlineData("notat", "Notat")]
+    [InlineData("loep", "Løp")]
+    public async Task Vesentlige_tekstfelt_viser_faktiske_foer_og_etterverdier_som_kodet_HTML(string felt, string feltnavn)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Kravendring"); input.Notat = "Uendret notat"; input.Loep = "Uendret løp";
+        switch (felt)
+        {
+            case "tittel": input.Tittel = "<b>Tidligere krav</b> & grunnlag"; break;
+            case "notat": input.Notat = "<b>Tidligere krav</b> & grunnlag"; break;
+            case "loep": input.Loep = "<b>Tidligere krav</b> & grunnlag"; break;
+        }
+        var id = await p.Skriv.OpprettAsync(input); await p.Aktiver();
+        var aktiv = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", false, true, aktiv.Versjon);
+        switch (felt)
+        {
+            case "tittel": input.Tittel = "<i>Utvidet leveranse</i> & beregninger"; break;
+            case "notat": input.Notat = "<i>Utvidet leveranse</i> & beregninger"; break;
+            case "loep": input.Loep = "<i>Utvidet leveranse</i> & beregninger"; break;
+        }
+        input.VesentligEndring = true; input.Endringsforklaring = "Leveransekravet er utvidet";
+        await p.Skriv.OppdaterAsync(id, input); await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains($"{feltnavn} – Tidligere: <b>Tidligere krav</b> & grunnlag. Nå: <i>Utvidet leveranse</i> & beregninger", melding.Tekst);
+        Assert.Contains("Leveransekravet er utvidet", melding.Tekst);
+        Assert.Contains("&lt;b&gt;Tidligere krav&lt;/b&gt; &amp; grunnlag", melding.Html);
+        Assert.Contains("&lt;i&gt;Utvidet leveranse&lt;/i&gt; &amp; beregninger", melding.Html);
+        Assert.DoesNotContain("<b>", melding.Html); Assert.DoesNotContain("<i>", melding.Html);
+        Assert.DoesNotContain("Uendret notat", melding.Tekst); Assert.DoesNotContain("Uendret løp", melding.Tekst);
+    }
+
+    [Theory]
+    [InlineData("notat", null, "Nytt krav", "Notat – Tidligere: (ikke angitt). Nå: Nytt krav")]
+    [InlineData("notat", "Utgått krav", null, "Notat – Tidligere: Utgått krav. Nå: (ikke angitt)")]
+    [InlineData("loep", null, "Nytt løp", "Løp – Tidligere: (ikke angitt). Nå: Nytt løp")]
+    [InlineData("loep", "Utgått løp", null, "Løp – Tidligere: Utgått løp. Nå: (ikke angitt)")]
+    public async Task Vesentlig_tilfoeyelse_eller_toemming_av_tekstfelt_viser_begge_verdier(string felt, string? foer, string? etter, string forventet)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Endret innhold");
+        if (felt == "notat") input.Notat = foer; else input.Loep = foer;
+        var id = await p.Skriv.OpprettAsync(input); await p.Aktiver();
+        var aktiv = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", false, true, aktiv.Versjon);
+        if (felt == "notat") input.Notat = etter; else input.Loep = etter;
+        input.VesentligEndring = true; input.Endringsforklaring = "Kravene er endret";
+        await p.Skriv.OppdaterAsync(id, input); await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains(forventet, melding.Tekst);
+    }
+
+    [Fact]
+    public async Task Gjentatte_tekstendringer_samles_fra_foerste_relevante_foerverdi_til_dagens_innhold()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Opprinnelig tittel"); input.Notat = "Opprinnelig krav"; input.Loep = "Opprinnelig løp";
+        var id = await p.Skriv.OpprettAsync(input); await p.Aktiver();
+        var aktiv = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", false, true, aktiv.Versjon);
+        input.Notat = "Mellomliggende krav"; input.VesentligEndring = true; input.Endringsforklaring = "Kravene er utvidet";
+        await p.Skriv.OppdaterAsync(id, input);
+        input.Notat = "Siste varslede krav"; input.Tittel = "Mellomliggende tittel"; input.Loep = "Siste løp";
+        await p.Skriv.OppdaterAsync(id, input);
+        // Korrektur etter siste hendelse skal fortsatt gi dagens publiserte etterverdi.
+        input.Notat = "Dagens presiserte krav"; input.Tittel = "Dagens tittel"; input.VesentligEndring = false;
+        await p.Skriv.OppdaterAsync(id, input); await p.Jobb(post: new UtilgjengeligOppsummeringspost()).KjorAsync();
+        await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains("Tittel – Tidligere: Opprinnelig tittel. Nå: Dagens tittel", melding.Tekst);
+        Assert.Contains("Notat – Tidligere: Opprinnelig krav. Nå: Dagens presiserte krav", melding.Tekst);
+        Assert.Contains("Løp – Tidligere: Opprinnelig løp. Nå: Siste løp", melding.Tekst);
+        Assert.DoesNotContain("Mellomliggende", melding.Tekst); Assert.DoesNotContain("Siste varslede krav", melding.Tekst);
+        Assert.Equal(1, melding.Tekst.Split("Forklaring: Kravene er utvidet").Length - 1);
+        Assert.Equal(1, melding.Html.Split("<li>").Length - 1);
+        p.Klokke.Flytt(TimeSpan.FromDays(1)); await p.Jobb().KjorAsync(); Assert.Single(p.Post.Hent("a"));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Ny_og_tekstendret_frist_bevarer_grupperingen_for_alle_varselvalg(bool nye, bool endringer)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        var aktiv = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", nye, endringer, aktiv.Versjon);
+        var input = Inndata("Ny før tekstendring"); input.Notat = "Første krav";
+        var id = await p.Skriv.OpprettAsync(input);
+        input.Tittel = "Gjeldende fristtittel"; input.Notat = "Utvidet krav";
+        input.VesentligEndring = true; input.Endringsforklaring = "Kravene er utvidet";
+        await p.Skriv.OppdaterAsync(id, input); await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a")); Assert.Equal(1, melding.Html.Split("<li>").Length - 1);
+        Assert.Contains(nye ? "Ny frist: Gjeldende fristtittel" : "Vesentlig endring: Gjeldende fristtittel", melding.Tekst);
+        if (nye)
+        {
+            Assert.DoesNotContain("Ny før tekstendring", melding.Tekst); Assert.DoesNotContain("Første krav", melding.Tekst);
+        }
+        else
+        {
+            Assert.Contains("Tittel – Tidligere: Ny før tekstendring. Nå: Gjeldende fristtittel", melding.Tekst);
+            Assert.Contains("Notat – Tidligere: Første krav. Nå: Utvidet krav", melding.Tekst);
+        }
+    }
+
+    [Theory]
+    [InlineData("notat")]
+    [InlineData("loep")]
+    public async Task Tekstendring_under_siste_lagring_stanser_utdatert_innhold_foer_overlevering(string felt)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Siste innholdskontroll"); input.Notat = "Opprinnelig notat"; input.Loep = "Opprinnelig løp";
+        var id = await p.Skriv.OpprettAsync(input); await p.Aktiver();
+        var aktiv = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", false, true, aktiv.Versjon);
+        input.Notat = "Varslet notat"; input.Loep = "Varslet løp";
+        input.VesentligEndring = true; input.Endringsforklaring = "Innholdet er endret"; await p.Skriv.OppdaterAsync(id, input);
+        var endret = false;
+        var port = new FoerLagring(async kontekst =>
+        {
+            if (endret || !kontekst.ChangeTracker.Entries<Oppsummeringshendelse>().Any(x => x.State == EntityState.Added)) return;
+            endret = true;
+            if (felt == "notat") input.Notat = "Ferskt notat"; else input.Loep = "Ferskt løp";
+            input.VesentligEndring = false; await p.Skriv.OppdaterAsync(id, input);
+        });
+        var resultat = await p.Jobb(port).KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        Assert.Equal("EndretFoerOverlevering", Assert.Single(resultat.Mottakere).Status);
+        await p.Jobb().KjorAsync(); var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains(felt == "notat" ? "Notat – Tidligere: Opprinnelig notat. Nå: Ferskt notat"
+            : "Løp – Tidligere: Opprinnelig løp. Nå: Ferskt løp", melding.Tekst);
+        Assert.DoesNotContain(felt == "notat" ? "Varslet notat" : "Varslet løp", melding.Tekst);
+    }
+
+    [Fact]
+    public async Task Utvidelse_bevarer_ventende_nye_men_gir_ikke_endringer_fra_avslaatt_periode()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        var gammel = await p.Skriv.OpprettAsync(Inndata("Ventende ny"));
+        var input = Inndata("Ventende ny"); input.Dato = new(2030, 12, 1); await p.Skriv.OppdaterAsync(gammel, input);
+        var a = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", true, true, a.Versjon);
+        var ny = await p.Skriv.OpprettAsync(Inndata("Ny etter utvidelse"));
+        await p.Jobb().KjorAsync(); var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains("Ventende ny", melding.Tekst); Assert.Contains("Ny etter utvidelse", melding.Tekst);
+        p.Klokke.Flytt(TimeSpan.FromDays(1));
+        a = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", true, false, a.Versjon);
+        input = Inndata("Kun avslått endring"); input.Dato = new(2030, 12, 2); await p.Skriv.OppdaterAsync(ny, input);
+        a = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", true, true, a.Versjon);
+        await p.Jobb().KjorAsync(); Assert.Single(p.Post.Hent("a"));
+        input.Dato = new(2030, 12, 3); await p.Skriv.OppdaterAsync(ny, input); await p.Jobb().KjorAsync();
+        Assert.Contains("Tidligere: 02.12.2030", p.Post.Hent("a")[1].Tekst);
+    }
+
+    [Fact]
+    public async Task Nye_valg_tilbakefyller_ikke_avslaatte_nye_og_bevarer_ventende_endringer()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var id = await p.Skriv.OpprettAsync(Inndata("Ventende endring")); await p.Aktiver();
+        var a = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", false, true, a.Versjon);
+        var input = Inndata("Ventende endring"); input.Dato = new(2030, 12, 1); await p.Skriv.OppdaterAsync(id, input);
+        await p.Skriv.OpprettAsync(Inndata("Ny mens avslått"));
+        a = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", true, true, a.Versjon);
+        await p.Skriv.OpprettAsync(Inndata("Ny etter aktivering")); await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains("Ventende endring", melding.Tekst);
+        Assert.Contains("Ny etter aktivering", melding.Tekst); Assert.DoesNotContain("Ny mens avslått", melding.Tekst);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Endringsmetadata_kontrolleres_mot_dagens_synlighet_og_siste_varselvalg(bool innskrenk)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Skjulte førverdier"); input.Notat = "Skjult opprinnelig krav"; input.Loep = "Skjult opprinnelig løp";
+        var id = await p.Skriv.OpprettAsync(input); await p.Aktiver();
+        var a = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", true, true, a.Versjon);
+        input.Tittel = "Skjult ny tittel"; input.Notat = "Skjult nytt krav"; input.Loep = "Skjult nytt løp"; input.Dato = new(2030, 12, 1);
+        input.VesentligEndring = true; input.Endringsforklaring = "Skjult forklaring"; await p.Skriv.OppdaterAsync(id, input);
+        var port = new FoerLagring(async kontekst =>
+        {
+            if (!kontekst.ChangeTracker.Entries<Oppsummeringshendelse>().Any(x => x.State == EntityState.Added)) return;
+            if (innskrenk)
+            { var status = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", true, false, status.Versjon); }
+            else { var felter = (await p.Skriv.HentForRedigeringAsync(id))!; felter.Synlighetskoder = ["POL"]; await p.Skriv.OppdaterAsync(id, felter); }
+        });
+        await p.Jobb(port).KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+    }
+
+    [Theory]
+    [InlineData(false, -1)]
+    [InlineData(false, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, -1)]
+    [InlineData(true, 0)]
+    [InlineData(true, 1)]
+    public async Task Endringsvalg_og_endring_ordnes_etter_commit_ogsaa_ved_like_eller_forskjovne_ticks(bool utvidelseForsinket, int ticks)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var id = await p.Skriv.OpprettAsync(Inndata("Sekvensstyrt endring")); await p.Aktiver();
+        var a = await p.Abonnement.HentAsync("a");
+        var ankommet = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fortsett = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var port = new FoerLagring(async _ => { ankommet.TrySetResult(); await fortsett.Task.WaitAsync(TimeSpan.FromSeconds(15)); });
+        var input = Inndata("Sekvensstyrt endring"); input.Dato = new(2030, 12, 5);
+        Task ventende = utvidelseForsinket
+            ? new EpostabonnementTjeneste(db.Fabrikk(port), p.Klokke, p.Bekreftelsespost).EndreValgAsync("a", true, true, a.Versjon)
+            : new FristskrivingTjeneste(db.Fabrikk(port), p.Klokke).OppdaterAsync(id, input);
+        try
+        {
+            await ankommet.Task.WaitAsync(TimeSpan.FromSeconds(15)); p.Klokke.Flytt(TimeSpan.FromTicks(ticks));
+            if (utvidelseForsinket) await p.Skriv.OppdaterAsync(id, input);
+            else await p.Abonnement.EndreValgAsync("a", true, true, a.Versjon);
+            fortsett.TrySetResult(); await ventende; await p.Jobb().KjorAsync();
+            Assert.Equal(utvidelseForsinket ? 0 : 1, p.Post.Hent("a").Count);
+            if (utvidelseForsinket)
+            {
+                input.Dato = new(2030, 12, 6); await p.Skriv.OppdaterAsync(id, input); await p.Jobb().KjorAsync();
+                Assert.Contains("Tidligere: 05.12.2030", Assert.Single(p.Post.Hent("a")).Tekst);
+            }
+        }
+        finally { fortsett.TrySetResult(); await ventende; }
+    }
+
+    [Fact]
+    public async Task Endring_og_hendelse_rulles_samlet_tilbake_ved_reell_lagringsfeil()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var id = await p.Skriv.OpprettAsync(Inndata("Bevart førtilstand")); await p.Aktiver();
+        var a = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", false, true, a.Versjon);
+        await using (var kontekst = db.Fabrikk().CreateDbContext())
+            await kontekst.Database.ExecuteSqlRawAsync(kontekst.Database.IsSqlServer()
+                ? "CREATE TRIGGER TR_EV04_fail ON NyFristHendelser AFTER INSERT AS BEGIN THROW 51000, 'EV04 rollback', 1; END"
+                : "CREATE TRIGGER TR_EV04_fail AFTER INSERT ON NyFristHendelser BEGIN SELECT RAISE(ABORT, 'EV04 rollback'); END;");
+        var input = Inndata("Bevart førtilstand"); input.Dato = new(2030, 12, 5);
+        var feil = await Assert.ThrowsAsync<DbUpdateException>(() => p.Skriv.OppdaterAsync(id, input));
+        Assert.True(feil.InnerException?.Message.Contains("EV04 rollback", StringComparison.Ordinal) == true);
+        Assert.Equal(new DateOnly(2030, 11, 20), (await p.Skriv.HentForRedigeringAsync(id))!.Dato);
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        await using (var kontekst = db.Fabrikk().CreateDbContext()) await kontekst.Database.ExecuteSqlRawAsync("DROP TRIGGER TR_EV04_fail");
+        await p.Skriv.OppdaterAsync(id, input); await p.Jobb().KjorAsync();
+        Assert.Contains("Tidligere: 20.11.2030", Assert.Single(p.Post.Hent("a")).Tekst);
+    }
+
+    [Fact]
+    public async Task Gammel_samtidig_redigering_kan_ikke_skrive_feil_foertilstand_eller_ekstra_hendelse()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var id = await p.Skriv.OpprettAsync(Inndata("Vinnende tilstand")); await p.Aktiver();
+        var a = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreValgAsync("a", false, true, a.Versjon);
+        var ankommet = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fortsett = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var port = new FoerLagring(async _ => { ankommet.TrySetResult(); await fortsett.Task.WaitAsync(TimeSpan.FromSeconds(15)); });
+        var gammel = Inndata("Utdatert tilstand"); gammel.Dato = new(2030, 12, 6);
+        var ventende = new FristskrivingTjeneste(db.Fabrikk(port), p.Klokke).OppdaterAsync(id, gammel);
+        try
+        {
+            await ankommet.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            var input = Inndata("Vinnende tilstand"); input.Dato = new(2030, 12, 5); await p.Skriv.OppdaterAsync(id, input);
+            fortsett.TrySetResult(); await Assert.ThrowsAsync<Valideringsfeil>(() => ventende);
+            Assert.Equal(new DateOnly(2030, 12, 5), (await p.Skriv.HentForRedigeringAsync(id))!.Dato);
+            await p.Jobb().KjorAsync(); var melding = Assert.Single(p.Post.Hent("a"));
+            Assert.Contains("Tidligere: 20.11.2030", melding.Tekst); Assert.DoesNotContain("Utdatert", melding.Tekst);
+            p.Klokke.Flytt(TimeSpan.FromDays(1)); await p.Jobb().KjorAsync(); Assert.Single(p.Post.Hent("a"));
+        }
+        finally { fortsett.TrySetResult(); try { await ventende; } catch (Valideringsfeil) { } }
+    }
 
     [Theory]
     [InlineData(false)]

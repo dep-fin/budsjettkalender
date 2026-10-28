@@ -12,7 +12,48 @@ namespace Aarshjul.Testkontrakter;
 /// <summary>Samme offentlige påmeldingskontrakt mot SQLite og ekte SQL Server.</summary>
 public abstract class EpostabonnementKontrakt
 {
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Varselvalg_bekreftes_og_endres_varig_bare_med_gjeldende_versjon(bool nye, bool endringer)
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db);
+        await p.Tjeneste.MeldPaaAsync("a", "egen@fin.dep.no", true, nye, endringer);
+        var aktiv = await p.Tjeneste.BekreftAsync("a", p.Token);
+        Assert.Equal(nye, aktiv.NyeFrister); Assert.Equal(endringer, aktiv.VesentligeEndringer);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.NyTjeneste().EndreValgAsync("a", false, false, aktiv.Versjon));
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.NyTjeneste().EndreValgAsync("annen", true, true, aktiv.Versjon));
+        var endret = await p.NyTjeneste().EndreValgAsync("a", !nye || !endringer, true, aktiv.Versjon);
+        Assert.Equal(endret, await p.NyTjeneste().HentAsync("a"));
+        await Assert.ThrowsAsync<EpostabonnementKonflikt>(() => p.NyTjeneste().EndreValgAsync("a", true, false, aktiv.Versjon));
+        Assert.Equal(endret, await p.NyTjeneste().HentAsync("a"));
+    }
     protected abstract Task<Epostdatabase> OpprettAsync();
+
+    [Fact]
+    public async Task Ingen_varselvalg_avvises_foer_paamelding_eller_bekreftelsesmelding()
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.MeldPaaAsync("a", "egen@fin.dep.no", true, false, false));
+        Assert.Equal("IkkePaameldt", (await p.Tjeneste.HentAsync("a")).Status); Assert.Empty(p.Post.Meldinger);
+    }
+
+    [Fact]
+    public async Task Eldre_innstillingsendring_kan_ikke_overskrive_en_samtidig_avmelding()
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db); await p.MeldPaa();
+        var aktiv = await p.Tjeneste.BekreftAsync("a", p.Token);
+        using var port = new Lagringsport(1, manuell: true);
+        var ventende = p.NyTjeneste(port).EndreValgAsync("a", true, true, aktiv.Versjon);
+        try
+        {
+            await port.Mottatt.Task.WaitAsync(TimeSpan.FromSeconds(15)); await p.Tjeneste.MeldAvAsync("a");
+            port.Fortsett.TrySetResult(); await Assert.ThrowsAsync<EpostabonnementKonflikt>(() => ventende);
+            Assert.Equal("Avmeldt", (await p.NyTjeneste().HentAsync("a")).Status);
+        }
+        finally { port.Fortsett.TrySetResult(); try { await ventende; } catch (EpostabonnementKonflikt) { } }
+    }
 
     [Fact]
     public async Task Ingen_automatisk_paamelding_og_eksplisitte_standarder_bevares_i_ny_tjeneste()
@@ -23,7 +64,7 @@ public abstract class EpostabonnementKontrakt
         Assert.Empty(p.Post.Meldinger);
         await p.Tjeneste.MeldPaaAsync("a", "egen@FIN.DEP.NO", true);
         var lagret = await p.NyTjeneste().HentAsync("a");
-        Assert.Equal(new EpostabonnementDto("VenterPaaBekreftelse", "egen@fin.dep.no", true, false, true, true, null, p.Klokke.GetUtcNow()), lagret);
+        Assert.Equal(new EpostabonnementDto("VenterPaaBekreftelse", "egen@fin.dep.no", true, false, true, true, null, p.Klokke.GetUtcNow(), lagret.Versjon), lagret);
         Assert.Equal("IkkePaameldt", (await p.Tjeneste.HentAsync("annen")).Status);
         Assert.Single(p.Post.Meldinger);
     }

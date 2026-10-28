@@ -18,7 +18,10 @@ internal sealed class EpostrekkefolgeLagring : SaveChangesInterceptor
         var db = (AppDbContext)data.Context!;
         var hendelser = db.ChangeTracker.Entries<NyFristHendelse>().Where(x => x.State == EntityState.Added).ToList();
         var aktiveringer = db.ChangeTracker.Entries<Epostabonnement>().Where(x => x.Entity.Status == "Aktiv"
-            && (x.State == EntityState.Added || x.State == EntityState.Modified && x.Property(r => r.Status).OriginalValue != "Aktiv")).ToList();
+            && (x.State == EntityState.Added || x.State == EntityState.Modified &&
+                (x.Property(r => r.Status).OriginalValue != "Aktiv"
+                 || x.Entity.NyeFrister && !x.Property(r => r.NyeFrister).OriginalValue
+                 || x.Entity.VesentligeEndringer && !x.Property(r => r.VesentligeEndringer).OriginalValue))).ToList();
         if (hendelser.Count == 0 && aktiveringer.Count == 0) return result;
         try
         {
@@ -30,10 +33,20 @@ internal sealed class EpostrekkefolgeLagring : SaveChangesInterceptor
             var sekvens = await db.Set<Epostrekkefolge>().AsNoTracking().Select(x => x.Verdi).SingleAsync(ct);
             foreach (var rad in aktiveringer)
             {
+                var nyAktivering = rad.State == EntityState.Added || rad.Property(r => r.Status).OriginalValue != "Aktiv";
+                var nye = nyAktivering || rad.Entity.NyeFrister && !rad.Property(r => r.NyeFrister).OriginalValue;
+                var endringer = nyAktivering || rad.Entity.VesentligeEndringer && !rad.Property(r => r.VesentligeEndringer).OriginalValue;
                 var endret = await db.Database.ExecuteSqlInterpolatedAsync(
-                    $"UPDATE Epostaktiveringer SET Sekvens = {sekvens} WHERE BrukerId = {rad.Entity.BrukerId}", ct);
-                if (endret == 0) await db.Database.ExecuteSqlInterpolatedAsync(
-                    $"INSERT INTO Epostaktiveringer (BrukerId, Sekvens) VALUES ({rad.Entity.BrukerId}, {sekvens})", ct);
+                    $"UPDATE Epostaktiveringer SET Sekvens = CASE WHEN {nye} = 1 THEN {sekvens} ELSE Sekvens END, Endringssekvens = CASE WHEN {endringer} = 1 THEN {sekvens} ELSE Endringssekvens END WHERE BrukerId = {rad.Entity.BrukerId}", ct);
+                if (endret == 0)
+                {
+                    // Aktive EV02-abonnementer har implisitte grenser 0. En
+                    // utvidelse må bevare den andre typens ventende hendelser.
+                    var nyeGrense = nye ? sekvens : 0L;
+                    var endringsgrense = endringer ? sekvens : 0L;
+                    await db.Database.ExecuteSqlInterpolatedAsync(
+                        $"INSERT INTO Epostaktiveringer (BrukerId, Sekvens, Endringssekvens) VALUES ({rad.Entity.BrukerId}, {nyeGrense}, {endringsgrense})", ct);
+                }
             }
             foreach (var rad in hendelser) rad.Entity.Publiseringssekvens = sekvens;
         }

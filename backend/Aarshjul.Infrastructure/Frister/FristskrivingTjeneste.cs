@@ -2,6 +2,7 @@ using Aarshjul.Application;
 using Aarshjul.Application.Frister;
 using Aarshjul.Domain;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace Aarshjul.Infrastructure.Frister;
 
@@ -34,7 +35,8 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory, Ti
         db.Frister.Add(frist);
         db.NyFristHendelser.Add(new NyFristHendelse
         {
-            FristId = frist.Id, OpprettetUtcTicks = (klokke ?? TimeProvider.System).GetUtcNow().UtcTicks
+            FristId = frist.Id, OpprettetUtcTicks = (klokke ?? TimeProvider.System).GetUtcNow().UtcTicks,
+            EtterJson = JsonSerializer.Serialize(Fristtilstand.Fra(frist))
         });
         db.KoordinerEpostlagring();
         await db.SaveChangesAsync(ct);
@@ -50,7 +52,23 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory, Ti
             ?? throw new Valideringsfeil("Fristen finnes ikke.");
         var koder = await ValiderAsync(db, inndata, frist.Synlighet.Select(s => s.GruppeKode).ToList(), ct);
 
+        var foer = Fristtilstand.Fra(frist);
         SettFelter(frist, inndata);
+        var etter = Fristtilstand.Fra(frist);
+        var automatisk = foer.ErAutomatiskVesentlig(etter);
+        if (inndata.VesentligEndring && (foer == etter || string.IsNullOrWhiteSpace(inndata.Endringsforklaring)
+            || inndata.Endringsforklaring.Trim().Length > 300 || inndata.Endringsforklaring.Any(char.IsControl)))
+            throw new Valideringsfeil("En vesentlig innholdsendring krever faktisk endret innhold og en kort forklaring på høyst 300 tegn.");
+        if (frist.Status == FristStatus.Godkjent && (automatisk || inndata.VesentligEndring))
+        {
+            db.NyFristHendelser.Add(new NyFristHendelse
+            {
+                FristId = id, Type = "Endret", OpprettetUtcTicks = (klokke ?? TimeProvider.System).GetUtcNow().UtcTicks,
+                FoerJson = JsonSerializer.Serialize(foer), EtterJson = JsonSerializer.Serialize(etter),
+                Forklaring = inndata.VesentligEndring ? inndata.Endringsforklaring!.Trim() : null
+            });
+            db.KoordinerEpostlagring();
+        }
 
         // Diff framfor «clear + re-add»: å legge til en kode som allerede er tracket gir
         // EF en identitetskonflikt. Fjern kun de som utgår, legg til kun de som er nye.
@@ -65,7 +83,9 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory, Ti
             frist.Synlighet.Add(new FristSynlighet { FristId = id, GruppeKode = kode });
         }
 
-        await db.SaveChangesAsync(ct);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateConcurrencyException feil) when (feil.Entries.All(x => x.Entity is Frist))
+        { throw new Valideringsfeil("Fristen ble endret samtidig. Last inn fristen og prøv igjen."); }
     }
 
     public async Task<FristInndata?> HentForRedigeringAsync(Guid id, CancellationToken ct = default)

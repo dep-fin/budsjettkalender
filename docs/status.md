@@ -23,34 +23,25 @@ Målrettet Edge/Kestrel bestod 49/49 EV02-/UX15-forløp uten feil/hopp.
 Den senere UX16-integrasjonen er levert i PR #129 med grønn kandidat-CI som beskrevet nedenfor.
 [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md) inneholder de konkrete bevisene.
 
-EV03 ([#113](https://github.com/depmartin/Budsjettkalender/issues/113)) er kandidat i
-[PR #130](https://github.com/depmartin/Budsjettkalender/pull/130) for daglig oppsummering
-av nye direkte manuelt publiserte frister. Publisering og hendelse er atomiske.
-Varig dagsplan, uttrykkelige hendelseskoblinger, fersk kontrollert mottakertilgang og
-nåværende synlighetsfilter begrenser hver melding. Bekreftede overleveringer gjentas
-ikke etter omstart; uavklart utfall krever avklaring. De to P2-funnene om databaseordnet
-aktiveringsgrense og faktisk innlest planstatus/versjon er rettet og etterprøvd.
-Samlet review, separat sikkerhetsaudit og integrasjonens etterkontroll er fullført.
-Head `e4292caaa7cc7b41ff0592f800ded7649905f64f` bestod
-[CI 40715203714](https://github.com/depmartin/Budsjettkalender/actions/runs/40715203714):
-938 ordinære, 130 ekte SQL Server- og 315 Chromium-tilfeller uten feil/hopp.
+EV03 ([#113](https://github.com/depmartin/Budsjettkalender/issues/113)) er levert i
+[PR #130](https://github.com/depmartin/Budsjettkalender/pull/130), bekreftet merget som
+`93b1aea3f0953535e3144d22b36991e88ead7852`. Slutt-[CI 40722978578](https://github.com/depmartin/Budsjettkalender/actions/runs/40722978578)
+bestod 956 ordinære, 130 ekte SQL Server- og 322 Chromium-tilfeller uten feil/hopp.
+Kandidaten er avstemt med levert UX16/UX17. Varige publiseringshendelser, dagsplan,
+sekvensgrense, synlighetskontroll og fersk kontrollert mottakertilgang består.
+[EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) bevarer historiske prøver og grenser.
+Produksjon sender ingen e-post.
 
-Etter levert UX17/PR #131 oppstod faktiske mergekonflikter i CI og dokumentasjon.
-Main `959060c898048da5ebd26bfb2cd5cdb68a1c2271` er nå flettet lokalt uten commit.
-Begge DI-/autorisasjonssett, alle testnavn og EV03s modell/snapshot/migrasjoner er
-bevart. Program har bare de to leverte UX17-registreringene i tillegg til EV03.
-Oppdaget samlet inventar er 956 ordinære, 130 SQL Server- og 322 nettlesertilfeller;
-alle EV03s 938/130/315 og UX17s 901/79/319 navn består uten dubletter.
-Låst restore med aktiv audit og tre Release-bygg har 0 advarsler/feil.
-Full ordinær suite passerer 956/956; målrettet oppstart/autorisasjon/modell 118/118,
-og reelle EV02/EV03/UX17 Edge/Kestrel-forløp 15/15 uten feil/hopp.
-EF-kontrollen finner ingen ventende modellendringer og bekrefter begge kronologiske
-målmodeller og snapshot. Up/Down er uendret. CI krever 130 SQL Server og 322 Chromium
-med uendrede tidsgrenser og artefaktvern. Ny publisert kandidat-CI gjenstår.
-Eier har autorisert merge etter grønn CI; den er ennå ikke utført.
-Konfliktoppfølgingen har ingen ny review eller sikkerhetsaudit.
-[EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) beskriver konkrete bevis og
-grenser. Produksjon sender ingen e-post.
+EV04 ([#114](https://github.com/depmartin/Budsjettkalender/issues/114)) er lokal kandidat
+fra denne basen. Brukeren velger nye frister, vesentlige endringer eller begge, med
+versjonskontroll og egen aktiveringsgrense per type. Direkte administratorredigering
+varsler semantisk dato-/periode-, budsjettår- og kategoriendring automatisk.
+Annen faktisk innholdsendring kan markeres med kort forklaring. Oppsummeringen samler
+hendelser per frist og viser før-/etterverdier innen dagens synlighet og ferske tilgang.
+Additiv migrasjon og idempotent demooppgradering bevarer EV03-data uten tilbakefylling.
+[EV04-akseptansen](acceptance/2026-10-28-epost-ev04.md) angir konkrete lokale resultater
+og gjenstående review, sikkerhetsaudit og kandidat-CI. Kø/generering, import/sletting
+og produksjonsporter tilhører senere EV-tickets. Ingen deploy er utført.
 
 Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) er levert i
 [PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), merget som

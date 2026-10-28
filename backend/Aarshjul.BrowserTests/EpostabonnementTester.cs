@@ -11,7 +11,7 @@ public sealed class EpostabonnementTester
         {
             await n.LoggInn("demo-fa"); await n.Gaa("/epostvarsling");
             await n.Side.GetByLabel("Egen jobbadresse", new() { Exact = true }).FillAsync("omstart@fin.dep.no");
-            await n.Side.GetByRole(AriaRole.Checkbox).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Jeg bekrefter at dette er min egen jobbadresse og bekrefter varselvalgene.", Exact = true }).CheckAsync();
             await n.Side.GetByRole(AriaRole.Button, new() { Name = "Meld meg på", Exact = true }).ClickAsync();
             await Expect(n.Side.GetByText("Status: Venter på bekreftelse", new() { Exact = true })).ToBeVisibleAsync();
             await n.Gaa("/demo/epostmottaker");
@@ -51,16 +51,16 @@ public sealed class EpostabonnementTester
             await n.Side.SetViewportSizeAsync(390, 844);
             var adresse = n.Side.GetByLabel("Egen jobbadresse", new() { Exact = true });
             await adresse.FillAsync("mobil@fin.dep.no.example.org");
-            await n.Side.GetByRole(AriaRole.Checkbox).CheckAsync();
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Jeg bekrefter at dette er min egen jobbadresse og bekrefter varselvalgene.", Exact = true }).CheckAsync();
             var meldPaa = n.Side.GetByRole(AriaRole.Button, new() { Name = "Meld meg på", Exact = true });
             await meldPaa.FocusAsync(); await n.Side.Keyboard.PressAsync("Enter");
             await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("én gyldig jobbadresse");
             await Expect(adresse).ToHaveValueAsync("mobil@fin.dep.no.example.org");
             await adresse.FillAsync("mobil@jd.dep.no");
-            await n.Side.GetByRole(AriaRole.Checkbox).UncheckAsync();
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Jeg bekrefter at dette er min egen jobbadresse og bekrefter varselvalgene.", Exact = true }).UncheckAsync();
             await meldPaa.ClickAsync();
-            await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Bekreft standardvalgene");
-            await n.Side.GetByRole(AriaRole.Checkbox).CheckAsync(); await meldPaa.FocusAsync(); await n.Side.Keyboard.PressAsync("Enter");
+            await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Bekreft valgene");
+            await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Jeg bekrefter at dette er min egen jobbadresse og bekrefter varselvalgene.", Exact = true }).CheckAsync(); await meldPaa.FocusAsync(); await n.Side.Keyboard.PressAsync("Enter");
             await Expect(n.Side.GetByText("Status: Venter på bekreftelse", new() { Exact = true })).ToBeVisibleAsync();
             await n.Side.GetByRole(AriaRole.Button, new() { Name = "Send ny bekreftelseslenke" }).ClickAsync();
             await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Vent minst ett minutt");
@@ -100,7 +100,7 @@ public sealed class EpostabonnementTester
                 steg = "adressefelt";
                 await n.Side.GetByLabel("Egen jobbadresse", new() { Exact = true }).FillAsync("ev02@FIN.DEP.NO");
                 steg = "standardvalg";
-                await n.Side.GetByRole(AriaRole.Checkbox).CheckAsync();
+                await n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Jeg bekrefter at dette er min egen jobbadresse og bekrefter varselvalgene.", Exact = true }).CheckAsync();
                 steg = "påmeldingsknapp";
                 await n.Side.GetByRole(AriaRole.Button, new() { Name = "Meld meg på", Exact = true }).ClickAsync();
                 steg = "ventende status";

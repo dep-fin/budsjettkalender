@@ -29,7 +29,7 @@ public static class EpostEndepunkter
         {
             http.Response.Headers.CacheControl = "no-store";
             var bruker = await brukere.HentEllerOpprettAsync(http.User, ct);
-            try { return Results.Ok(await abonnement.MeldPaaAsync(bruker.Id, inndata.Adresse, inndata.GodtarStandardvalg, ct)); }
+            try { return Results.Ok(await abonnement.MeldPaaAsync(bruker.Id, inndata.Adresse, inndata.GodtarStandardvalg, inndata.NyeFrister, inndata.VesentligeEndringer, ct)); }
             catch (Valideringsfeil feil) { return Results.BadRequest(new { feil = feil.Message }); }
             catch (EpostabonnementKonflikt feil) { return Results.Conflict(new { feil = feil.Message }); }
         });
@@ -39,6 +39,8 @@ public static class EpostEndepunkter
             => EndreAsync(http, brukere, id => abonnement.SendNyAsync(id, ct), ct));
         gruppe.MapPost("/meld-av", (HttpContext http, IBrukeroppslag brukere, IEpostabonnement abonnement, CancellationToken ct)
             => EndreAsync(http, brukere, id => abonnement.MeldAvAsync(id, ct), ct));
+        gruppe.MapPost("/valg", (Varselvalg inndata, HttpContext http, IBrukeroppslag brukere, IEpostabonnement abonnement, CancellationToken ct)
+            => EndreAsync(http, brukere, id => abonnement.EndreValgAsync(id, inndata.NyeFrister, inndata.VesentligeEndringer, inndata.Versjon, ct), ct));
     }
 
     private static async Task<IResult> EndreAsync(HttpContext http, IBrukeroppslag brukere,
@@ -50,6 +52,7 @@ public static class EpostEndepunkter
         catch (Valideringsfeil feil) { return Results.BadRequest(new { feil = feil.Message }); }
         catch (EpostabonnementKonflikt feil) { return Results.Conflict(new { feil = feil.Message }); }
     }
-    public sealed record Paamelding(string Adresse, bool GodtarStandardvalg);
+    public sealed record Paamelding(string Adresse, bool GodtarStandardvalg, bool NyeFrister = true, bool VesentligeEndringer = false);
+    public sealed record Varselvalg(bool NyeFrister, bool VesentligeEndringer, Guid Versjon);
     public sealed class Bekreftelse { public string Token { get; init; } = ""; }
 }

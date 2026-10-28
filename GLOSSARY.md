@@ -49,7 +49,11 @@ jobbadressen. Bekreftelsen tildeler ingen funksjonsrolle eller synlighetsgruppe.
 **Ny frist-hendelse**: Første publisering av en frist, som kan inngå i abonnentens
 daglige oppsummering. Et upublisert forslag er ingen slik hendelse.
 
-**Daglig oppsummering**: Én samlet e-post med relevante nye frister for én abonnent
+**Vesentlig endring**: En faktisk endring i en publisert frist som krever abonnentens
+oppmerksomhet. Endret dato, tid, tentativ periode, budsjettår eller kategori er alltid vesentlig;
+annen innholdsendring kan være vesentlig når administrator begrunner dette.
+
+**Daglig oppsummering**: Én samlet e-post med relevante fristoppdateringer for én abonnent
 og én norsk kalenderdag. Bekreftet overlevering betyr at transporten har tatt imot
 meldingen; det bekrefter ikke at en ekstern postkasse har mottatt den.
 
