@@ -3,6 +3,8 @@ using Aarshjul.Application.Brukerforslag;
 using Aarshjul.Application.Datautveksling;
 using Aarshjul.Application.Datouttrekk;
 using Aarshjul.Application.Frister;
+using Aarshjul.Application.Epost;
+using Aarshjul.Infrastructure.Epost;
 using Aarshjul.Application.Faser;
 using Aarshjul.Application.Generering;
 using Aarshjul.Application.Godkjenningsko;
@@ -95,6 +97,14 @@ public partial class Program
 
         // --- Tjenester ---
         builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddScoped<IEpostabonnement, EpostabonnementTjeneste>();
+        builder.Services.AddScoped<EpostabonnementKommando>();
+        if (erDemo || erTesting)
+        {
+            builder.Services.AddSingleton<KontrollertBekreftelsespost>();
+            builder.Services.AddSingleton<IBekreftelsespost>(s => s.GetRequiredService<KontrollertBekreftelsespost>());
+        }
+        else builder.Services.AddSingleton<IBekreftelsespost, UtilgjengeligBekreftelsespost>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<IFristlesing, FristTjeneste>();
         builder.Services.AddScoped<IFasemal, FasemalTjeneste>();
@@ -164,6 +174,20 @@ public partial class Program
             app.UseHsts();
         }
         app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+        // En avvist JSON-POST skal beholde 401/403. HTML-feilsiden krever ellers
+        // antiforgery ved ny kjøring av POST og kan erstatte avvisningen med 400.
+        app.Use(async (http, neste) =>
+        {
+            if (http.Request.Path.StartsWithSegments("/epostvarsling") || http.Request.Path == "/demo/epostmottaker")
+            {
+                http.Response.Headers.CacheControl = "no-store";
+                http.Response.Headers["Referrer-Policy"] = "no-referrer";
+            }
+            if (http.Request.Path.StartsWithSegments("/api/epostabonnement")
+                && http.Features.Get<Microsoft.AspNetCore.Diagnostics.IStatusCodePagesFeature>() is { } status)
+                status.Enabled = false;
+            await neste(http);
+        });
         app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();
@@ -172,6 +196,7 @@ public partial class Program
         app.MapStaticAssets();
         app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
         app.MapFristEndepunkter();
+        app.MapEpostEndepunkter();
         if (brukEntra)
         {
             app.MapControllers();

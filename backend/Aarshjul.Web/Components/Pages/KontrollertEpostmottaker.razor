@@ -1,0 +1,36 @@
+@page "/demo/epostmottaker"
+@attribute [Authorize]
+@using Aarshjul.Infrastructure.Epost
+@inject IServiceProvider Tjenester
+@inject IConfiguration Konfigurasjon
+@inject IWebHostEnvironment Miljoe
+@inject Gjeldendebrukerkilde Brukerkilde
+
+<PageTitle>Kontrollert testmottaker</PageTitle>
+<h1>Kontrollert testmottaker</h1>
+@if (!ErDemo)
+{
+    <p>Denne testmottakeren er bare tilgjengelig i lokal demo.</p>
+}
+else if (_melding is null)
+{
+    <p>Ingen bekreftelsesmelding for din innloggede bruker. Meldingen finnes bare frem til appen starter på nytt.</p>
+}
+else
+{
+    <p>Dette er lokal testtransport. Ingen ekstern e-post er sendt.</p>
+    <p>Til: @_melding.Adresse</p>
+    <h2>Bekreft din jobbadresse</h2>
+    <p>Du har bedt om e-postvarsling. Lenken varer i 15 minutter, kan bare brukes én gang og krever at samme bruker er innlogget.</p>
+    <a href="@("/epostvarsling/bekreft#" + _melding.Token)" data-enhance-nav="false" rel="noreferrer">Bekreft jobbadressen</a>
+}
+<p><a href="/epostvarsling">Til e-postvarsling</a></p>
+
+@code {
+    private Bekreftelsesmelding? _melding;
+    private bool ErDemo => Miljoe.IsDevelopment() && Konfigurasjon.GetValue<bool>("Demo") || Miljoe.IsEnvironment("Demo");
+    protected override async Task OnInitializedAsync()
+    {
+        if (ErDemo) _melding = Tjenester.GetRequiredService<KontrollertBekreftelsespost>().Hent((await Brukerkilde.HentAsync()).Id);
+    }
+}

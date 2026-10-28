@@ -5,6 +5,19 @@ gjenstående grenser. GitHub-lenkene er kilden for oppgavenes og PR-enes livslø
 [Gjennomgangen fra 20. oktober](reviews/2026-10-20.md) er et datert utgangspunkt,
 ikke en liste over dagens urettede kodefeil.
 
+E-postvarsling EV02 ([#112](https://github.com/depmartin/Budsjettkalender/issues/112)) er
+implementert som leveransekandidat med egen påmelding for alle tre funksjonsroller,
+servervalidert `.dep.no`-adresse, kontrollert testmottaker, engangsbekreftelse, varig
+aktivering og avmelding. Standardutvalget Nye frister, Alle budsjettår og Alle kategorier
+lagres uttrykkelig. Ingen eksisterende bruker meldes automatisk på. Produksjonstransport,
+fristoppsummering, adressebytte, utvidede valg og administratoroversikt tilhører senere
+EV-tickets under [#110](https://github.com/depmartin/Budsjettkalender/issues/110).
+821 ordinære tester og alle fem nye reelle Edge/Kestrel-forløp er bestått lokalt.
+Siste komplette nettleserport utførte 226 tilfeller med 224 bestått og to avvik i
+uendrede kø-/kalenderscenarioer; den er ikke grønn. SQL Server-prosjektet er bygget med
+60 oppdagede tilfeller; reell SQL Server- og Chromium-kjøring er fortsatt CI-port før levering.
+[EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md) inneholder de konkrete bevisene.
+
 Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) er levert i
 [PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), merget som
 `c1f250ea4e6ddbf05075059e0d1fc47f582d805b`, med felles skall, rollebasert hovedmeny, seks virksomme

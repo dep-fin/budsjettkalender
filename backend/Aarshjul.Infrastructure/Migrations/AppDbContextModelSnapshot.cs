@@ -111,6 +111,71 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.ToTable("BrukerGrupper");
                 });
 
+            modelBuilder.Entity("Aarshjul.Domain.Epostabonnement", b =>
+                {
+                    b.Property<string>("BrukerId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Adresse")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<DateTimeOffset?>("Aktivert")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("AlleBudsjettaar")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AlleKategorier")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("AntallSendt")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("BekreftelseUtloeper")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("BekreftelsesHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("Bekreftelsesforsoek")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("Endret")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("NyeFrister")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("Opprettet")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("SendevinduStart")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("SistSendt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("Versjon")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("VesentligeEndringer")
+                        .HasColumnType("bit");
+
+                    b.HasKey("BrukerId");
+
+                    b.ToTable("Epostabonnementer");
+                });
+
             modelBuilder.Entity("Aarshjul.Domain.Forslag", b =>
                 {
                     b.Property<Guid>("Id")

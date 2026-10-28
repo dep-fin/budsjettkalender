@@ -40,6 +40,12 @@ POL betyr politisk ledelse og tildeles eksplisitt.
 **Kalenderabonnement**: Tilbakekallbar tokenlenke til en serverfiltrert iCalendar-feed.
 En nedlastet ICS-fil er et øyeblikksbilde, mens abonnementet hentes på nytt av kalenderklienten.
 
+**E-postabonnement**: Brukerens selvvalgte påmelding til e-postvarsling på egen, bekreftet
+jobbadresse. Påmeldingen kan vente på adressebekreftelse, være aktiv eller være avmeldt.
+
+**Adressebekreftelse**: Brukerens bekreftelse på at vedkommende disponerer den oppgitte
+jobbadressen. Bekreftelsen tildeler ingen funksjonsrolle eller synlighetsgruppe.
+
 ## Internkalender
 
 **Internrunde**: SBRs arbeidsrunde for en rundetype og et år, med egne interne gjøremål.

@@ -24,6 +24,7 @@
     <Compile Include="..\Testkontrakter\Genereringskontrakt.cs" Link="Genereringskontrakt.cs" />
     <Compile Include="..\Testkontrakter\FasemalKontrakt.cs" Link="FasemalKontrakt.cs" />
     <Compile Include="..\Testkontrakter\FasedataBevis.cs" Link="FasedataBevis.cs" />
+    <Compile Include="..\Testkontrakter\EpostabonnementKontrakt.cs" Link="EpostabonnementKontrakt.cs" />
   </ItemGroup>
 
   <ItemGroup>

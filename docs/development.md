@@ -23,11 +23,40 @@ seedet felles mal. Eksisterende demofiler må derfor sikkerhetskopieres/gjenskap
 bruk av denne modellen; bevar andre kjørende demoers filer. Produksjon bruker den additive
 EF-migrasjonen FellesFasemal. Migrate/Startdata overskriver ikke en redigert fasemal.
 
+EV02 legger i tillegg til `Epostabonnementer`. Bevar tidligere SQLite-filer før en ny
+demodatabase opprettes; `EnsureCreated` oppgraderer fortsatt ikke gamle filer.
+Produksjonsmigrasjonen `20261028083448_Epostabonnement` er additiv og oppretter ingen
+abonnementer for eksisterende brukere. [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md)
+skiller SQLite-operasjonsprøven fra den reelle SQL Server-migrasjonsporten.
+
+## Kontrollert e-postpåmelding (EV02)
+
+Start en ny, disponibel demo med vanlig demoprofil. Logg inn som valgfri persona og
+åpne E-postvarsling ved brukernavnet. Registrer en syntetisk egen adresse på et
+`.dep.no`-domene og bekreft standardvalgene. Åpne deretter «kontrollert testmottaker»
+fra den ventende påmeldingen, følg lenken og bekreft som samme innloggede persona.
+Påmeldingen er varig og kan meldes av i samme flate. Ingen ekstern e-post sendes.
+
+Den kontrollerte mottakeren lagrer siste bekreftelsesmelding per bruker bare i minnet.
+Etter omstart bevares påmelding og engangsbekreftelse i databasen, men selve meldingen
+må allerede være hentet eller bestilles på nytt. Nyutsending krever ett minutts pause
+og tillater høyst fem meldinger per bruker i et fast timevindu fra første utsending.
+Lenken varer 15 minutter. Fem mislykkede forsøk sperrer den gjeldende lenken; en ny
+lenke erstatter den gamle. Avmelding fjerner muligheten til å aktivere med gammel lenke.
+
+Hemmeligheten ligger i URL-fragmentet og fjernes fra nettleserhistorikken før
+bekreftelse. Bare SHA-256-avtrykket lagres i databasen. Ikke kopier meldinger, lenker,
+databaser eller rå nettleserspor til logger eller CI-artefakter. Testene holder lenker
+i minnet og erstatter også oppryddingsfeil med trygge meldinger før TRX. Den lokale
+testmottakeren kan bare vises i demo for samme innloggede bruker. I produksjon er
+bekreftelsestransporten utilgjengelig; EV02 setter ingen e-posttjeneste i drift.
+
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 144 scenarioer starter Kestrel i Development
-med Demo=true, tilfeldig loopback-port og ny SQLite-fil. 73 ytterligere scenarioer bruker den
+eksisterende app eller database: scenarioene starter Kestrel i Development
+med Demo=true, tilfeldig loopback-port og ny SQLite-fil. EV02 legger til fem slike scenarioer.
+Ytterligere scenarioer bruker den
 eksisterende HTTP-testverten i Testing med ekte Kestrel, SQLite i minnet og testautentisering.
 Der styres fullføringen av gruppeoppslag, malens laste-/preview-/lagringskall og
 databaseporten ved generering/godkjenning/avvisning, maloverføringens preview/import og
@@ -68,7 +97,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 221 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 226 beståtte scenarioer uten hopp.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -107,6 +136,12 @@ En ny operasjon på samme tjeneste lykkes etter at feilen er fjernet. Generert
 månedsgodkjenning prøver aktivt POL-valg, serveravvisning av ugyldige grupper,
 én publisert identitet gjennom leseporten og avvisning av en slettet gammel forslag-ID.
 
+EV02 legger til 15 delte e-postabonnementstilfeller og én oppgradering fra FellesFasemal
+med bevart frist-/forslags-/kilde-/synlighetsinnhold. Eierskap, eksplisitte standarder,
+varig starttidspunkt, utløp, engangsbruk, forsøkstak, nyutsending og to samtidige
+instanser prøves gjennom `IEpostabonnement`, også avmelding/aktivering mens transporten
+fullfører en overlevering. Prosjektet har dermed 62 tilfeller.
+
 Prosjektet ligger bevisst utenfor `backend/Aarshjul.slnx`. De ordinære lokale kommandoene
 krever derfor verken SQL Server eller Docker. SQL-testene krever en disponibel testinstans
 med rettighet til å opprette og slette databaser. Oppgi tilkobling til `master`, aldri en
@@ -128,7 +163,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 46 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 62 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.
