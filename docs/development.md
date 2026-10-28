@@ -72,6 +72,10 @@ for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
 installerer systemavhengigheter og krever nøyaktig 264 beståtte scenarioer uten hopp.
+Jobbens samlede tidsbudsjett er 20 minutter som et avgrenset forsøk etter at første
+UX15-kandidat-CI ble avbrutt ved 15 minutter uten fullført testantall eller TRX.
+Ingen forventningstimeout eller kontroll av manglende TRX er endret. Ny kandidat-CI
+må vise om budsjettet er tilstrekkelig; et nytt tidsavbrudd krever ny diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.

@@ -187,9 +187,16 @@ root-autorisert kontroll av faktisk årstekst/alternativer passerer med alle nav
 og øvrige innsynskontroller bevart. Feilet TRX er beholdt. 30 opprinnelige og åtte
 nye faktiske 1440-/390-bilder er inspisert, bare tokenfrie abonnementstilstander.
 Låst restore med aktiv audit og Release-bygg for alle tre prosjekter er grønne.
-CI-antallet er 264; faktisk SQL Server-/Chromium-CI, etterkontroll og ny separat
-sikkerhetsaudit håndteres av root før eventuell merge. #42/#43/#48/#55 består
-som egne eksterne porter, og ingen deploy er utført.
+CI-antallet er 264. Faktisk kandidat-CI `40672069748` bestod **804/804 ordinære** og
+**46/46 ekte SQL Server-tester**. Nettleserjobben ble avbrutt ved jobbens 15-minuttersgrense
+uten rapportert assertfeil, fullført testantall eller TRX. Teststeget hadde da kjørt i
+14 minutter og 4 sekunder. Det er fortsatt uavklart om årsaken er samlet kjøretid
+eller en hengende test.
+Nettleserjobbens tidsbudsjett økes til **20 minutter** som et avgrenset forsøk med alle
+testkrav og forventningstimeouter bevart. Ny kandidat-CI må bekrefte tilstrekkelig budsjett
+og full Chromium-akseptanse; ny timeout krever ny diagnose før ytterligere økning.
+Sluttvurdering og eventuell merge håndteres av root. #42/#43/#48/#55 består som egne
+eksterne porter, og ingen deploy er utført.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
