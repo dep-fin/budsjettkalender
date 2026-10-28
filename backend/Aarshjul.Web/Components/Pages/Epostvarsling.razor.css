@@ -1,0 +1,4 @@
+.skjema > fieldset { min-width: 0; border: 0; margin: 0; padding: 0; }
+.skjema > fieldset > legend { font-weight: 600; margin-bottom: .75rem; }
+.skjema > fieldset > label { display: flex; flex-direction: row; align-items: flex-start; gap: .6rem; margin: .65rem 0; font-weight: 400; }
+.skjema input[type=checkbox] { width: auto; flex: none; margin-top: .25rem; }

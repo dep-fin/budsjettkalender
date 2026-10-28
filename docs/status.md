@@ -32,16 +32,28 @@ sekvensgrense, synlighetskontroll og fersk kontrollert mottakertilgang består.
 [EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) bevarer historiske prøver og grenser.
 Produksjon sender ingen e-post.
 
-EV04 ([#114](https://github.com/depmartin/Budsjettkalender/issues/114)) er lokal kandidat
-fra denne basen. Brukeren velger nye frister, vesentlige endringer eller begge, med
+EV04 ([#114](https://github.com/depmartin/Budsjettkalender/issues/114)) er levert i
+[PR #133](https://github.com/depmartin/Budsjettkalender/pull/133), merget som
+`926ffe74e62999714f6e711327636ecce2070317`. Slutt-CI bestod 1018 ordinære,
+186 ekte SQL Server- og 326 Chromium-tilfeller uten feil/hopp.
+Brukeren velger nye frister, vesentlige endringer eller begge, med
 versjonskontroll og egen aktiveringsgrense per type. Direkte administratorredigering
 varsler semantisk dato-/periode-, budsjettår- og kategoriendring automatisk.
 Annen faktisk innholdsendring kan markeres med kort forklaring. Oppsummeringen samler
 hendelser per frist og viser før-/etterverdier innen dagens synlighet og ferske tilgang.
 Additiv migrasjon og idempotent demooppgradering bevarer EV03-data uten tilbakefylling.
-[EV04-akseptansen](acceptance/2026-10-28-epost-ev04.md) angir konkrete lokale resultater
-og gjenstående review, sikkerhetsaudit og kandidat-CI. Kø/generering, import/sletting
+[EV04-akseptansen](acceptance/2026-10-28-epost-ev04.md) bevarer de daterte lokale bevisene.
+Kø/generering, import/sletting
 og produksjonsporter tilhører senere EV-tickets. Ingen deploy er utført.
+
+EV05 ([#115](https://github.com/depmartin/Budsjettkalender/issues/115)) er lokal kandidat
+på EV04-basen. Eget budsjettår-/kategoriutvalg kan bekreftes ved påmelding og endres
+med versjonskontroll. Null/tomt betyr Alle, også fremtidige år. Utvidelser beholder
+tidligere ventende treff uten historisk tilbakefylling; innsnevring håndheves før
+overlevering. Endringer matcher hele før- eller etterutvalget innen dagens synlighet
+og ferske mottakertilgang. Additiv migrasjon og demooppgradering bevarer EV02–EV04.
+[EV05-akseptansen](acceptance/2026-10-28-epost-ev05.md) angir prøver og bevisgrenser.
+Samlet review, separat sikkerhetsaudit og kandidat-CI gjenstår etter lokal bygging.
 
 Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) er levert i
 [PR #96](https://github.com/depmartin/Budsjettkalender/pull/96), merget som

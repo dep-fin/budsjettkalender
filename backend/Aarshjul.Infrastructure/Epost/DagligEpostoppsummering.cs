@@ -87,6 +87,11 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         if (gjeldende is null || gjeldende.Status != "Aktiv" || !(gjeldende.NyeFrister || gjeldende.VesentligeEndringer)
             || gjeldende.Aktivert?.UtcTicks != start || gjeldende.Adresse != abonnent.Adresse || gjeldende.Versjon != abonnent.Versjon)
             return await UtsettAsync(db, plan, "EndretAbonnement", ct);
+        var utvalg = Abonnementsutvalg.Les(gjeldende.UtvalgJson);
+        var autoriserte = frister.ToDictionary(f => f.Id);
+        hendelser = hendelser.Where(h => autoriserte.TryGetValue(h.FristId, out var f) && Relevant(h, f, utvalg)).ToList();
+        fristIder = hendelser.Select(h => h.FristId).Distinct().ToList();
+        frister = frister.Where(f => fristIder.Contains(f.Id)).ToList();
         if (frister.Count == 0) return await UtsettAsync(db, plan, "IngenSynligeFrister", ct);
 
         // Lagre nøyaktige hendelser før overlevering; sene commits forblir ubehandlet.
@@ -126,6 +131,20 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
              || h.Type == "Endret" && abonnement.VesentligeEndringer && h.Publiseringssekvens > endringerStart)
             && !db.Oppsummeringshendelser.Any(k => k.HendelseId == h.Id && k.Oppsummering.BrukerId == id
                 && (k.Oppsummering.Status == "Bekreftet" || k.Oppsummering.Status == "UnderSending" || k.Oppsummering.Status == "Uavklart")));
+
+    private static bool Relevant(NyFristHendelse h, Fristinnhold gjeldende, Abonnementsutvalg utvalg)
+    {
+        bool Treffer(string? json)
+        {
+            var tilstand = json is null ? null : JsonSerializer.Deserialize<Fristtilstand>(json);
+            return tilstand is not null && utvalg.Treffer(h.Publiseringssekvens, tilstand.Budsjettaar, tilstand.Kategori);
+        }
+        // EV03 registrerte Ny uten metadata. Bare dagens allerede autoriserte frist
+        // kan brukes som fallback; ingen førtilstand eller historikk konstrueres.
+        if (h.Type == "Ny" && h.EtterJson is null)
+            return utvalg.Treffer(h.Publiseringssekvens, gjeldende.Budsjettaar, gjeldende.Kategori);
+        return Treffer(h.EtterJson) || h.Type == "Endret" && Treffer(h.FoerJson);
+    }
 
     private async Task<Mottakertilgang> HentTilgangAsync(string id, CancellationToken ct)
     {

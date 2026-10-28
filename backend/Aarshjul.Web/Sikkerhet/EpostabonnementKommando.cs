@@ -1,4 +1,5 @@
 using Aarshjul.Application.Epost;
+using Aarshjul.Domain;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Aarshjul.Web.Sikkerhet;
@@ -15,6 +16,12 @@ public sealed class EpostabonnementKommando(AuthenticationStateProvider tilstand
         => KjorAsync(id => abonnement.MeldPaaAsync(id, adresse, godtar, nye, endringer, ct), ct);
     public Task<EpostabonnementDto> EndreValgAsync(bool nye, bool endringer, Guid versjon, CancellationToken ct = default)
         => KjorAsync(id => abonnement.EndreValgAsync(id, nye, endringer, versjon, ct), ct);
+    public Task<EpostabonnementDto> MeldPaaAsync(string adresse, bool godtar, bool nye, bool endringer,
+        IReadOnlyCollection<int>? aar, IReadOnlyCollection<Kategori>? kategorier, CancellationToken ct = default)
+        => KjorAsync(id => abonnement.MeldPaaAsync(id, adresse, godtar, nye, endringer, aar, kategorier, ct), ct);
+    public Task<EpostabonnementDto> EndreValgAsync(bool nye, bool endringer, Guid versjon,
+        IReadOnlyCollection<int>? aar, IReadOnlyCollection<Kategori>? kategorier, CancellationToken ct = default)
+        => KjorAsync(id => abonnement.EndreValgAsync(id, nye, endringer, versjon, aar, kategorier, ct), ct);
     public Task<EpostabonnementDto> SendNyAsync(CancellationToken ct = default)
         => KjorAsync(id => abonnement.SendNyAsync(id, ct), ct);
     public Task<EpostabonnementDto> BekreftAsync(string token, CancellationToken ct = default)

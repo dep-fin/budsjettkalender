@@ -80,3 +80,39 @@ TEXT for SQL Servers ubundne tekstkolonner. Historiske migrasjonsmål beskriver
 fortsatt sine faktiske skjemaoverganger; bare siste mål skal samsvare med dagens
 snapshot. EV04 omfatter direkte administratorredigering; kø/generering, import og
 sletting har egne senere leveranser.
+
+## EV05: eget abonnementsutvalg og historiske aktiveringsgrenser
+
+Budsjettår og kategorier lagres i abonnementet, uavhengig av kalenderens
+visningsfilter. Offentlig null eller tom samling betyr Alle. Konkrete verdier
+normaliseres til sortert, unik liste; år må være 1–9999 og kategorier må finnes i
+domene-enumen. Flere verdier innen en dimensjon er union, mens dimensjonene
+kombineres med snitt. Alle år er et wildcard som omfatter senere år uten
+materialisering av dagens tilgjengelige år.
+
+Én aktiveringsgrense for hele filteret ville enten mistet gamle ventende treff
+eller inkludert historikk fra et nytilvalgt område. Abonnementets private JSON
+bevarer derfor aktive utvalgsklausuler med år, kategorier og eksklusiv
+publiseringssekvens. Ved endring klippes hver gammel klausul til snittet med det
+nye utvalget, med bevart sekvens. Hele det nye utvalget legges til med fersk
+databaseordnet sekvens. Tomme interne snitt fjernes; de betyr aldri Alle.
+Klausuler som allerede dekkes av en tidligere klausul, fjernes. Innsnevring og
+senere gjenutvidelse kan dermed ikke hente tilbake hendelser fra avslått område.
+
+Utvalg, klausuler, abonnementets versjon og eventuelle typegrenser lagres i samme
+EpostrekkefolgeLagring-transaksjon som EV03/EV04. Ny bekreftet påmelding erstatter
+alle utvalgsgrenser. Legacy-rader med null JSON har implisitt Alle/Alle med grense
+0, i tillegg til de eksisterende typegrensene. UTC-tid er fortsatt bare metadata.
+
+En hendelse må passere både typegrensen og minst én utvalgsklausul. Endret matcher
+hele førtilstanden eller hele ettertilstanden: år fra før kan ikke kombineres med
+kategori fra etter. Nåværende godkjent frist og fersk mottakertilgang bestemmer
+fortsatt hvilket innhold som kan brukes. Utvalg filtrerer hendelsene før gruppering,
+førverdi, forklaringer og plankoblinger; dagens års-/kategoriutvalg brukes ikke som
+fristfilter som ville mistet utflyttingsendringer. Ny fra EV03 uten ettermetadata
+bruker eksplisitt dagens allerede autoriserte frist som fallback, uten konstruert
+førhistorikk. Begge sistekontroller av abonnementets versjon og fristinnhold består.
+
+Migrasjonen Abonnementsutvalg legger bare til én nullable tekstkolonne. Demo
+oppgraderer EV02, EV03 og EV04 atomisk og idempotent. Historiske testkontekster
+beholder sin opprinnelige modell; ny migrasjon endrer ikke eldre målmodeller.

@@ -20,6 +20,10 @@ public sealed class MigrasjonsmodellTester
     public void EV04_maal_bevarer_tidligere_vern_og_samsvarer_med_siste_snapshot()
         => KontrollerMaal("20261028165341_VarseltyperOgEndringer", true, true, true);
 
+    [Fact]
+    public void EV05_maal_bevarer_tidligere_vern_og_samsvarer_med_siste_snapshot()
+        => KontrollerMaal("20261028193853_Abonnementsutvalg", true, true, true);
+
     private static void KontrollerMaal(
         string migrasjonId, bool oppsummering, bool ordnet, bool endringer)
     {

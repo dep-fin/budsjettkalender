@@ -1,5 +1,18 @@
 # Utvikling
 
+EV05-kandidaten har oppdaget inventar på 1057 ordinære tester, 216 SQL Server-tilfeller
+og 330 nettleserscenarioer. Alle navn fra levert EV04 (1018/186/326) er bevart uten
+dubletter. CI krever nøyaktig 216 SQL- og 330 Chromium-resultater uten feil/hopp;
+antalls-, tids- og artefaktvern består. De daterte EV02–EV04-resultatene nedenfor er
+historiske. Se [EV05-akseptansen](acceptance/2026-10-28-epost-ev05.md) for kandidatens
+aktuelle lokale bevis og gjenstående eksterne porter.
+
+Migrasjonen `20261028193853_Abonnementsutvalg` legger til nullable `UtvalgJson` i
+e-postabonnementet. Produksjon bruker vanlig EF-migrasjon; `Demoskjema.SikreAsync`
+oppgraderer eksisterende EV02-, EV03- og EV04-demoer atomisk og idempotent. Ingen
+abonnementer eller historiske hendelser opprettes av oppgraderingen. Eldre demoer
+enn EV02 må fortsatt håndteres etter veiledningen nedenfor.
+
 Krever SDK-versjonen i `global.json` (10.0.402). Kjør fra repo-roten.
 SDK-en er eksakt låst fordi Blazor legger til en SDK-avhengig asset-pakke i avhengighetsgrafen.
 CI, deploy og devcontainer bruker samme versjon. Ved SDK-oppdatering endres også

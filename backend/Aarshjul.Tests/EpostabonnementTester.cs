@@ -26,6 +26,8 @@ public sealed class EpostabonnementTester : EpostabonnementKontrakt
             var migrasjon = new Aarshjul.Infrastructure.Migrations.Epostabonnement();
             var sql = db.GetService<IMigrationsSqlGenerator>().Generate(migrasjon.UpOperations, db.Model);
             foreach (var kommando in sql) await db.Database.ExecuteSqlRawAsync(kommando.CommandText);
+            foreach (var kommando in db.GetService<IMigrationsSqlGenerator>().Generate(new Aarshjul.Infrastructure.Migrations.Abonnementsutvalg().UpOperations, db.Model))
+                await db.Database.ExecuteSqlRawAsync(kommando.CommandText.Replace("nvarchar(max)", "TEXT", StringComparison.Ordinal));
         }
         Assert.Equal(foer, await FasedataBevis.HentAsync(database.Fabrikk()));
         var post = new KontrollertBekreftelsespost();

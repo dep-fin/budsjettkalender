@@ -12,6 +12,48 @@ public sealed class EpostabonnementHttpTester
     [InlineData("Leser")]
     [InlineData("Bidragsyter")]
     [InlineData("Administrator")]
+    public async Task Aars_og_kategoriutvalg_lagres_normalisert_for_egen_identitet(string rolle)
+    {
+        using var app = new TestApplikasjon(); using var klient = app.CreateClient();
+        klient.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
+        var svar = await klient.PostAsJsonAsync("/api/epostabonnement", new
+        {
+            adresse = "egen@fin.dep.no", godtarStandardvalg = true,
+            budsjettaar = new[] { 2032, 2031, 2032 }, kategorier = new[] { 2, 0, 2 }, brukerId = "annen"
+        });
+        Assert.Equal(HttpStatusCode.OK, svar.StatusCode);
+        var status = await klient.GetFromJsonAsync<JsonObject>("/api/epostabonnement");
+        Assert.False((bool)status!["alleBudsjettaar"]!); Assert.False((bool)status["alleKategorier"]!);
+        Assert.Equal(new[] { 2031, 2032 }, status["budsjettaar"]!.AsArray().Select(x => (int)x!));
+        Assert.Equal(new[] { 0, 2 }, status["kategorier"]!.AsArray().Select(x => (int)x!));
+        using var nyInnlogging = app.CreateClient(); nyInnlogging.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
+        status = await nyInnlogging.GetFromJsonAsync<JsonObject>("/api/epostabonnement");
+        var versjon = (string)status!["versjon"]!;
+        using var annen = app.CreateClient(); annen.DefaultRequestHeaders.Add("X-Test-Rolle", "Administrator"); annen.DefaultRequestHeaders.Add("X-Test-Bruker", "annen");
+        Assert.Equal(HttpStatusCode.BadRequest, (await annen.PostAsJsonAsync("/api/epostabonnement/valg", new { nyeFrister = true, vesentligeEndringer = false, versjon, budsjettaar = new[] { 2040 }, brukerId = "test-bruker" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await nyInnlogging.PostAsJsonAsync("/api/epostabonnement/valg", new { nyeFrister = true, vesentligeEndringer = false, versjon, budsjettaar = Array.Empty<int>(), kategorier = (int[]?)null })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await klient.PostAsJsonAsync("/api/epostabonnement/valg", new { nyeFrister = true, vesentligeEndringer = false, versjon, budsjettaar = new[] { 2031 } })).StatusCode);
+        status = await klient.GetFromJsonAsync<JsonObject>("/api/epostabonnement");
+        Assert.True((bool)status!["alleBudsjettaar"]!); Assert.True((bool)status["alleKategorier"]!);
+    }
+
+    [Theory]
+    [InlineData("{\"budsjettaar\":[0]}")]
+    [InlineData("{\"budsjettaar\":[10000]}")]
+    [InlineData("{\"kategorier\":[-1]}")]
+    [InlineData("{\"kategorier\":[999]}")]
+    [InlineData("{\"budsjettaar\":\"2031\"}")]
+    public async Task Ugyldige_filter_avvises_ogsaa_ved_direkte_JSON(string utvalg)
+    {
+        using var app = new TestApplikasjon(); using var klient = app.CreateClient(); klient.DefaultRequestHeaders.Add("X-Test-Rolle", "Leser");
+        var json = JsonNode.Parse(utvalg)!.AsObject(); json["adresse"] = "egen@fin.dep.no"; json["godtarStandardvalg"] = true;
+        Assert.Equal(HttpStatusCode.BadRequest, (await klient.PostAsJsonAsync("/api/epostabonnement", json)).StatusCode);
+        Assert.Equal("IkkePaameldt", (string?)(await klient.GetFromJsonAsync<JsonObject>("/api/epostabonnement"))!["status"]);
+    }
+    [Theory]
+    [InlineData("Leser")]
+    [InlineData("Bidragsyter")]
+    [InlineData("Administrator")]
     public async Task Varselvalg_haandheves_med_eierskap_versjon_og_minst_ett_valg(string rolle)
     {
         using var app = new TestApplikasjon(); using var klient = app.CreateClient();

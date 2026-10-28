@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Aarshjul.Application;
 using Aarshjul.Application.Epost;
+using Aarshjul.Domain;
 using Aarshjul.Infrastructure;
 using Aarshjul.Infrastructure.Epost;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,67 @@ namespace Aarshjul.Testkontrakter;
 /// <summary>Samme offentlige påmeldingskontrakt mot SQLite og ekte SQL Server.</summary>
 public abstract class EpostabonnementKontrakt
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Tomt_og_null_utvalg_betyr_Alle_og_konkrete_valg_normaliseres_varig(bool tomt)
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db);
+        var status = await p.Tjeneste.MeldPaaAsync("a", "egen@fin.dep.no", true, true, false,
+            tomt ? [] : null, tomt ? [] : null);
+        Assert.True(status.AlleBudsjettaar); Assert.True(status.AlleKategorier);
+        Assert.Null(status.Budsjettaar); Assert.Null(status.Kategorier);
+        status = await p.Tjeneste.BekreftAsync("a", p.Token);
+        status = await p.NyTjeneste().EndreValgAsync("a", true, true, status.Versjon,
+            [2032, 2031, 2032], [Kategori.Regnskap, Kategori.Budsjett, Kategori.Regnskap]);
+        var lagret = await p.NyTjeneste().HentAsync("a");
+        Assert.False(lagret.AlleBudsjettaar); Assert.False(lagret.AlleKategorier);
+        Assert.Equal(new[] { 2031, 2032 }, lagret.Budsjettaar);
+        Assert.Equal(new[] { Kategori.Budsjett, Kategori.Regnskap }, lagret.Kategorier);
+        await Assert.ThrowsAsync<EpostabonnementKonflikt>(() => p.Tjeneste.EndreValgAsync("a", true, false, Guid.Empty, null, null));
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.EndreValgAsync("anden", true, false, status.Versjon, null, null));
+        // EV04s type-only-kall bevarer abonnementets egne utvalg.
+        status = await p.Tjeneste.EndreValgAsync("a", true, false, status.Versjon);
+        Assert.Equal(new[] { 2031, 2032 }, status.Budsjettaar);
+        status = await p.Tjeneste.EndreValgAsync("a", true, false, status.Versjon, [], []);
+        Assert.True(status.AlleBudsjettaar); Assert.True(status.AlleKategorier);
+        await p.Tjeneste.MeldAvAsync("a");
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.EndreValgAsync("a", true, false, status.Versjon, [2031], []));
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(-1, 0)]
+    [InlineData(10000, 0)]
+    [InlineData(2031, -1)]
+    [InlineData(2031, 3)]
+    public async Task Ugyldig_utvalg_avvises_foer_lagring_eller_bekreftelsespost(int aar, int kategori)
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.MeldPaaAsync("a", "egen@fin.dep.no", true, true, false, [aar], [(Kategori)kategori]));
+        Assert.Empty(p.Post.Meldinger); Assert.Equal("IkkePaameldt", (await p.Tjeneste.HentAsync("a")).Status);
+        await p.MeldPaa(); var status = await p.Tjeneste.BekreftAsync("a", p.Token);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.EndreValgAsync("a", true, false, status.Versjon, [aar], [(Kategori)kategori]));
+        Assert.Equal(status, await p.NyTjeneste().HentAsync("a"));
+    }
+
+    [Fact]
+    public async Task Samtidige_filterlagringer_har_en_vinner_uten_fletting_av_ulike_utvalg()
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db); await p.MeldPaa();
+        var aktiv = await p.Tjeneste.BekreftAsync("a", p.Token);
+        using var port = new Lagringsport(1, manuell: true);
+        var gammel = p.NyTjeneste(port).EndreValgAsync("a", true, false, aktiv.Versjon, [2031], [Kategori.Budsjett]);
+        try
+        {
+            await port.Mottatt.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            await p.Tjeneste.EndreValgAsync("a", true, false, aktiv.Versjon, [2032], [Kategori.Regnskap]);
+            port.Fortsett.TrySetResult(); await Assert.ThrowsAsync<EpostabonnementKonflikt>(() => gammel);
+            var lagret = await p.NyTjeneste().HentAsync("a");
+            Assert.Equal(new[] { 2032 }, lagret.Budsjettaar); Assert.Equal(new[] { Kategori.Regnskap }, lagret.Kategorier);
+        }
+        finally { port.Fortsett.TrySetResult(); try { await gammel; } catch (EpostabonnementKonflikt) { } }
+    }
     [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]

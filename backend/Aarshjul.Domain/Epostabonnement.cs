@@ -10,6 +10,8 @@ public sealed class Epostabonnement
     public bool VesentligeEndringer { get; set; }
     public bool AlleBudsjettaar { get; set; } = true;
     public bool AlleKategorier { get; set; } = true;
+    /// <summary>Privat lagret utvalg med databaseordnede aktiveringsgrenser. Null viderefører Alle.</summary>
+    public string? UtvalgJson { get; set; }
     public DateTimeOffset Opprettet { get; set; }
     public DateTimeOffset Endret { get; set; }
     public DateTimeOffset? Aktivert { get; set; }

@@ -22,11 +22,16 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
     public Task<EpostabonnementDto> MeldPaaAsync(string brukerId, string adresse, bool godtarStandardvalg, CancellationToken ct = default)
         => MeldPaaAsync(brukerId, adresse, godtarStandardvalg, true, false, ct);
 
-    public async Task<EpostabonnementDto> MeldPaaAsync(string brukerId, string adresse, bool godtar, bool nyeFrister, bool vesentligeEndringer, CancellationToken ct = default)
+    public Task<EpostabonnementDto> MeldPaaAsync(string brukerId, string adresse, bool godtar, bool nyeFrister, bool vesentligeEndringer, CancellationToken ct = default)
+        => MeldPaaAsync(brukerId, adresse, godtar, nyeFrister, vesentligeEndringer, null, null, ct);
+
+    public async Task<EpostabonnementDto> MeldPaaAsync(string brukerId, string adresse, bool godtar, bool nyeFrister, bool vesentligeEndringer,
+        IReadOnlyCollection<int>? budsjettaar, IReadOnlyCollection<Kategori>? kategorier, CancellationToken ct = default)
     {
         adresse = NormaliserAdresse(adresse);
         if (!godtar) throw new Valideringsfeil("Bekreft valgene og at adressen er din egen jobbadresse.");
         ValiderValg(nyeFrister, vesentligeEndringer);
+        var utvalg = Abonnementsutvalg.Les(null).MedValg(budsjettaar, kategorier);
         if (!post.Tilgjengelig) throw new Valideringsfeil("Adressebekreftelse er ikke satt i drift. Du er ikke meldt på.");
         await using var db = await fabrikk.CreateDbContextAsync(ct);
         var rad = await db.Epostabonnementer.SingleOrDefaultAsync(x => x.BrukerId == brukerId, ct);
@@ -42,6 +47,7 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
         rad ??= new() { BrukerId = brukerId, Adresse = adresse, Opprettet = naa, SendevinduStart = naa };
         rad.NyeFrister = nyeFrister;
         rad.VesentligeEndringer = vesentligeEndringer;
+        SettUtvalg(rad, utvalg);
         KlargjoerBekreftelse(rad, token, naa);
         if (erNy) db.Epostabonnementer.Add(rad);
         try { await LagreAsync(db, rad, ct); }
@@ -58,7 +64,15 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
         return await SendAsync(db, rad, token, ct);
     }
 
-    public async Task<EpostabonnementDto> EndreValgAsync(string brukerId, bool nyeFrister, bool vesentligeEndringer, Guid versjon, CancellationToken ct = default)
+    public Task<EpostabonnementDto> EndreValgAsync(string brukerId, bool nyeFrister, bool vesentligeEndringer, Guid versjon, CancellationToken ct = default)
+        => EndreAsync(brukerId, nyeFrister, vesentligeEndringer, versjon, false, null, null, ct);
+
+    public Task<EpostabonnementDto> EndreValgAsync(string brukerId, bool nyeFrister, bool vesentligeEndringer, Guid versjon,
+        IReadOnlyCollection<int>? budsjettaar, IReadOnlyCollection<Kategori>? kategorier, CancellationToken ct = default)
+        => EndreAsync(brukerId, nyeFrister, vesentligeEndringer, versjon, true, budsjettaar, kategorier, ct);
+
+    private async Task<EpostabonnementDto> EndreAsync(string brukerId, bool nyeFrister, bool vesentligeEndringer, Guid versjon,
+        bool endreUtvalg, IReadOnlyCollection<int>? budsjettaar, IReadOnlyCollection<Kategori>? kategorier, CancellationToken ct)
     {
         ValiderValg(nyeFrister, vesentligeEndringer);
         await using var db = await fabrikk.CreateDbContextAsync(ct);
@@ -67,6 +81,7 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
         if (rad.Versjon != versjon) throw new EpostabonnementKonflikt();
         rad.NyeFrister = nyeFrister;
         rad.VesentligeEndringer = vesentligeEndringer;
+        if (endreUtvalg) SettUtvalg(rad, Abonnementsutvalg.Les(rad.UtvalgJson).MedValg(budsjettaar, kategorier));
         rad.Endret = klokke.GetUtcNow();
         db.KoordinerEpostlagring();
         await LagreAsync(db, rad, ct);
@@ -206,6 +221,15 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
     }
 
     private static string Hash(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
-    private static EpostabonnementDto TilDto(Epostabonnement? rad) => rad is null ? new("IkkePaameldt", null)
-        : new(rad.Status, rad.Adresse, rad.NyeFrister, rad.VesentligeEndringer, rad.AlleBudsjettaar, rad.AlleKategorier, rad.Aktivert, rad.Endret, rad.Versjon);
+    private static void SettUtvalg(Epostabonnement rad, Abonnementsutvalg utvalg)
+    {
+        rad.UtvalgJson = utvalg.Json(); rad.AlleBudsjettaar = utvalg.Budsjettaar is null; rad.AlleKategorier = utvalg.Kategorier is null;
+    }
+    private static EpostabonnementDto TilDto(Epostabonnement? rad)
+    {
+        if (rad is null) return new("IkkePaameldt", null);
+        var utvalg = Abonnementsutvalg.Les(rad.UtvalgJson);
+        return new(rad.Status, rad.Adresse, rad.NyeFrister, rad.VesentligeEndringer, rad.AlleBudsjettaar, rad.AlleKategorier,
+            rad.Aktivert, rad.Endret, rad.Versjon, utvalg.Budsjettaar, utvalg.Kategorier);
+    }
 }
