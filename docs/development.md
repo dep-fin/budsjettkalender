@@ -54,13 +54,16 @@ bekreftelsestransporten utilgjengelig; EV02 setter ingen e-posttjeneste i drift.
 ## Obligatorisk nettleserakseptanse
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: scenarioene starter Kestrel i Development
-med Demo=true, tilfeldig loopback-port og ny SQLite-fil. EV02 legger til fem slike scenarioer.
-Ytterligere scenarioer bruker den
-eksisterende HTTP-testverten i Testing med ekte Kestrel, SQLite i minnet og testautentisering.
+eksisterende app eller database: 269 scenarioer bruker disponible Kestrel-verter,
+inklusive de fem fra EV02.
+Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
+De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
+Kestrel, SQLite i minnet og testautentisering.
 Der styres fullføringen av gruppeoppslag, malens laste-/preview-/lagringskall og
 databaseporten ved generering/godkjenning/avvisning, maloverføringens preview/import og
 dokumentinnlesingens fullføring, fristskjemaets felt-/bevis-/lagringskall og gruppeforvaltningens/innsynets lese- og lagringskall.
+Eksportutvalg, fristoverføringens preview/import og abonnementenes lese-/lagringskall
+bruker samme grense for feil, avbrudd, feltbytte, bekreftelse og dobbel innsending.
 De faktiske PDF-/uttrekks-/lagringsadapterne brukes også
 etter dokumentportens venting; kontrollert teknisk feil prøver trygg melding og nytt forsøk.
 Dette prøver initialisering, rask navigasjon, asynkront filbytte, dobbeltbekreftelse
@@ -97,7 +100,18 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 226 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 269 beståtte scenarioer uten hopp.
+Den samlede EV02/UX15-kandidaten beholder EV02-grenens jobbgrense på 45 minutter.
+Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
+EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
+De lokale tidene begrunner rom for testene og oppsettet, men måler ikke Chromium.
+Ren EV02-CI [40673623216](https://github.com/depmartin/Budsjettkalender/actions/runs/40673623216)
+fullførte senere 226 Chromium-scenarioer: teststeget tok 11:57 og jobben 13:08.
+Den målingen dekker ikke de 269 integrerte tilfellene. UX15s tidligere
+20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
+ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
+Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
+Ny kandidat-CI må fullføre alle 269; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -110,7 +124,9 @@ og [UX03-prøvene](acceptance/2026-10-27-atelier-ux03.md), samt
 og [UX09-prøvene](acceptance/2026-10-27-atelier-ux09.md), samt
 [UX10-prøvene](acceptance/2026-10-27-atelier-ux10.md), [UX11-prøvene](acceptance/2026-10-27-atelier-ux11.md)
 og [UX12-prøvene](acceptance/2026-10-28-atelier-ux12.md), samt
-[UX13-prøvene](acceptance/2026-10-28-atelier-ux13.md) og [UX14-prøvene](acceptance/2026-10-28-atelier-ux14.md) for faktisk prøvd scope og eksterne grenser.
+[UX13-prøvene](acceptance/2026-10-28-atelier-ux13.md), [UX14-prøvene](acceptance/2026-10-28-atelier-ux14.md)
+og [UX15-prøvene](acceptance/2026-10-28-atelier-ux15.md), samt
+[EV02-prøvene](acceptance/2026-10-28-epost-ev02.md) for faktisk prøvd scope og eksterne grenser.
 
 ## Obligatorisk SQL Server-kontroll i CI
 

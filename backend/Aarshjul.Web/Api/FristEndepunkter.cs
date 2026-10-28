@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Aarshjul.Application;
 using Aarshjul.Application.Datautveksling;
 using Aarshjul.Application.Frister;
 using Aarshjul.Application.Grupper;
@@ -79,9 +80,9 @@ public static class FristEndepunkter
     }
 
     private static async Task<IResult> EksporterWord(
-        HttpContext http, IFristlesing lesing, IWordEksport eksport, IGruppetjeneste grupper, CancellationToken ct)
+        HttpContext http, FristEksportutvalg utvalgstjeneste, IWordEksport eksport, CancellationToken ct)
     {
-        var (utvalg, feil) = await ByggUtvalgAsync(http, lesing, grupper, ct);
+        var (utvalg, feil) = await ByggUtvalgAsync(http, utvalgstjeneste, ct);
         if (utvalg is null) return feil!;
 
         var bytes = eksport.GenererFristdokument(utvalg.Foresporsel, utvalg.Frister);
@@ -90,9 +91,9 @@ public static class FristEndepunkter
     }
 
     private static async Task<IResult> EksporterIcs(
-        HttpContext http, IFristlesing lesing, IKalenderEksport eksport, IGruppetjeneste grupper, CancellationToken ct)
+        HttpContext http, FristEksportutvalg utvalgstjeneste, IKalenderEksport eksport, CancellationToken ct)
     {
-        var (utvalg, feil) = await ByggUtvalgAsync(http, lesing, grupper, ct);
+        var (utvalg, feil) = await ByggUtvalgAsync(http, utvalgstjeneste, ct);
         if (utvalg is null) return feil!;
 
         var bytes = eksport.GenererIcs(utvalg.Foresporsel, utvalg.Frister);
@@ -123,16 +124,13 @@ public static class FristEndepunkter
         return Results.File(bytes, "text/calendar; charset=utf-8");
     }
 
-    /// <summary>Ferdig utvalg (kriterium + synlighetsfiltrerte frister) klart for en av eksportformene.</summary>
-    private sealed record Utvalg(Utskriftsforesporsel Foresporsel, IReadOnlyList<FristDto> Frister, string Filnavnsdel);
-
     /// <summary>
     /// Delt utvalgsbygging for Word- og kalendereksporten: leser gruppe/«alt» + periode fra spørringen,
     /// bygger synlighetskonteksten («se som rolle» / fullt innsyn), og henter fristene gjennom det samme
     /// server-side synlighetsfilteret. Slik gir begge formater nøyaktig samme sett.
     /// </summary>
-    private static async Task<(Utvalg? utvalg, IResult? feil)> ByggUtvalgAsync(
-        HttpContext http, IFristlesing lesing, IGruppetjeneste grupper, CancellationToken ct)
+    private static async Task<(Eksportutvalg? utvalg, IResult? feil)> ByggUtvalgAsync(
+        HttpContext http, FristEksportutvalg utvalgstjeneste, CancellationToken ct)
     {
         var q = http.Request.Query;
         var alt = q["alt"] == "true";
@@ -140,31 +138,11 @@ public static class FristEndepunkter
         DateOnly? fra = DateOnly.TryParse(q["fra"].ToString(), out var f) ? f : null;
         DateOnly? til = DateOnly.TryParse(q["til"].ToString(), out var t) ? t : null;
 
-        ISynlighetskontekst ctx;
-        string etikett;
-        if (alt)
+        try
         {
-            ctx = new Synlighetskontekst(serAlt: true, grupper: []);
-            etikett = "alle";
+            return (await utvalgstjeneste.HentAsync(alt, gruppeKode, fra, til, ct), null);
         }
-        else if (!string.IsNullOrWhiteSpace(gruppeKode))
-        {
-            ctx = Synlighetskontekst.ForGruppe(gruppeKode);
-            var aktive = await grupper.HentAktiveAsync(ct);
-            etikett = aktive.FirstOrDefault(g => g.Kode == gruppeKode)?.Navn ?? gruppeKode;
-        }
-        else
-        {
-            return (null, Results.BadRequest("Velg en synlighetsgruppe eller «alt»."));
-        }
-
-        // Periodevinduet styrer utvalget; historikk tas med så fortidige frister i vinduet ikke faller bort.
-        var filter = new FristFilter { FraDato = fra, TilDato = til, InkluderHistorikk = true };
-        var frister = await lesing.HentSynligeAsync(ctx, filter, ct);
-
-        var foresporsel = new Utskriftsforesporsel(alt ? null : gruppeKode, etikett, fra, til, alt);
-        var filnavnsdel = $"{(alt ? "alle" : gruppeKode!)}-{fra:yyyyMMdd}_{til:yyyyMMdd}";
-        return (new Utvalg(foresporsel, frister, filnavnsdel), null);
+        catch (Valideringsfeil feil) { return (null, Results.BadRequest(feil.Message)); }
     }
 
     private static FristFilter LesFilter(IQueryCollection q)

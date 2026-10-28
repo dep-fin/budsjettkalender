@@ -1,158 +1,94 @@
 @page "/admin/abonnement"
-@using Aarshjul.Application.Kalender
-@using Aarshjul.Application.Grupper
-@using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
-@inject IKalenderabonnement Feedtjeneste
-@inject IGruppetjeneste Grupper
-@inject NavigationManager Nav
-@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Del kalender (abonnement)</PageTitle>
-
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" />
+<p class="menyoverskrift">Eksport og deling</p>
 <h1>Del kalender (abonnement)</h1>
-
-<p class="ingress">
-    Lag en <strong>abonnementslenke</strong> per gruppe. Del lenken (f.eks. i en SharePoint-kalender),
-    så abonnerer Outlook på den og henter en fersk kalender jevnlig — endringer du gjør her dukker opp
-    hos mottakerne av seg selv, uten ny import. Lenken viser kun den valgte gruppens frister (samme
-    server-side synlighet som ellers). Du kan skru en lenke <strong>av</strong> når som helst.
-</p>
-
-<div class="feil" role="note">
-    <strong>Behandle lenken som en hemmelighet.</strong> Alle som har URL-en ser gruppens frister uten
-    innlogging. Skru lenken av hvis den kommer på avveie, og lag en ny.
+<p class="ingress">Opprett og forvalt hemmelige lenker til en kalender som hentes på nytt.</p>
+<div class="delingsinnledning">
+    <section class="delingskort" aria-labelledby="levende-kalender">
+        <span class="delingssymbol" aria-hidden="true">↻</span>
+        <h2 id="levende-kalender">Løpende abonnement</h2>
+        <p>Feeden viser godkjente frister fra og med i dag, uten historikk eller øvre datogrense. Kalenderklienten bestemmer når den henter endringer.</p>
+        <p class="hint">En Word- eller ICS-fil er et øyeblikksbilde. Perioden du velger for en fil gjelder ikke abonnementet.</p>
+        <a href="/admin/eksport">Last ned en fil i stedet</a>
+    </section>
+    <aside class="delingsvern" aria-labelledby="hemmelig-lenke">
+        <h2 id="hemmelig-lenke">Lenken gir tilgang uten innlogging</h2>
+        <p>Behandle lenken som en hemmelighet. Alle som har den kan hente fristene for lenkens publikum.</p>
+        <p>Hvis den kommer på avveie: skru av eller slett lenken og opprett en ny. Nedlastede, importerte eller mellomlagrede data kan ikke trekkes tilbake.</p>
+    </aside>
 </div>
-
-<section class="skjema">
-    <h2>Ny lenke</h2>
-    @if (_feil is not null)
-    {
-        <div class="feil">@_feil</div>
-    }
-    <div class="skjemarad">
-        <label>Gruppe
-            <select @bind="_valgtKode">
-                <option value="">Alle (mitt fulle innsyn – FIN-internt)</option>
-                @foreach (var g in _grupper)
-                {
-                    <option value="@g.Kode">@g.Navn (@g.Kode)</option>
-                }
-            </select>
-        </label>
-        <button class="knapp knapp-primær" @onclick="Opprett" disabled="@_arbeider">
-            @(_arbeider ? "Oppretter …" : "Opprett lenke")
-        </button>
+@if (_laster) { <p class="delingsstatus" role="status">Laster abonnementer …</p> }
+@if (_feil is not null)
+{
+    <div id="abonnement-feil" class="feil" role="alert" tabindex="-1">
+        <strong>Handlingen kunne ikke fullføres</strong><p>@_feil</p>
+        <button class="knapp" @onclick="LastAsync" disabled="@(_laster || _arbeider)">Last på nytt</button>
+    </div>
+}
+@if (_status is not null) { <p id="abonnement-status" class="delingsstatus" role="status" tabindex="-1">@_status</p> }
+<section class="delingsskjema" aria-labelledby="ny-lenke" aria-busy="@(_arbeider ? "true" : "false")">
+    <div><p class="menyoverskrift">Velg publikum</p><h2 id="ny-lenke">Ny abonnementslenke</h2><p>Velg en aktiv gruppe eller Alt. Kontroller tilgangen før lenken opprettes.</p></div>
+    <div class="delingsvalg">
+        <label for="abonnement-gruppe">Gruppe</label>
+        <select id="abonnement-gruppe" @bind="_valgtKode" disabled="@Laast" aria-describedby="abonnement-utvalg">
+            <option value="">Velg publikum</option>
+            <option value="@AltPublikum">Alt (fullt innsyn – FIN-internt)</option>
+            @foreach (var gruppe in _grupper) { <option value="@gruppe.Kode">@gruppe.Navn (@gruppe.Kode)</option> }
+        </select>
+        <small id="abonnement-utvalg">@(_valgtKode == "" ? "Ingen publikum er valgt. POL krever et aktivt valg." : $"Valgt publikum: {ValgtPublikum}.")</small>
+        <button class="knapp knapp-primær" @onclick="BeOmOppretting" disabled="@(Laast || _valgtKode == "")">Opprett lenke</button>
     </div>
 </section>
-
-<section class="skjema">
-    <h2>Eksisterende lenker</h2>
-    @if (_abonnementer.Count == 0)
+<section class="abonnementoversikt" aria-labelledby="eksisterende-lenker" aria-busy="@(_laster || _arbeider ? "true" : "false")">
+    <div class="oversikttopp"><h2 id="eksisterende-lenker">Eksisterende lenker</h2>@if (_lastet) { <span>@_abonnementer.Count lenker</span> }</div>
+    @if (_lastet && _abonnementer.Count == 0)
     {
-        <p class="melding">Ingen lenker ennå.</p>
+        <div class="delingstom"><h3>Ingen lenker ennå</h3><p>Velg publikum ovenfor for å opprette den første abonnementslenken.</p></div>
     }
-    else
+    else if (_abonnementer.Count > 0)
     {
-        <table class="tabell">
-            <thead>
-                <tr><th>Gruppe</th><th>Status</th><th>Lenke (URL)</th><th>Handlinger</th></tr>
-            </thead>
+        <table class="abonnementtabell">
+            <thead><tr><th>Publikum</th><th>Status</th><th>Hemmelig abonnementslenke</th><th>Handlinger</th></tr></thead>
             <tbody>
                 @foreach (var a in _abonnementer)
                 {
-                    <tr>
-                        <td>@a.Etikett @(a.ErAlt ? "(alt)" : $"({a.GruppeKode})")</td>
-                        <td>
-                            @if (a.Aktiv)
-                            {
-                                <span class="merke merke-aar">Aktiv</span>
-                            }
-                            else
-                            {
-                                <span class="merke merke-tentativ">Avskrudd</span>
-                            }
-                        </td>
-                        <td>
-                            @if (a.Aktiv)
-                            {
-                                <code class="feed-url">@FeedUrl(a.Token)</code>
-                            }
-                            else
-                            {
-                                <span class="melding">— (skru på for å bruke)</span>
-                            }
-                        </td>
-                        <td class="skjemarad">
-                            @if (a.Aktiv)
-                            {
-                                <button class="knapp" @onclick="() => SettAktiv(a.Id, false)">Skru av</button>
-                            }
-                            else
-                            {
-                                <button class="knapp" @onclick="() => SettAktiv(a.Id, true)">Skru på</button>
-                            }
-                            <button class="knapp" @onclick="() => Slett(a.Id)">Slett</button>
-                        </td>
+                    <tr @key="a.Id">
+                        <th scope="row">@Publikum(a)</th>
+                        <td><span class="delingsmerke @(a.Aktiv ? "" : "avskrudd")">@(a.Aktiv ? "Aktiv" : "Avskrudd")</span></td>
+                        <td class="hemmeligadresse">@if (a.Aktiv) { <code class="feed-url">@FeedUrl(a.Token)</code> } else { <span class="hint">Lenken er skjult mens den er avskrudd.</span> }</td>
+                        <td><div class="radhandlinger"><button class="knapp" disabled="@Laast" @onclick="() => BeOmEndring(a, a.Aktiv ? Handling.SkruAv : Handling.SkruPaa)">@(a.Aktiv ? "Skru av" : "Skru på")</button><button class="knapp" disabled="@Laast" @onclick="() => BeOmEndring(a, Handling.Slett)">Slett</button></div></td>
                     </tr>
                 }
             </tbody>
         </table>
-        <p class="melding">
-            I Outlook: <em>Legg til kalender → Fra Internett</em> og lim inn URL-en. I SharePoint kan du
-            koble den samme URL-en til en kalender som deles videre.
-        </p>
     }
+    <p class="delingsfotnote">Skru av stopper nye feedkall med 404. Skru på åpner den samme lenken igjen for eksisterende innehavere. Sletting er permanent. Klientens oppdateringsforsinkelse er ikke bekreftet her.</p>
 </section>
-
-@code {
-    private IReadOnlyList<GruppeDto> _grupper = [];
-    private IReadOnlyList<KalenderabonnementDto> _abonnementer = [];
-    private string _valgtKode = "";
-    private bool _arbeider;
-    private string? _feil;
-
-    protected override async Task OnInitializedAsync()
+<dialog @key="_valg" @ref="_dialog" class="abonnementdialog" aria-labelledby="abonnement-bekreft" data-valg="@_valg" data-bekreft="@(_venter is not null ? "true" : "false")" data-arbeider="@(_arbeider ? "true" : "false")">
+    @if (_venter is { } vent)
     {
-        _grupper = await Grupper.HentAktiveAsync();
-        await LastAbonnementer();
-    }
-
-    private async Task LastAbonnementer()
-        => _abonnementer = await Feedtjeneste.HentAlleAsync();
-
-    private string FeedUrl(string token) => $"{Nav.BaseUri}kalender/feed/{token}.ics";
-
-    private async Task Opprett()
-    {
-        _feil = null;
-        _arbeider = true;
-        try
+        <p class="menyoverskrift">Bekreft kalenderdeling</p>
+        <h2 id="abonnement-bekreft">@Dialogtittel(vent.Type)</h2>
+        <p>Publikum: <strong>@vent.Publikum</strong></p>
+        @switch (vent.Type)
         {
-            var state = await AuthState.GetAuthenticationStateAsync();
-            var navn = state.User.Identity?.Name ?? "administrator";
-            await Feedtjeneste.OpprettAsync(string.IsNullOrEmpty(_valgtKode) ? null : _valgtKode, navn);
-            await LastAbonnementer();
+            case Handling.Opprett:
+                <p>Alle som får den hemmelige lenken kan hente godkjente frister for dette publikummet uten innlogging. Abonnementet følger frister fra og med i dag.</p>
+                break;
+            case Handling.SkruAv:
+                <p>Nye feedkall vil gi 404. Kalenderklienter kan fortsatt vise data de allerede har hentet. Lenken beholdes og kan skrus på igjen.</p>
+                break;
+            case Handling.SkruPaa:
+                <p>Den samme lenken blir aktiv igjen. Alle som allerede har lenken får tilgang på nytt. Dette oppretter ingen ny hemmelig lenke.</p>
+                break;
+            case Handling.Slett:
+                <p>Lenken slettes permanent og vil gi 404. Den kan ikke skrus på igjen. En eventuell ny lenke må opprettes og deles på nytt.</p>
+                break;
         }
-        catch (Exception ex)
-        {
-            _feil = ex.Message;
-        }
-        finally
-        {
-            _arbeider = false;
-        }
+        <p class="hint">Nedlastede, importerte eller mellomlagrede data kan ikke trekkes tilbake.</p>
+        <div class="dialoghandlinger"><button class="knapp" autofocus disabled="@_arbeider" @onclick="AvbrytAsync">Avbryt</button><button class="knapp knapp-primær" disabled="@_arbeider" @onclick="BekreftAsync">@(_arbeider ? "Lagrer …" : Bekrefttekst(vent.Type))</button></div>
     }
-
-    private async Task SettAktiv(Guid id, bool aktiv)
-    {
-        await Feedtjeneste.SettAktivAsync(id, aktiv);
-        await LastAbonnementer();
-    }
-
-    private async Task Slett(Guid id)
-    {
-        await Feedtjeneste.SlettAsync(id);
-        await LastAbonnementer();
-    }
-}
+</dialog>

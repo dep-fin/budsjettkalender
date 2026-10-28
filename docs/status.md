@@ -12,10 +12,14 @@ aktivering og avmelding. Standardutvalget Nye frister, Alle budsjettår og Alle 
 lagres uttrykkelig. Ingen eksisterende bruker meldes automatisk på. Produksjonstransport,
 fristoppsummering, adressebytte, utvidede valg og administratoroversikt tilhører senere
 EV-tickets under [#110](https://github.com/depmartin/Budsjettkalender/issues/110).
-821 ordinære tester og alle fem nye reelle Edge/Kestrel-forløp er bestått lokalt.
-Siste komplette nettleserport utførte 226 tilfeller med 224 bestått og to avvik i
-uendrede kø-/kalenderscenarioer; den er ikke grønn. SQL Server-prosjektet er bygget med
-60 oppdagede tilfeller; reell SQL Server- og Chromium-kjøring er fortsatt CI-port før levering.
+Ren EV02-kandidat `a6d3f2a` bestod [CI 40673623216](https://github.com/depmartin/Budsjettkalender/actions/runs/40673623216)
+med 823 ordinære, 62 ekte SQL Server- og 226 Chromium-tilfeller uten hopp.
+Dette endrer ikke den historiske lokale fullportens 224/226 og to grønne isolerte
+etterprøver. Kandidaten integrerer nå merget UX15 fra main `31bfddb`, med 845 beståtte
+ordinære tester og oppdaget samlet inventar på 269 nettleser- og 62 SQL Server-tilfeller.
+De tidligere 823/226/62 navnene er bevart; alle UX15-testklasser er beholdt.
+Målrettet Edge/Kestrel bestod 49/49 EV02-/UX15-forløp uten feil/hopp.
+Ny samlet Chromium-/SQL Server-CI kreves på integrasjonens publiserte head.
 [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md) inneholder de konkrete bevisene.
 
 Atelier UX01 ([#76](https://github.com/depmartin/Budsjettkalender/issues/76)) er levert i
@@ -163,8 +167,9 @@ passerte ordinære tester, alle 46 ekte SQL Server-prøver og 197 Chromium-scena
 [UX13-akseptansen](acceptance/2026-10-28-atelier-ux13.md) skiller prototype, faktisk PDF-flyt
 og verifikasjonens grenser.
 
-Atelier UX14 ([#89](https://github.com/depmartin/Budsjettkalender/issues/89)) har en lokal
-kandidat med samlet gruppeoversikt, native opprettings-/redigeringsdialog og eksplisitt
+Atelier UX14 ([#89](https://github.com/depmartin/Budsjettkalender/issues/89)) er levert i
+[PR #109](https://github.com/depmartin/Budsjettkalender/pull/109), merget som
+`61834a05f4f73c4a79c35f870a61e0351ae3daf4`, med samlet gruppeoversikt, native opprettings-/redigeringsdialog og eksplisitt
 publisert gruppeinnsyn med lesende detaljer/kilder. Gruppevedlikehold har serverautorisering
 ved hvert skriv; ID, kode, standardidentitet, historisk deling og medlemskapskilder beholdes.
 Sene liste-/detaljsvar kan ikke overta et nyere gruppevalg. Ingen medlemskapsforvaltning
@@ -176,8 +181,40 @@ lukking; feil beholder dialog, felt og fokusert melding med mulighet for ny inns
 782 ordinære og 221 reelle Edge/Kestrel-scenarioer passerer uten feil/hopp; alle
 tidligere 766/197 navn og de 46 SQL-navnene er bevart. Alle 38 opprinnelige og 12 nye Escape-bilder
 er inspisert uten åpne visuelle funn. Opprinnelig Standards-review og separat
-sikkerhetsaudit hadde ingen funn. Root håndterer fokusert etterkontroll av Spec-
-rettingen og kandidat-CI.
+sikkerhetsaudit hadde ingen funn. Fokusert etterkontroll av Spec-rettingen hadde ingen
+åpne funn; [CI 40651897387](https://github.com/depmartin/Budsjettkalender/actions/runs/40651897387)
+passerte ordinære tester, alle 46 ekte SQL Server-prøver og 221 Chromium-scenarioer.
+
+Atelier UX15 ([#90](https://github.com/depmartin/Budsjettkalender/issues/90)) er levert i
+[PR #127](https://github.com/depmartin/Budsjettkalender/pull/127), merget som
+`31bfddbe38feb6088f907d38f2a28357b856e320`, med Atelier-flater for faktiske Word-/ICS-filer, løpende abonnement og full
+JSON-overføring. Eksportkontrollen deler serverfiltrert gruppe-/periodeutvalg med de
+bevarte filendepunktene. Fristimport viser den faktiske filas fulle kandidat, ukjente
+grupper og erstatt-alt-konsekvens før native bekreftelse; Avbryt og atomisk lagringsfeil
+bevarer gamle data. Abonnement forklarer hemmelig lenke, Av/404, På/samme lenke og
+permanent sletting uten ny delingspolicy. Maloverføring gjenbruker UX12/#87.
+[UX15-akseptansen](acceptance/2026-10-28-atelier-ux15.md) beskriver de faktiske filene,
+feltrundturen, autorisasjonsgrensene, tokenvernet og eksterne porter.
+Samlet review fant en P1-kollisjon mellom den lovlige gruppen `ALT` og fullt
+innsyn. Rettet valgverdi utenfor gruppekodenes grammatikk bevarer ALT-gruppen;
+faktisk UI, lagret `GruppeKode` og anonym feed er prøvd separat for begge valg.
+804 ordinære og 264 reelle Edge/Kestrel-scenarioer passerer uten feil/hopp etter
+siste testendring; alle opprinnelige 804/262 navn og 46 SQL-navn er bevart.
+En observert falsk positiv i UX14s årsassert traff et tilfeldig Blazor-attributt;
+root-autorisert kontroll av faktisk årstekst/alternativer passerer med alle navn
+og øvrige innsynskontroller bevart. Feilet TRX er beholdt. 30 opprinnelige og åtte
+nye faktiske 1440-/390-bilder er inspisert, bare tokenfrie abonnementstilstander.
+Låst restore med aktiv audit og Release-bygg for alle tre prosjekter er grønne.
+CI-antallet er 264. Faktisk kandidat-CI `40672069748` bestod **804/804 ordinære** og
+**46/46 ekte SQL Server-tester**. Nettleserjobben ble avbrutt ved jobbens 15-minuttersgrense
+uten rapportert assertfeil, fullført testantall eller TRX. Teststeget hadde da kjørt i
+14 minutter og 4 sekunder. Det er fortsatt uavklart om årsaken er samlet kjøretid
+eller en hengende test.
+UX15 økte deretter nettleserjobbens tidsbudsjett til **20 minutter** som et avgrenset
+forsøk med alle testkrav og forventningstimeouter bevart. Dette er den leverte UX15s
+historikk. EV02-integrasjonen ovenfor beholder sin tidligere 45-minuttersgrense og
+krever det samlede inventaret på 269; se [utviklingsveiledningen](development.md).
+#42/#43/#48/#55 består som egne eksterne porter, og ingen deploy er utført.
 
 | Oppgave | Implementert atferd | Leveranse |
 | --- | --- | --- |
@@ -206,7 +243,8 @@ rettingen og kandidat-CI.
 | [#86](https://github.com/depmartin/Budsjettkalender/issues/86) | Hel sideeffektfri prøve, midlertidige ankre, samme lagrede mal ved konkret generering, presisjonsriktig fjorår, bekreftet atomisk erstatning og enkeltgodkjenning | Merget i [PR #106](https://github.com/depmartin/Budsjettkalender/pull/106), `75b579a`; [akseptanse](acceptance/2026-10-27-atelier-ux11.md) |
 | [#87](https://github.com/depmartin/Budsjettkalender/issues/87) | Hel maleksport, sideeffektfri importpreview, kompatibilitet, eksplisitt erstatning/tømming og atomisk gjenoppretting | Merget i [PR #107](https://github.com/depmartin/Budsjettkalender/pull/107), `092b22b`; [akseptanse](acceptance/2026-10-28-atelier-ux12.md) |
 | [#88](https://github.com/depmartin/Budsjettkalender/issues/88) | Dokumentvalg, reelt uttrekk, arbeidsår/kilde i kø, bevis og aktiv godkjenning til én publisert frist | Merget i [PR #108](https://github.com/depmartin/Budsjettkalender/pull/108), `84765aa`; [akseptanse](acceptance/2026-10-28-atelier-ux13.md) |
-| [#89](https://github.com/depmartin/Budsjettkalender/issues/89) | Atelier-gruppevedlikehold med stabile referanser og rent, serverfiltrert publisert gruppeinnsyn | Lokal kandidat; [akseptanse](acceptance/2026-10-28-atelier-ux14.md) |
+| [#89](https://github.com/depmartin/Budsjettkalender/issues/89) | Atelier-gruppevedlikehold med stabile referanser og rent, serverfiltrert publisert gruppeinnsyn | Merget i [PR #109](https://github.com/depmartin/Budsjettkalender/pull/109), `61834a0`; [akseptanse](acceptance/2026-10-28-atelier-ux14.md) |
+| [#90](https://github.com/depmartin/Budsjettkalender/issues/90) | Reelle Word-/ICS-filer, serverkontrollert utvalg, løpende abonnement og bekreftet full JSON-overføring | Merget i [PR #127](https://github.com/depmartin/Budsjettkalender/pull/127), `31bfddb`; [akseptanse](acceptance/2026-10-28-atelier-ux15.md) |
 
 ## Samlet akseptanse
 
@@ -498,13 +536,12 @@ CI-jobbens 15 minutter er beholdt, og ingen forventningstimeout er økt.
 Alle 38 opprinnelige og 12 nye Escape-bilder er visuelt lest. De nye kontrollerte
 Escape-bildene kommer fra sluttbygget. Eldre bilder fra samtidig alternativ outputbygging tas ikke med som
 sluttbevis. Fokusert etterkontroll av Spec-rettingen og UX14s ferske ordinære/ekte
-SQL Server-/Chromium-CI gjenstår før merge. UX13s leverte
-[CI40640595314](https://github.com/depmartin/Budsjettkalender/actions/runs/40640595314)
-passerte alle 46 ekte SQL Server-prøver og 197 Chromium-scenarioer.
+SQL Server-/Chromium-CI er gjennomført før merge. [CI 40651897387](https://github.com/depmartin/Budsjettkalender/actions/runs/40651897387)
+passerte alle 46 ekte SQL Server-prøver og 221 Chromium-scenarioer.
 
 Lokalt SQLite-/Edge-bevis gjelder ikke produksjonens Azure SQL, Entra, Key Vault,
-Outlook/M365, OCR eller komplett PDF-kandidatbehandling. Ingen deploy eller arbeid
-med #90 er utført. Se [UX14-akseptansen](acceptance/2026-10-28-atelier-ux14.md) og
+Outlook/M365, OCR eller komplett PDF-kandidatbehandling. Ingen deploy er utført.
+Se [UX14-akseptansen](acceptance/2026-10-28-atelier-ux14.md) og
 [utviklingsveiledningen](development.md).
 
 ## Gjenstående grenser

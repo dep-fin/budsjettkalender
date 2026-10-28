@@ -110,6 +110,9 @@ public partial class Program
         builder.Services.AddScoped<IFasemal, FasemalTjeneste>();
         builder.Services.AddScoped<FasemalKommando>();
         builder.Services.AddScoped<MaloverfoeringKommando>();
+        builder.Services.AddScoped<FristoverfoeringKommando>();
+        builder.Services.AddScoped<FristEksportutvalg>();
+        builder.Services.AddScoped<EksportKommando>();
         builder.Services.AddScoped<GruppeadministrasjonKommando>();
         builder.Services.AddScoped<IFristskriving, FristskrivingTjeneste>();
         builder.Services.AddScoped<IGodkjenningsko, GodkjenningskoTjeneste>();

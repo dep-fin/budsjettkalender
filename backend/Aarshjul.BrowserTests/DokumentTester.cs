@@ -134,12 +134,15 @@ public sealed class DokumentTester
         var foer = (await n.Frister()).ToJsonString();
         var frister = n.Side.Locator("section").Filter(new() { Has = n.Side.GetByRole(AriaRole.Heading, new() { Name = "Frister", Exact = true }) });
         await frister.GetByLabel("Fil (JSON)").SetInputFilesAsync(sti);
+        await frister.GetByRole(AriaRole.Button, new() { Name = "Forhåndsvis frister", Exact = true }).ClickAsync();
+        await Expect(frister.GetByRole(AriaRole.Region, new() { Name = "Importforhåndsvisning", Exact = true })).ToBeVisibleAsync();
         await frister.GetByRole(AriaRole.Button, new() { Name = "Importer frister (erstatt alt)" }).ClickAsync();
-        await frister.GetByRole(AriaRole.Button, new() { Name = "Avbryt", Exact = true }).ClickAsync();
+        await frister.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { Name = "Avbryt", Exact = true }).ClickAsync();
+        await Expect(frister.GetByLabel("Fil (JSON)")).ToBeFocusedAsync();
         Assert.Equal(foer, (await n.Frister()).ToJsonString());
         var ugyldig = original.DeepClone(); ugyldig["versjon"] = 999;
         await frister.GetByLabel("Fil (JSON)").SetInputFilesAsync(JsonFil("ugyldig.json", ugyldig.ToJsonString()));
-        await Importer(frister, "Importer frister (erstatt alt)");
+        await frister.GetByRole(AriaRole.Button, new() { Name = "Forhåndsvis frister", Exact = true }).ClickAsync();
         await Expect(frister.Locator(".feil").Filter(new() { HasText = "versjon" })).ToBeVisibleAsync();
         Assert.Equal(foer, (await n.Frister()).ToJsonString());
         await frister.GetByLabel("Fil (JSON)").SetInputFilesAsync(sti);
@@ -166,6 +169,8 @@ public sealed class DokumentTester
 
     private static async Task Importer(ILocator seksjon, string knapp)
     {
+        await seksjon.GetByRole(AriaRole.Button, new() { Name = "Forhåndsvis frister", Exact = true }).ClickAsync();
+        await Expect(seksjon.GetByRole(AriaRole.Region, new() { Name = "Importforhåndsvisning", Exact = true })).ToBeVisibleAsync();
         await seksjon.GetByRole(AriaRole.Button, new() { Name = knapp, Exact = true }).ClickAsync();
         await seksjon.GetByRole(AriaRole.Button, new() { Name = "Ja, erstatt alt", Exact = true }).ClickAsync();
     }

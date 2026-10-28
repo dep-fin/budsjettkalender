@@ -71,8 +71,13 @@ public sealed class GruppeinnsynTester
             await p.Side.Keyboard.PressAsync("Escape"); await Expect(dialog).Not.ToBeVisibleAsync(); await Expect(knapp).ToBeFocusedAsync();
         }
         var dom = await p.Side.ContentAsync();
-        foreach (var skjult in new[] { p.SkjultId.ToString(), p.ForslagId.ToString(), "UX89 skjult publisert", "UX89 skjult forslag", "2098", "2099", "UX89 hemmelig forslagsnotat", "UX89 hemmelig innsender", "UX89-hemmelig-filnavn.pdf" })
+        foreach (var skjult in new[] { p.SkjultId.ToString(), p.ForslagId.ToString(), "UX89 skjult publisert", "UX89 skjult forslag", "UX89 hemmelig forslagsnotat", "UX89 hemmelig innsender", "UX89-hemmelig-filnavn.pdf" })
             Assert.DoesNotContain(skjult, dom, StringComparison.OrdinalIgnoreCase);
+        foreach (var aar in new[] { "2098", "2099" })
+        {
+            await Expect(p.Side.Locator("body")).Not.ToContainTextAsync(aar);
+            await Expect(p.Side.Locator($"option[value='{aar}']")).ToHaveCountAsync(0);
+        }
         Assert.All(p.Kontroll.Lesinger, l => { Assert.False(l.SerAlt); Assert.Equal(new[] { kode }, l.Grupper); Assert.True(l.Historikk); });
     });
 

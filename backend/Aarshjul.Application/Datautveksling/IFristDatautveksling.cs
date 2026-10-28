@@ -47,6 +47,16 @@ public sealed record FristDatabase
 public sealed record ImportResultat(int AntallImportert, int AntallErstattet, IReadOnlyList<string> Advarsler);
 
 /// <summary>
+/// Sideeffektfri konsekvensvisning av hele fristfila. Frister beholder alle filfelter, men
+/// SynligFor inneholder bare kjente gruppekoder, slik faktisk import vil lagre dem.
+/// EksisterendeAntall er et øyeblikksbilde, ikke et versjonstoken. Tomme ID-er tildeles ved import.
+/// </summary>
+public sealed record FristImportForhaandsvisning(
+    int EksisterendeAntall,
+    IReadOnlyList<FristEksport> Frister,
+    IReadOnlyList<string> Advarsler);
+
+/// <summary>
 /// Eksport og import av alle frister som en gjenopprettbar JSON-«database» (endring #2). Kun
 /// administrator (håndheves i web-laget). Import bruker <b>erstatt-alt</b>-semantikk: eksisterende
 /// frister fjernes og erstattes fullstendig av innholdet i fila.
@@ -55,6 +65,8 @@ public interface IFristDatautveksling
 {
     /// <summary>Alle frister med felter og synlighet, klar til serialisering.</summary>
     Task<FristDatabase> EksporterAsync(CancellationToken ct = default);
+
+    Task<FristImportForhaandsvisning> ForhaandsvisAsync(FristDatabase database, CancellationToken ct = default);
 
     /// <summary>Erstatter alle frister med innholdet i <paramref name="database"/>. Synlighetskoder
     /// som ikke finnes som grupper, hoppes over (med advarsel) for å unngå brutt referanse.</summary>

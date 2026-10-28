@@ -76,7 +76,7 @@ public sealed class TilgangTester
             }
         }
         await n.Side.GetByRole(AriaRole.Link, new() { Name = "Åpne dataforvaltning", Exact = true }).ClickAsync();
-        await Expect(n.Side.GetByRole(AriaRole.Button, new() { Name = "Importer frister (erstatt alt)", Exact = true })).ToBeVisibleAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Button, new() { Name = "Forhåndsvis frister", Exact = true })).ToBeDisabledAsync();
         foreach (var (sti, omraade) in new[] { ("/admin/frist/ny", omraader[0]), ("/admin/mal/ny", omraader[1]), ("/admin/innsyn", omraader[2]), ("/admin/abonnement", omraader[3]), ("/internkalender/mine", omraader[4]), ("/admin/innstillinger", omraader[5]) })
         {
             await n.Gaa(sti);
