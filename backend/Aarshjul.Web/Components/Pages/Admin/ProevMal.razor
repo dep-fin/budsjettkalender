@@ -1,0 +1,32 @@
+@page "/admin/mal/proev"
+@attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+
+<PageTitle>Prøv malen</PageTitle>
+<div class="proevetopp"><div><p class="menyoverskrift">Årsmal</p><h1 id="proeve-tittel" tabindex="-1">Prøv malen</h1></div><span class="proevemerke">Kun forhåndsvisning</span></div>
+<p class="ingress">Kontroller hele den lagrede malen for ett budsjettår. Prøven oppretter verken forslag eller frister.</p>
+<section class="proevevalg">
+    <div><label for="proeve-aar">Prøvebudsjettår</label><input id="proeve-aar" type="text" inputmode="numeric" value="@Kontekst.Aarsfelt" @oninput="AarEndretAsync" aria-invalid="@(Aarsfeil is null ? "false" : "true")" aria-describedby="proeve-aar-hjelp proeve-aar-feil" /><small id="proeve-aar-hjelp">Ett år fra 1 til 9999. Kalenderdatoen kan falle i et annet år.</small></div>
+    <button class="knapp" disabled="@(Aarsfeil is not null || _laster)" @onclick="LastAsync">Beregn på nytt</button>
+    <p>Alle lagrede regler er med. Regellistens søk og filtre og eventuelle ulagrede utkast avgrenser ikke prøven.</p>
+    @if (Aarsfeil is not null) { <p class="feltfeil" id="proeve-aar-feil" role="alert">@Aarsfeil</p> }
+</section>
+@if (_status is not null) { <p class="proevestatus" role="status">@_status</p> }
+@if (_feil is not null) { <div class="feil" role="alert"><p>@_feil</p><button class="knapp" disabled="@(_laster || Aarsfeil is not null)" @onclick="LastAsync">Prøv igjen</button></div> }
+@if (_laster) { <p class="melding" role="status">Beregner hele den lagrede malen …</p> }
+@if (_lastet)
+{
+    <ManuelleAnkre Aar="@Kontekst.Budsjettaar!.Value" Regler="_regler" Datoer="Ankre" Deaktivert="@(Aarsfeil is not null)" DatoEndret="DatoEndretAsync" FjernAlle="FjernAlleAsync" />
+    <section class="proeveresultater" aria-labelledby="proeve-resultat-tittel" aria-busy="@(_laster ? "true" : "false")">
+        <div class="resultattopp"><h2 id="proeve-resultat-tittel">Resultat for budsjettår @_vistAar</h2><p role="status">@_rader.Count lagrede regler · @_rader.Count(r => !r.ErFeil) gyldige · @_rader.Count(r => r.ErFeil) feil</p></div>
+        @if (_regler.Count == 0) { <div class="tomproeve"><h3>Ingen regler i malen</h3><p>Opprett en regel for å prøve samspillet mellom fristene.</p><a class="knapp" href="/admin/mal/ny">Opprett gjentaksregel</a></div> }
+        @foreach (var rad in _rader)
+        {
+            <article @key="rad.Regel.Id" class="proeverad" data-regel-id="@rad.Regel.Id">
+                <div><div class="proevemerker"><span>@Visningformat.KategoriNavn(rad.Regel.Kategori)</span><span>@rad.Sammenhengstekst</span></div><h3>@rad.Tittel</h3><p>@rad.Setning</p><small>Løp: @rad.Regel.Loep@(rad.Regel.Valgaarssensitiv ? " · Valgårssensitiv" : "")</small></div>
+                <div class="proevedato">@if (rad.ErFeil) { <strong class="beregningsfeil">Kan ikke beregnes</strong><p class="beregningsfeil">@(rad.Beregning.Feil ?? "Beregningen ga ingen dato.")</p> } else { <time datetime="@Mallistevisning.Maskindato(rad.Beregning)">@Mallistevisning.Dato(rad.Beregning)</time>@if (rad.Beregning.Valgaarsflagg) { <small>Valgår i datoens kalenderår</small> } }</div>
+                <a class="knapp" href="@($"/admin/mal/{rad.Regel.Id}?fra=proev")" @onclick="() => Kontekst.Returregel = rad.Regel.Id">Rediger</a>
+            </article>
+        }
+    </section>
+    <div class="genereringsovergang"><div><h2>Vil du opprette forslag for dette året?</h2><p>Fortsett med budsjettår @Kontekst.Budsjettaar og de viste midlertidige datoene. Du velger selv når forslagene beregnes og lagres på neste side.</p></div><button class="knapp knapp-primær" disabled="@(_laster || Aarsfeil is not null || _feil is not null)" @onclick="TilGenerering">Fortsett til Generer fra årsmal</button></div>
+}

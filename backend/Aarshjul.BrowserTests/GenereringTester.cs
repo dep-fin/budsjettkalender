@@ -73,8 +73,10 @@ public sealed class GenereringTester
         await Expect(ForslagTester.Kort(n.Side, "AK ukedag")).ToContainTextAsync("09.05.2033");
         var antall = await n.Side.Locator("article.kort").CountAsync();
         Assert.Equal(publisertFoer, (await n.Frister()).Count);
-        await n.Side.GetByLabel("AK fast (ak-fast)", new() { Exact = true }).FillAsync("2033-11-25");
+        await n.Side.GetByLabel("Midlertidig dato for ak-fast", new() { Exact = true }).FillAsync("2033-11-25");
+        await n.Side.GetByLabel("Midlertidig dato for ak-fast", new() { Exact = true }).PressAsync("Tab");
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Beregn på nytt med satte ankre" }).ClickAsync();
+        await n.Side.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { Name = "Beregn og erstatt", Exact = true }).ClickAsync();
         await Expect(ForslagTester.Kort(n.Side, "AK fast")).ToContainTextAsync("25.11.2033");
         await Expect(ForslagTester.Kort(n.Side, "AK relativ")).ToContainTextAsync("18.11.2033");
         await Expect(n.Side.Locator("article.kort")).ToHaveCountAsync(antall);

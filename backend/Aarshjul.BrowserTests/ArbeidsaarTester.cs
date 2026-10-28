@@ -134,7 +134,7 @@ public sealed class ArbeidsaarTester
         await Expect(n.Side.GetByLabel("Målbudsjettår", new() { Exact = true })).ToHaveValueAsync("2043");
         var publisert = (await n.Frister()).Count;
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Generér", Exact = true }).ClickAsync();
-        await Expect(n.Side.GetByText("Genererte", new() { Exact = false })).ToContainTextAsync("forslag for budsjettår 2043");
+        await Expect(n.Side.GetByRole(AriaRole.Status).Filter(new() { HasTextRegex = new("^Genererte [0-9]+ forslag for budsjettår 2043\\.") })).ToBeVisibleAsync();
         var kort = n.Side.Locator("article");
         await Expect(kort.First).ToBeVisibleAsync();
         var antallGenerert = await kort.CountAsync();

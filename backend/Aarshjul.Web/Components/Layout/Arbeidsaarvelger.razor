@@ -16,7 +16,7 @@
                 <p>Frister, forslag, dokumenter og generering følger samme arbeidsår.</p>
             </div>
             <label>Arbeidsår
-                <select value="@(Aar?.ToString() ?? "alle")" @onchange="Velg">
+                <select value="@(Aar?.ToString() ?? "alle")" @onchange="Velg" disabled="@Deaktivert">
                     @foreach (var a in TilgjengeligeAar)
                     {
                         <option value="@a">@a</option>
@@ -27,9 +27,9 @@
         </div>
         <form class="aapne-arbeidsaar" @onsubmit="Aapne" @onsubmit:preventDefault="true">
             <label>Åpne annet arbeidsår
-                <input type="number" min="1" max="9999" @bind="_annetAar" />
+                <input type="number" min="1" max="9999" @bind="_annetAar" disabled="@Deaktivert" />
             </label>
-            <button type="submit" class="knapp">Åpne år</button>
+            <button type="submit" class="knapp" disabled="@Deaktivert">Åpne år</button>
         </form>
     </section>
 }
@@ -37,6 +37,7 @@
 @code {
     [Parameter] public int? Aar { get; set; }
     [Parameter] public EventCallback<int?> AarChanged { get; set; }
+    [Parameter] public bool Deaktivert { get; set; }
     private bool _autorisert;
     private int _annetAar;
     private IReadOnlyList<int> _kjenteAar = [];
@@ -56,6 +57,6 @@
     }
 
     protected override void OnParametersSet() => _annetAar = Aar ?? Arbeidsaarkontekst.Standardaar(Klokke);
-    private Task Velg(ChangeEventArgs e) => AarChanged.InvokeAsync(Arbeidsaarkontekst.Les(e.Value?.ToString(), Klokke));
-    private Task Aapne() => _annetAar is >= 1 and <= 9999 ? AarChanged.InvokeAsync(_annetAar) : Task.CompletedTask;
+    private Task Velg(ChangeEventArgs e) => Deaktivert ? Task.CompletedTask : AarChanged.InvokeAsync(Arbeidsaarkontekst.Les(e.Value?.ToString(), Klokke));
+    private Task Aapne() => !Deaktivert && _annetAar is >= 1 and <= 9999 ? AarChanged.InvokeAsync(_annetAar) : Task.CompletedTask;
 }

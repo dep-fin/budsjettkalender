@@ -9,7 +9,7 @@
 
 <div class="regeltopp">
     <div><p class="menyoverskrift">Årsmal</p><h1>@Sidetittel</h1></div>
-    <a href="/admin/mal" class="knapp">Tilbake til regellisten</a>
+    <a href="@Retursti" class="knapp">@(Fra == "proev" ? "Tilbake til prøven" : "Tilbake til regellisten")</a>
 </div>
 <p class="ingress">Beskriv når fristen skal inntreffe. Malen beregner datoer for hvert budsjettår.</p>
 
@@ -138,7 +138,7 @@ else
                 <label class="filtervalg"><input type="checkbox" @bind="_utkast.Valgaarssensitiv" @bind:after="EndretAsync" /> Valgårssensitiv</label>
                 <p class="hint">Datoens kalenderår avgjør: Stortingsvalgår gir tentativ måned, kommunevalgår gir valgmarkering med dagsdato. Relative regler arver ankerets tentative presisjon.</p>
             </fieldset>
-            <div class="regelhandlinger"><button type="submit" class="knapp knapp-primær" disabled="@(_lagrer || _utkast.MaaKorrigeres)">@(_lagrer ? "Lagrer regel …" : _kopi ? "Lagre kopi" : "Lagre regel")</button><a href="/admin/mal" class="knapp">Avbryt</a><span class="hint">@(ErEndret ? "Ulagrede endringer" : "Ingen ulagrede endringer")</span></div>
+            <div class="regelhandlinger"><button type="submit" class="knapp knapp-primær" disabled="@(_lagrer || _utkast.MaaKorrigeres)">@(_lagrer ? "Lagrer regel …" : _kopi ? "Lagre kopi" : "Lagre regel")</button><a href="@Retursti" class="knapp">Avbryt</a><span class="hint">@(ErEndret ? "Ulagrede endringer" : "Ingen ulagrede endringer")</span></div>
             <p class="hint">Lagring endrer bare årsmalen. Publiserte frister og eksisterende forslag endres ikke.</p>
         </form>
         <aside class="regelkontroll" aria-labelledby="regelkontroll-tittel">

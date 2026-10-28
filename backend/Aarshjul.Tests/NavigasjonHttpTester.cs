@@ -12,7 +12,7 @@ public sealed class NavigasjonHttpTester(TestApplikasjon app) : IClassFixture<Te
         using var klient = app.CreateClient();
         if (rolle is not null) klient.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
         var id = Guid.NewGuid();
-        foreach (var sti in new[] { "/admin/mal", "/admin/mal/ny", $"/admin/mal/{id}", $"/admin/mal/ny?kopierFra={id}" })
+        foreach (var sti in new[] { "/admin/mal", "/admin/mal/ny", $"/admin/mal/{id}", $"/admin/mal/ny?kopierFra={id}", "/admin/mal/proev?aar=2032", "/admin/generer?aar=2032" })
         {
             var svar = await klient.GetAsync(sti);
             Assert.Equal(status, (int)svar.StatusCode);

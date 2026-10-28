@@ -30,12 +30,16 @@ public sealed record GenerertForslagDto
     public Kategori Kategori { get; init; }
     public DateOnly? Dato { get; init; }
     public Datopresisjon Datopresisjon { get; init; }
+    public Datokvalifikator? Datokvalifikator { get; init; }
     public bool Tentativ { get; init; }
     public bool Valgaarsflagg { get; init; }
     public IReadOnlyList<string> ForeslaattSynlighet { get; init; } = [];
 
-    /// <summary>Fjorårets faktiske dato for samme løp (godkjent frist), om den finnes — for sammenligning.</summary>
+    /// <summary>Fjorårets referansedato for samme løp (godkjent frist), om den finnes.
+    /// Presenteres med FjoraarDatopresisjon og FjoraarDatokvalifikator.</summary>
     public DateOnly? FjoraarDato { get; init; }
+    public Datopresisjon? FjoraarDatopresisjon { get; init; }
+    public Datokvalifikator? FjoraarDatokvalifikator { get; init; }
 }
 
 /// <summary>
@@ -48,6 +52,11 @@ public sealed record GenerertForslagDto
 /// </summary>
 public interface IGenereringstjeneste
 {
+    /// <summary>Leser og prøver hele den lagrede malen for målåret (1–9999), med midlertidige
+    /// manuelle ankre. Samme innlastingsrekkefølge og beregning som GenererAsync, uten å lagre
+    /// regler, forslag, frister eller varsler. Beholder alle regelidentiteter og feil.</summary>
+    Task<MalForhaandsvisning> ProevAsync(GenereringsForespoersel forespoersel, CancellationToken ct = default);
+
     /// <summary>Beregner og lagrer genererte forslag for målåret. Erstatter eventuelle tidligere
     /// åpne genererte forslag for samme år atomisk med den gyldige delmengden, også når den er tom.
     /// Beregningsfeil rapporteres per regel uten forslag for regelen eller dens avhengige regler.</summary>

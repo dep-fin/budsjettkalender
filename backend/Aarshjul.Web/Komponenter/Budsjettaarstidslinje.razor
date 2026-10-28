@@ -1,6 +1,8 @@
 @using System.Globalization
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
 
-<section aria-label="@($"Tidslinje for budsjettår {Budsjettaar}")" class="budsjettaarstidslinje">
+<section aria-label="@($"Tidslinje for budsjettår {Budsjettaar}")" class="budsjettaarstidslinje" data-fokusversjon="@_fokusversjon" @ref="_tidslinje">
     @if (Linje.Foer.Count > 0)
     {
         <section class="tidslinje-utenfor" aria-label="Frister før tidslinjen">
@@ -114,6 +116,8 @@
     private int Akse => 94 + (Linje.Spor + 1) / 2 * 104;
     private int Grafhoeyde => Akse + 58 + Linje.Spor / 2 * 104;
     private ElementReference _gruppeoverskrift;
+    private ElementReference _tidslinje;
+    private string _fokusversjon = Guid.NewGuid().ToString("N");
     private bool _fokuserGruppe;
 
     protected override void OnParametersSet()
@@ -125,15 +129,30 @@
         Linje = new(Budsjettaar, Frister, Fasemal);
         _aapneGrupper.Clear();
         _fokusGruppeId = null;
+        _fokusversjon = Guid.NewGuid().ToString("N");
+        _fokuserGruppe = false;
     }
 
-    private void VelgGruppe(string id) { _aapneGrupper.Add(id); _fokusGruppeId = id; _fokuserGruppe = true; }
+    private void VelgGruppe(string id)
+    {
+        _aapneGrupper.Add(id);
+        _fokusGruppeId = id;
+        _fokusversjon = Guid.NewGuid().ToString("N");
+        _fokuserGruppe = true;
+    }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_fokuserGruppe) return;
         _fokuserGruppe = false;
-        // Bare den åpne gruppen får referansen; skjulte søskengrupper deltar ikke i fokus.
-        await _gruppeoverskrift.FocusAsync();
+        var overskrift = _gruppeoverskrift;
+        var versjon = _fokusversjon;
+        try
+        {
+            await using var modul = await JS.InvokeAsync<IJSObjectReference>("import", "./tidslinjefokus.js");
+            await modul.InvokeVoidAsync("fokuserGruppe", _tidslinje, overskrift, versjon);
+        }
+        catch (JSDisconnectedException) { }
+        catch (ObjectDisposedException) { }
     }
     private static string Tall(double tall) => tall.ToString("0.###", CultureInfo.InvariantCulture);
     private static string Kortstil(Budsjettaarslinje.Stasjon s, int topp) => $"--x:{Tall(s.Posisjon)}%;top:{topp}px";

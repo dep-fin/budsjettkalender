@@ -1,351 +1,80 @@
 @page "/admin/generer"
 @using Aarshjul.Application.Generering
 @attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
-@inject IGenereringstjeneste Generering
-@inject IGodkjenningsko Ko
-@inject IGruppetjeneste Grupper
-@inject NavigationManager Nav
-@inject TimeProvider Klokke
 
 <PageTitle>Generér budsjettår</PageTitle>
-
-<Arbeidsaarvelger Aar="_arbeidsaar" AarChanged="ByttAar" />
-
-<h1>Generér budsjettår</h1>
-
-@if (LagretAar is { } lagret)
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" />
+<Arbeidsaarvelger Aar="_arbeidsaar" AarChanged="ByttAar" Deaktivert="@Opptatt" />
+<div class="genereringstopp"><div><p class="menyoverskrift">Generer fra årsmal</p><h1>Generér budsjettår</h1></div><a href="/admin/mal/proev" class="knapp">Prøv malen uten lagring</a></div>
+<p class="ingress">Opprett forslag fra den lagrede årsmalen, og kontroller hvert forslag før du godkjenner. Ingenting publiseres ved beregning.</p>
+@if (Skriver && _navigasjonBlokkert) { <p class="melding" role="status">Vent til handlingen er fullført før du bytter side eller arbeidsår.</p> }
+@if (LagretAar is { } lagret) { <p class="melding" role="status">Fristen er lagret i budsjettår @lagret. <a href="@Arbeidsaarkontekst.Lenke("/admin/frister", lagret)">Åpne fristregisteret for @lagret</a></p> }
+@if (_overfoert) { <p class="genereringsstatus" role="status">Budsjettår @_maalaar og de viste midlertidige datoene er tatt med fra Prøv malen. Ingen forslag er opprettet ved overgangen.</p> }
+<section class="genereringsvalg" aria-label="Beregn forslag fra årsmalen">
+    <div><label for="generering-aar">Målbudsjettår</label><input id="generering-aar" type="text" inputmode="numeric" value="@_aarsfelt" @onchange="ByttMaalaar" disabled="@Opptatt" aria-invalid="@(Aarsfeil is null ? "false" : "true")" aria-describedby="generering-aar-hjelp generering-aar-feil" /><small id="generering-aar-hjelp">Ett år fra 1 til 9999. Dette blir arbeidsåret.</small></div>
+    <button class="knapp knapp-primær" disabled="@(!KanGenerere)" @onclick="BeOmGenerering">@(_arbeider ? "Beregner …" : "Generér")</button>
+    @if (_forslag.Count > 0 || _resultat is not null) { <button class="knapp" disabled="@(!KanGenerere)" @onclick="BeOmGenerering">Beregn på nytt med satte ankre</button> }
+    @if (Aarsfeil is not null) { <p id="generering-aar-feil" class="feltfeil" role="alert">@Aarsfeil Resultatene gjelder fortsatt budsjettår @_maalaar.</p> }
+    <p class="konsekvens">Årets åpne genererte forslag erstattes; godkjente frister, løpende forslag og andre år beholdes. Også en tom eller helt ugyldig mal erstatter med et tomt sett.</p>
+</section>
+@if (_feil is not null) { <div class="feil" role="alert"><p>@_feil</p>@if (!_lastet) { <button class="knapp" disabled="@Opptatt" @onclick="LastAsync">Prøv igjen</button> }</div> }
+@if (_laster) { <p class="melding" role="status">Laster årsmal og genererte forslag …</p> }
+@if (_lastet)
 {
-    <p class="melding" role="status">Fristen er lagret i budsjettår @lagret.
-        <a href="@Arbeidsaarkontekst.Lenke("/admin/frister", lagret)">Åpne fristregisteret for @lagret</a>
-    </p>
-}
-
-<p class="melding">
-    Beregn fristene for et kommende budsjettår fra årsmalen. Forslagene legges her til gjennomgang —
-    ingenting publiseres før du godkjenner hvert enkelt. Synligheten videreføres fra fjorårets
-    godkjente frist (POL må alltid bekreftes aktivt).
-</p>
-
-<div class="filterpanel">
-    <label>Målbudsjettår
-        <input type="number" min="1" max="9999" @bind="_maalaar" @bind:after="ByttMaalaar" disabled="@(_arbeider || !_lastet)" />
-    </label>
-    <button class="knapp knapp-primær" disabled="@(_arbeider || !_lastet)" @onclick="Generer">@(_arbeider ? "Beregner …" : "Generér")</button>
-</div>
-
-@if (_feil is not null)
-{
-    <div class="feil" role="alert">@_feil</div>
-}
-
-@if (_resultat is { } r)
-{
-    <p class="melding">
-        Genererte @r.AntallForslag forslag for budsjettår @r.Maalbudsjettaar.
-        @if (Valgaar.Type(_maalaar) is var vt && vt != Valgtype.Ingen)
-        {
-            <text> Merk: @VisValgtype(vt) i målåret — valgårssensitive frister er flagget.</text>
-        }
-    </p>
-
-    @if (r.Feil.Count > 0)
+    <ManuelleAnkre Aar="_maalaar" Regler="_regler" Datoer="_ankre" Deaktivert="@(Opptatt || Aarsfeil is not null)" DatoEndret="DatoEndretAsync" FjernAlle="FjernAlleAsync" />
+    <section class="beregningskontroll" aria-label="Kontroll av hele årsmalen">
+        <h2>Kontroll før generering</h2><p role="status">@_rader.Count lagrede regler · @_rader.Count(r => !r.ErFeil) gyldige · @_rader.Count(r => r.ErFeil) feil for budsjettår @_maalaar. Midlertidige datoer er med; kontrollen lagrer ingenting.</p>
+        @if (_previewLaster) { <p role="status">Oppdaterer beregningen …</p> }
+        @if (_previewFeil is not null) { <div class="feil" role="alert"><p>@_previewFeil</p><button class="knapp" disabled="@Opptatt" @onclick="OppdaterProeveAsync">Prøv kontrollen igjen</button></div> }
+        @if (_rader.Any(r => r.ErFeil)) { <div class="feil"><strong>Disse reglene gir ikke forslag:</strong><ul>@foreach (var rad in _rader.Where(r => r.ErFeil)) { <li><strong>@rad.Tittel:</strong> @(rad.Beregning.Feil ?? "Beregningen ga ingen dato.") <a href="@($"/admin/mal/{rad.Regel.Id}")">Rediger regelen</a></li> }</ul></div> }
+        @if (_regler.Count == 0) { <p>Ingen regler i malen. En kjøring vil gi et tomt sett med åpne genererte forslag.</p> }
+    </section>
+    @if (_resultat is { } resultat)
     {
-        <div class="feil">
-            <strong>Kunne ikke beregne enkelte frister:</strong>
-            <ul>
-                @foreach (var f in r.Feil)
-                {
-                    <li>@f</li>
-                }
-            </ul>
-        </div>
+        <div class="genereringsstatus" role="status">Genererte @resultat.AntallForslag forslag for budsjettår @resultat.Maalbudsjettaar. @resultat.Feil.Count beregningsfeil. Forslagene er lagret til gjennomgang og er ikke publisert.</div>
+        @if (resultat.Feil.Count > 0) { <details class="kjoeringsfeil"><summary>Feil fra siste lagrede genereringskjøring</summary><ul>@foreach (var feil in resultat.Feil) { <li>@feil</li> }</ul></details> }
     }
-}
-
-@if (_lastet && _forslag.Count > 0)
-{
-    @if (_forslag.Any(f => f.Tentativ))
-    {
-        <section class="kildegruppe">
-            <h2>Manuelle ankre (to-trinns)</h2>
-            <p class="melding">
-                Tentative frister mangler en fastsatt dag (typisk valgårssensitive høstfrister).
-                Sett en dato her og beregn på nytt for å gjøre fristen og dens avhengige frister konkrete.
-            </p>
-            @foreach (var f in _forslag.Where(f => f.Tentativ && f.Loep is not null))
-            {
-                <div class="skjemarad">
-                    <label>@f.Tittel (@f.Loep)
-                        <input type="date" @bind="_ankre[f.Loep!]" />
-                    </label>
-                </div>
-            }
-            <button class="knapp" disabled="@_arbeider" @onclick="BeregnPaaNytt">Beregn på nytt med satte ankre</button>
-        </section>
-    }
-
+    @if (_status is not null) { <p class="genereringsstatus" role="status">@_status</p> }
+    <div class="forslagsoverskrift"><h2>Lagrede forslag til gjennomgang</h2><span>@_forslag.Count åpne · budsjettår @_maalaar</span></div>
+    <p class="hint">Datoene nedenfor er de lagrede forslagene. Endringer i de midlertidige datoene tas inn når du velger Generér. Synligheten foreslås fra fjorårets godkjente frist i samme løp, ellers fra standardregelen. POL velges alltid aktivt.</p>
+    @if (_forslag.Count == 0) { <div class="tomgenerering"><h3>Ingen genererte forslag til gjennomgang for @_maalaar.</h3><p>Kontroller malen og velg Generér for å opprette forslag for dette året.</p></div> }
     @foreach (var gruppe in _forslag.GroupBy(f => Visningformat.KategoriNavn(f.Kategori)))
     {
-        <section class="kildegruppe">
-            <h2>@gruppe.Key</h2>
+        <section class="kildegruppe genereringsgruppe"><h3>@gruppe.Key <span>@gruppe.Count() forslag</span></h3>
             @foreach (var f in gruppe)
             {
                 var t = Tilstand(f);
-                var godkjennBlokkert = t.Arbeider || (f.Tentativ && !t.TentativBekreftet);
-                <article class="kort">
-                    <header class="kort-topp">
-                        <span class="merke">Generert</span>
-                        @if (f.Tentativ)
-                        {
-                            <span class="merke merke-tentativ">Tentativ</span>
-                        }
-                        @if (f.Valgaarsflagg)
-                        {
-                            <span class="merke merke-valgaar">Valgår</span>
-                        }
-                    </header>
-
+                <article @key="f.ForslagId" class="kort genereringskort" data-forslag-id="@f.ForslagId">
+                    <header class="kort-topp"><span class="merke">Generert</span>@if (f.Tentativ) { <span class="merke merke-tentativ">Tentativ</span> }@if (f.Valgaarsflagg) { <span class="merke merke-valgaar">Valgår i datoens kalenderår</span> }</header>
                     <h3>@f.Tittel</h3>
                     <dl class="kort-felter">
-                        <div><dt>Ny dato</dt><dd>@FormatDato(f)</dd></div>
-                        <div><dt>Fjorårets dato</dt><dd>@(f.FjoraarDato?.ToString("dd.MM.yyyy") ?? "(ingen)")</dd></div>
-                        <div><dt>Kategori</dt><dd>@Visningformat.KategoriNavn(f.Kategori)</dd></div>
-                        <div><dt>Foreslått synlig for</dt>
-                            <dd>@(f.ForeslaattSynlighet.Count == 0 ? "(ingen)" : string.Join(", ", f.ForeslaattSynlighet))</dd></div>
+                        <div><dt>Ny dato</dt><dd><time datetime="@Maskindato(f.Dato, f.Datopresisjon)">@FormatDato(f.Dato, f.Datopresisjon, f.Datokvalifikator)@(f.Tentativ ? " (tentativ)" : "")</time></dd></div>
+                        <div><dt>Fjorårets dato @(_maalaar > 1 ? $"· budsjettår {_maalaar - 1}" : "")</dt><dd>@if (f.FjoraarDato is null) { <span>Ingen godkjent frist i samme løp</span> } else { <time datetime="@Maskindato(f.FjoraarDato, f.FjoraarDatopresisjon ?? Datopresisjon.Dag)">@FormatDato(f.FjoraarDato, f.FjoraarDatopresisjon ?? Datopresisjon.Dag, f.FjoraarDatokvalifikator)</time> }</dd></div>
+                        <div><dt>Kategori og løp</dt><dd>@Visningformat.KategoriNavn(f.Kategori) · @(f.Loep ?? "Ikke angitt")</dd></div>
+                        <div><dt>Foreslått synlig for</dt><dd>@(f.ForeslaattSynlighet.Count == 0 ? "Ingen" : string.Join(", ", f.ForeslaattSynlighet)) <small>@(f.FjoraarDato is not null ? "Fra fjorårets godkjente frist. Tidligere eller inaktive grupper er kun opphav; velg aktive grupper nedenfor." : "Fra standardregelen, uten POL.")</small></dd></div>
                     </dl>
-
-                    @if (t.Feil is not null)
-                    {
-                        <div class="feil">@t.Feil</div>
-                    }
-
+                    @if (t.Feil is not null) { <div class="feil" role="alert">@t.Feil</div> }
                     @if (t.Modus == Kortmodus.Godkjenn)
                     {
-                        <fieldset class="synlighet">
-                            <legend>Velg synlighet (POL settes kun ved aktivt valg)</legend>
-                            @foreach (var grp in _grupper)
-                            {
-                                <label class="filtervalg @(grp.Kode == Pol ? "pol-valg" : "")">
-                                    <input type="checkbox"
-                                           @bind:get="t.Koder.Contains(grp.Kode)"
-                                           @bind:set="på => VekslKode(t, grp.Kode, på)" />
-                                    @grp.Navn (@grp.Kode)
-                                </label>
-                            }
-                        </fieldset>
-                        @if (f.Tentativ)
-                        {
-                            <label class="filtervalg">
-                                <input type="checkbox" @bind="t.TentativBekreftet" />
-                                Jeg bekrefter å godkjenne fristen uten en fastsatt dag (tentativ).
-                            </label>
-                        }
-                        <div class="kort-handlinger">
-                            <button class="knapp knapp-primær"
-                                    disabled="@godkjennBlokkert"
-                                    @onclick="() => Godkjenn(f, t)">Bekreft godkjenning</button>
-                            <button class="knapp" disabled="@t.Arbeider" @onclick="() => t.Modus = Kortmodus.Ingen">Avbryt</button>
-                        </div>
+                        <fieldset class="synlighet" disabled="@Opptatt"><legend>Velg synlighet (POL settes kun ved aktivt valg)</legend>@foreach (var grp in _grupper) { <label class="filtervalg @(grp.Kode == Pol ? "pol-valg" : "")"><input type="checkbox" @bind:get="t.Koder.Contains(grp.Kode)" @bind:set="paa => VekslKode(t, grp.Kode, paa)" />@grp.Navn (@grp.Kode)</label> }</fieldset>
+                        @if (f.Tentativ) { <label class="filtervalg"><input type="checkbox" disabled="@Opptatt" @bind="t.TentativBekreftet" />Jeg bekrefter å godkjenne fristen uten en fastsatt dag (tentativ).</label> }
+                        <div class="kort-handlinger"><button class="knapp knapp-primær" disabled="@(Opptatt || (f.Tentativ && !t.TentativBekreftet))" @onclick="() => Godkjenn(f, t)">@(t.Arbeider ? "Godkjenner …" : "Bekreft godkjenning")</button><button class="knapp" disabled="@Opptatt" @onclick="() => AvbrytKort(t)">Avbryt</button></div>
                     }
                     else if (t.Modus == Kortmodus.Avvis)
                     {
-                        <label>Begrunnelse (valgfri)
-                            <textarea @bind="t.Begrunnelse" rows="2"></textarea>
-                        </label>
-                        <div class="kort-handlinger">
-                            <button class="knapp knapp-primær" disabled="@t.Arbeider" @onclick="() => Avvis(f, t)">Bekreft avvisning</button>
-                            <button class="knapp" disabled="@t.Arbeider" @onclick="() => t.Modus = Kortmodus.Ingen">Avbryt</button>
-                        </div>
+                        <label>Begrunnelse (valgfri)<textarea disabled="@Opptatt" @bind="t.Begrunnelse" rows="2"></textarea></label><div class="kort-handlinger"><button class="knapp knapp-primær" disabled="@Opptatt" @onclick="() => Avvis(f, t)">@(t.Arbeider ? "Avviser …" : "Bekreft avvisning")</button><button class="knapp" disabled="@Opptatt" @onclick="() => AvbrytKort(t)">Avbryt</button></div>
                     }
                     else
                     {
-                        <div class="kort-handlinger">
-                            <button class="knapp knapp-primær" @onclick="() => StartGodkjenn(f, t)">Godkjenn</button>
-                            <button class="knapp" @onclick='() => Nav.NavigateTo($"{Arbeidsaarkontekst.Lenke($"/admin/frist/juster/{f.ForslagId}", _maalaar)}&fra=generering")'>Juster</button>
-                            <button class="knapp" @onclick="() => t.Modus = Kortmodus.Avvis">Avvis</button>
-                        </div>
+                        <div class="kort-handlinger"><button class="knapp knapp-primær" disabled="@Opptatt" @onclick="() => StartGodkjenn(f, t)">Godkjenn</button><button class="knapp" disabled="@Opptatt" @onclick="() => Juster(f)">Juster</button><button class="knapp" disabled="@Opptatt" @onclick="() => StartAvvis(f, t)">Avvis</button></div>
                     }
                 </article>
             }
         </section>
     }
 }
-else if (_lastet)
-{
-    <p class="melding">Ingen genererte forslag til gjennomgang for @_maalaar.</p>
-}
-
-@code {
-    [SupplyParameterFromQuery(Name = "aar")] public string? AarQuery { get; set; }
-    [SupplyParameterFromQuery(Name = "lagretAar")] public int? LagretAar { get; set; }
-    private const string Pol = "POL";
-
-    private int _maalaar;
-    private int? _arbeidsaar;
-    private int _versjon;
-    private bool _arbeider;
-    private string? _feil;
-    private GenereringsResultat? _resultat;
-    private IReadOnlyList<GenerertForslagDto> _forslag = [];
-    private IReadOnlyList<GruppeDto> _grupper = [];
-    private readonly Dictionary<Guid, Korttilstand> _tilstand = new();
-    private readonly Dictionary<string, DateOnly?> _ankre = new(StringComparer.OrdinalIgnoreCase);
-    private bool _lastet;
-    private bool _grupperLastet;
-
-    protected override async Task OnParametersSetAsync()
-    {
-        _arbeidsaar = Arbeidsaarkontekst.Les(AarQuery, Klokke);
-        _maalaar = _arbeidsaar ?? Arbeidsaarkontekst.Standardaar(Klokke);
-        var versjon = ++_versjon;
-        _resultat = null;
-        _feil = null;
-        _forslag = [];
-        _ankre.Clear();
-        _tilstand.Clear();
-        _lastet = false;
-        _arbeider = false;
-        if (!_grupperLastet)
-        {
-            _grupper = await Grupper.HentAktiveAsync();
-            _grupperLastet = true;
-        }
-        if (versjon != _versjon) return;
-        await LastForslag(versjon);
-    }
-
-    private void ByttAar(int? aar) => Nav.NavigateTo(Arbeidsaarkontekst.Lenke("/admin/generer", aar));
-    private void ByttMaalaar() { if (_maalaar is >= 1 and <= 9999) ByttAar(_maalaar); }
-
-    private async Task Generer()
-    {
-        if (_arbeider || !_lastet) return;
-        _ankre.Clear();
-        await Beregn(new GenereringsForespoersel(_maalaar));
-    }
-
-    private async Task BeregnPaaNytt()
-    {
-        var satte = _ankre
-            .Where(kv => kv.Value is not null)
-            .ToDictionary(kv => kv.Key, kv => kv.Value!.Value, StringComparer.OrdinalIgnoreCase);
-        await Beregn(new GenereringsForespoersel(_maalaar, satte));
-    }
-
-    private async Task Beregn(GenereringsForespoersel forespoersel)
-    {
-        if (_arbeider || !_lastet) return;
-        _arbeider = true;
-        _feil = null;
-        var versjon = _versjon;
-        try
-        {
-            var resultat = await Generering.GenererAsync(forespoersel);
-            if (versjon != _versjon) return;
-            _resultat = resultat;
-            await LastForslag(versjon);
-        }
-        catch (Valideringsfeil feil)
-        {
-            if (versjon == _versjon) _feil = feil.Message;
-        }
-        finally { if (versjon == _versjon) _arbeider = false; }
-    }
-
-    private async Task LastForslag(int? forventetVersjon = null)
-    {
-        var versjon = forventetVersjon ?? _versjon;
-        var forslag = await Generering.HentGenererteAsync(_maalaar);
-        if (versjon != _versjon) return;
-        _forslag = forslag;
-        foreach (var f in _forslag.Where(f => f.Tentativ && f.Loep is not null))
-        {
-            _ankre.TryAdd(f.Loep!, null);
-        }
-        _tilstand.Clear();
-        _lastet = true;
-    }
-
-    private Korttilstand Tilstand(GenerertForslagDto f) =>
-        _tilstand.TryGetValue(f.ForslagId, out var t) ? t : _tilstand[f.ForslagId] = new Korttilstand();
-
-    private void StartGodkjenn(GenerertForslagDto f, Korttilstand t)
-    {
-        // Forhåndsutfyll aktiv foreslått synlighet, men aldri POL (settes kun ved aktivt valg).
-        t.Koder = f.ForeslaattSynlighet
-            .Where(k => !string.Equals(k, Pol, StringComparison.OrdinalIgnoreCase) && _grupper.Any(g => g.Kode == k))
-            .ToHashSet();
-        t.Feil = null;
-        t.Modus = Kortmodus.Godkjenn;
-    }
-
-    private void VekslKode(Korttilstand t, string kode, bool på)
-    {
-        if (på) t.Koder.Add(kode);
-        else t.Koder.Remove(kode);
-    }
-
-    private async Task Godkjenn(GenerertForslagDto f, Korttilstand t)
-    {
-        if (t.Arbeider) return;
-        t.Arbeider = true;
-        t.Feil = null;
-        try
-        {
-            await Ko.GodkjennAsync(new GodkjennInndata
-            {
-                ForslagId = f.ForslagId,
-                Synlighetskoder = t.Koder.ToList(),
-                PolBekreftet = t.Koder.Contains(Pol)
-            });
-            await LastForslag();
-        }
-        catch (Valideringsfeil e)
-        {
-            t.Feil = e.Message;
-        }
-        finally { t.Arbeider = false; }
-    }
-
-    private async Task Avvis(GenerertForslagDto f, Korttilstand t)
-    {
-        if (t.Arbeider) return;
-        t.Arbeider = true;
-        t.Feil = null;
-        try
-        {
-            await Ko.AvvisAsync(f.ForslagId, string.IsNullOrWhiteSpace(t.Begrunnelse) ? null : t.Begrunnelse);
-            await LastForslag();
-        }
-        catch (Valideringsfeil e)
-        {
-            t.Feil = e.Message;
-        }
-        finally { t.Arbeider = false; }
-    }
-
-    private static string FormatDato(GenerertForslagDto f)
-    {
-        if (f.Dato is not { } d) return "(ingen dato)";
-        return f.Tentativ ? $"{d:MMMM yyyy} (tentativ)" : d.ToString("dd.MM.yyyy");
-    }
-
-    private static string VisValgtype(Valgtype vt) => vt switch
-    {
-        Valgtype.Stortingsvalg => "stortingsvalg",
-        Valgtype.Kommunevalg => "kommunevalg",
-        _ => "ingen valg"
-    };
-
-    private enum Kortmodus { Ingen, Godkjenn, Avvis }
-
-    private sealed class Korttilstand
-    {
-        public Kortmodus Modus { get; set; } = Kortmodus.Ingen;
-        public HashSet<string> Koder { get; set; } = [];
-        public bool TentativBekreftet { get; set; }
-        public string? Begrunnelse { get; set; }
-        public string? Feil { get; set; }
-        public bool Arbeider { get; set; }
-    }
-}
+<dialog @ref="_erstattDialog" class="genereringsdialog" aria-labelledby="erstatt-tittel" data-visning="@Dialogvisning" data-bekreft="@(_bekrefter ? "true" : "false")" data-arbeider="@(_arbeider ? "true" : "false")">
+    <h2 id="erstatt-tittel">Erstatt åpne genererte forslag?</h2><p>@_forslag.Count åpne genererte forslag for @_maalaar erstattes med den gyldige delmengden fra den lagrede malen.</p><p>Årets åpne genererte forslag erstattes; godkjente frister, løpende forslag og andre år beholdes.</p>
+    @if (_rader.All(r => r.ErFeil)) { <p class="feil">Kontrollen har ingen gyldige regler. En vellykket kjøring erstatter årets sett med null åpne genererte forslag.</p> }
+    <p>Avbryt beholder forslagene og de midlertidige datoene dine.</p><div class="kort-handlinger"><button class="knapp knapp-primær" autofocus disabled="@_arbeider" @onclick="AvbrytErstatningAsync">Avbryt</button><button class="knapp" disabled="@_arbeider" @onclick="BekreftErstatningAsync">Beregn og erstatt</button></div>
+</dialog>
