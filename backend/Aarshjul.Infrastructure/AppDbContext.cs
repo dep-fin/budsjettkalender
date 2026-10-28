@@ -61,7 +61,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<NyFristHendelse>(e =>
         {
             e.HasKey(x => x.Id);
-            e.HasIndex(x => x.FristId).IsUnique();
+            e.Property(x => x.Type).HasMaxLength(16).HasDefaultValue("Ny");
+            e.Property(x => x.Forklaring).HasMaxLength(300);
+            e.HasIndex(x => x.FristId).IsUnique().HasFilter("[Type] = 'Ny'");
             e.HasIndex(x => x.Publiseringssekvens);
             // Ingen FK til frist: import/sletting skal ikke slette hendelseshistorikken.
         });
@@ -118,6 +120,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<Frist>(e =>
         {
             e.HasKey(x => x.Id);
+            // Førmetadata må beskrive versjonen som faktisk oppdateres.
+            e.Property(x => x.Dato).IsConcurrencyToken();
+            e.Property(x => x.Datopresisjon).IsConcurrencyToken();
+            e.Property(x => x.Datokvalifikator).IsConcurrencyToken();
+            e.Property(x => x.Klokkeslett).IsConcurrencyToken();
+            e.Property(x => x.Budsjettaar).IsConcurrencyToken();
+            e.Property(x => x.Kategori).IsConcurrencyToken();
+            e.Property(x => x.Tittel).IsConcurrencyToken();
+            e.Property(x => x.Notat).IsConcurrencyToken();
+            e.Property(x => x.Loep).IsConcurrencyToken();
+            e.Property(x => x.Kilde).IsConcurrencyToken();
+            e.Property(x => x.DokumentId).IsConcurrencyToken();
+            e.Property(x => x.Status).IsConcurrencyToken();
             e.Property(x => x.Tittel).HasMaxLength(512);
             e.Property(x => x.Loep).HasMaxLength(128);
             e.Property(x => x.Kilde).HasMaxLength(128);

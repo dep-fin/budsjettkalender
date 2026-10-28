@@ -14,7 +14,14 @@ public sealed class MigrasjonsmodellTester
     [InlineData("20261028133321_DagligEpostoppsummering", true, false)]
     [InlineData("20261028142358_OrdnetEpostaktivering", true, true)]
     public void Hvert_migrasjonsmaal_bevarer_levert_internvern_og_epostskjema_i_riktig_rekkefolge(
-        string migrasjonId, bool oppsummering, bool ordnet)
+        string migrasjonId, bool oppsummering, bool ordnet) => KontrollerMaal(migrasjonId, oppsummering, ordnet, false);
+
+    [Fact]
+    public void EV04_maal_bevarer_tidligere_vern_og_samsvarer_med_siste_snapshot()
+        => KontrollerMaal("20261028165341_VarseltyperOgEndringer", true, true, true);
+
+    private static void KontrollerMaal(
+        string migrasjonId, bool oppsummering, bool ordnet, bool endringer)
     {
         using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlServer("Server=localhost;Database=KunModell;Integrated Security=True").Options);
@@ -47,6 +54,9 @@ public sealed class MigrasjonsmodellTester
         {
             Assert.Empty(hendelse!.GetForeignKeys()); // Fristsletting må ikke slette hendelseshistorikken.
             Assert.Contains(hendelse.GetIndexes(), i => i.IsUnique && i.Properties.Single().Name == "FristId");
+            Assert.Equal(endringer, hendelse.FindProperty("Type") is not null);
+            Assert.Equal(endringer ? "[Type] = 'Ny'" : null, hendelse.GetIndexes().Single(i => i.IsUnique).GetFilter());
+            Assert.Equal(endringer, maal.FindEntityType(typeof(Frist))!.FindProperty("Dato")!.IsConcurrencyToken);
             Assert.Contains(plan!.GetIndexes(), i => i.IsUnique && i.Properties.Select(p => p.Name)
                 .SequenceEqual(new[] { "BrukerId", "LokalDato" }));
             Assert.True(plan.FindProperty("Versjon")!.IsConcurrencyToken);
@@ -64,7 +74,7 @@ public sealed class MigrasjonsmodellTester
         Assert.Equal(Skjema(migrasjon.DownOperations),
             Skjema(differ.GetDifferences(maal.GetRelationalModel(), foer.GetRelationalModel())));
 
-        if (ordnet)
+        if (migrasjonId == samling.Migrations.Last().Key)
         {
             var snapshot = initialiser.Initialize(samling.ModelSnapshot!.Model, designTime: true);
             Assert.False(differ.HasDifferences(maal.GetRelationalModel(), snapshot.GetRelationalModel()));

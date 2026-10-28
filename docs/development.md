@@ -142,6 +142,33 @@ og særskilt levert UX16→EV03 med autentiske migrasjoner. Ordinær suite har i
 testoppstart. [EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md) skiller lokale
 bevis fra kandidatens SQL Server-/Chromium-CI og senere konfliktoppfølging.
 
+## Varselvalg og direkte endringer (EV04)
+
+På `/epostvarsling` kan brukeren velge Nye frister, Vesentlige endringer eller begge
+ved påmelding og senere endre valgene. Minst én type kreves. Valgene lagres med
+versjonskontroll for brukerens egen identitet; kalenderens visningsfiltre påvirker
+dem ikke. Utvidelse gjelder fra det aktuelle valgets nye databaseordnede grense.
+Den andre typens ventende hendelser bevares. Innskrenkning kontrolleres før sending.
+
+Direkte redigering på `/admin/frist/{id}` lager automatisk en vesentlig hendelse ved
+endret dato, klokkeslett, presisjon, måned, kvalifikator, budsjettår eller kategori.
+Endret vilkårlig dag innen samme tentative måned eller tekstkorrektur varsles ikke.
+Administrator kan markere annen faktisk innholdsendring og må da gi 1–300 tegn med
+forklaring. Markeringen styrer ikke de automatiske tilfellene. Oppsummeringen viser
+tidligere og nåværende dato/perioder, budsjettår og kategori, og samler hendelser per
+frist. En ny frist som også er endret vises én gang for hvert av de tre varselvalgene.
+
+`20261028165341_VarseltyperOgEndringer` utvider EV03-skjemaet additivt og bevarer
+abonnement, aktiveringsgrenser, hendelses-ID-er, planer og hendelseskoblinger.
+`Demoskjema.SikreAsync` oppgraderer eksisterende EV02-/EV03-demoer ved normal
+oppstart uten historisk tilbakefylling. SQL Server bruker den ordinære migrasjonskjeden.
+Bare direkte oppretting og redigering omfattes nå. Kø/generering, import og sletting
+tilhører senere EV-tickets. Produksjonens tilgangs- og postadaptere er fortsatt
+utilgjengelige frem til egne miljøporter er dokumentert.
+
+[EV04-akseptansen](acceptance/2026-10-28-epost-ev04.md) beskriver lokale prøver,
+inventar og gjenstående SQL Server-/Chromium-CI og miljøporter.
+
 ## Levert UX16/EV02-verifikasjon
 
 UX16/EV02 ble levert med 883 ordinære, 312 nettleser- og 79 SQL Server-tilfeller.

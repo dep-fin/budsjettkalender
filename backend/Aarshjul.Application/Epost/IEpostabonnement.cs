@@ -5,6 +5,8 @@ public interface IEpostabonnement
 {
     Task<EpostabonnementDto> HentAsync(string brukerId, CancellationToken ct = default);
     Task<EpostabonnementDto> MeldPaaAsync(string brukerId, string adresse, bool godtarStandardvalg, CancellationToken ct = default);
+    Task<EpostabonnementDto> MeldPaaAsync(string brukerId, string adresse, bool godtar, bool nyeFrister, bool vesentligeEndringer, CancellationToken ct = default);
+    Task<EpostabonnementDto> EndreValgAsync(string brukerId, bool nyeFrister, bool vesentligeEndringer, Guid versjon, CancellationToken ct = default);
     Task<EpostabonnementDto> SendNyAsync(string brukerId, CancellationToken ct = default);
     Task<EpostabonnementDto> BekreftAsync(string brukerId, string token, CancellationToken ct = default);
     Task<EpostabonnementDto> MeldAvAsync(string brukerId, CancellationToken ct = default);
@@ -14,7 +16,7 @@ public sealed class EpostabonnementKonflikt() : Exception("Abonnementet ble endr
 
 public sealed record EpostabonnementDto(string Status, string? Adresse, bool NyeFrister = true,
     bool VesentligeEndringer = false, bool AlleBudsjettaar = true, bool AlleKategorier = true,
-    DateTimeOffset? Aktivert = null, DateTimeOffset? Endret = null);
+    DateTimeOffset? Aktivert = null, DateTimeOffset? Endret = null, Guid Versjon = default);
 
 /// <summary>Transporten får bare en adressebekreftelse, aldri fristdata. Token skal ikke logges.</summary>
 public interface IBekreftelsespost
