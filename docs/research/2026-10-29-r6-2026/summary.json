@@ -1,0 +1,65 @@
+{
+  "workYear": 2028,
+  "pdfBytes": 491309,
+  "pdfSha256": "B902EABED996A1C077D1F242D11B24ECFDE044F898880BEB1ADAD5CEBB9FB60A",
+  "textSha256": "51118C652F667A9C06457F54646C5DAB490061C9E6B5D07EA16AB384C66C6EF7",
+  "textLength": 41215,
+  "segments": 256,
+  "candidatesBeforeLimit": 6,
+  "candidateLimit": 40,
+  "offeredToExtractor": 6,
+  "first": {
+    "AntallForslag": 6,
+    "AlleredeBehandlet": false,
+    "Melding": null
+  },
+  "storedAfterFirst": 6,
+  "storedEvidenceAfterFirst": 12,
+  "appDocument": {
+    "Kilde": "opplastet",
+    "DokumentNokkel": "r-6-2026.pdf",
+    "InnholdHash": "51118C652F667A9C06457F54646C5DAB490061C9E6B5D07EA16AB384C66C6EF7",
+    "Tittel": "r-6-2026.pdf"
+  },
+  "second": {
+    "AntallForslag": 0,
+    "AlleredeBehandlet": true,
+    "Melding": "Dette dokumentet er allerede lest inn tidligere — ingen nye forslag laget."
+  },
+  "storedAfterSecond": 6,
+  "normalizedFilenameDifferentWorkYear": {
+    "AntallForslag": 0,
+    "AlleredeBehandlet": true,
+    "Melding": "Dette dokumentet er allerede lest inn tidligere — ingen nye forslag laget."
+  },
+  "appendedNewlinePdf": {
+    "sha256": "096F4D5D2723F0210F996BF1A02A8B5A1591F4A0DDF362380B8C279E59932310",
+    "textUnchanged": true,
+    "result": {
+      "AntallForslag": 0,
+      "AlleredeBehandlet": true,
+      "Melding": "Dette dokumentet er allerede lest inn tidligere — ingen nye forslag laget."
+    }
+  },
+  "countBeforeRename": 6,
+  "renamed": {
+    "AntallForslag": 6,
+    "AlleredeBehandlet": false,
+    "Melding": null
+  },
+  "storedAfterRename": 12,
+  "storedDocumentsAfterRename": 2,
+  "published": 0,
+  "exactDayRowDates": [
+    "2026-10-16",
+    "2026-12-18",
+    "2027-01-04",
+    "2027-01-06",
+    "2027-01-15",
+    "2027-01-22",
+    "2027-02-26"
+  ],
+  "exactDayDatesObserved": [
+    "2026-10-16"
+  ]
+}
