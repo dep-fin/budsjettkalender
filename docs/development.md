@@ -1,14 +1,23 @@
 # Utvikling
 
-#140 / PR #142 er avstemt med faktisk merget EV08 / PR #144 på main
-`b6a85f2251831eaba1cd69d17249ec57e13578c3` 29. oktober 2026. Oppdaget inventar er
-**1302 ordinære tester, 442 SQL Server-tilfeller og 350 nettleserscenarioer**.
-Alle navn fra EV08-main (1288/432/348) og tidligere #140 (1242/389/346) er bevart
-eksakt, tegnsensitivt og uten dubletter. CI krever nøyaktig **442 SQL- og 350
-Chromium-resultater** uten feil/hopp. Tidsgrenser 15/20/45 minutter, aktiv audit
-og bare TRX-artefakter består. De daterte tallene nedenfor er historiske.
-Se den daterte [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md)
-for integrerte prøver og den presise grensen mot ny faktisk kandidat-CI.
+Kandidaten for #138 er 29. oktober 2026 avstemt med faktisk levert #140 / PR #142
+og EV08 / PR #144 på main `12d12601b0fe8d83d0a4a84b88cff589bd954572`.
+Gjennomgått #138-forelder er `823d1530d3b2d278663a2b06c5b3147e8de5a416`,
+tre `f4d676b53b260aedeb1e96d42e1dd5b13948c90c`. Alle sju egne produktblobber
+og fem egne testblobber er uendret; main bidrar med sine leverte kontrakter.
+Fersk oppdagelse gir **1303 ordinære tester, 442 SQL Server-tilfeller og 374
+nettleserscenarioer**. Alle hele navn fra #138 (1229/379/368) og levert main
+(1302/442/350) er bevart eksakt, tegnsensitivt og uten dubletter.
+Én lokal ordinærsuite består 1303/1303. Kombinerte Edge/Kestrel-regresjoner
+består 111/111, inklusive alle tidligere 105 og seks nye main-tilfeller.
+CI krever nøyaktig **442 SQL- og 374 Chromium-resultater** uten feil/hopp.
+Tidsgrenser 15/20/45 minutter, aktiv audit og bare TRX-artefakter består.
+Se [sluttavstemmingen](acceptance/2026-10-29-kommende-liste.md#sluttavstemming-med-levert-140-og-ev08-29-oktober-2026)
+for lokale resultater, bevisavvik og skillet mellom revisjonsbundet review og
+ny faktisk kandidat-CI. Forelderens 1302/442/350 og tidligere #138-tall er
+daterte bevis; [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md)
+bevarer foreldrenes tidligere integrasjonsprøver. SQL Server er bare bygget og
+oppdaget lokalt når `AARSHJUL_TEST_SQLSERVER` mangler. Ingen deploy inngår.
 
 EV08 bruker eksisterende abonnementslagring uten egen modellendring/migrasjon.
 Fra `/epostvarsling` kan Aktiv/Venter bytte egen adresse og Avmeldt uttrykkelig
@@ -344,14 +353,17 @@ grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gj
 
 ## Obligatorisk nettleserakseptanse
 
-Gjeldende integrerte #140-kandidat krever nøyaktig **350 beståtte Chromium-scenarioer**
+Gjeldende integrerte #138-kandidat krever nøyaktig **374 beståtte Chromium-scenarioer**
 uten hopp eller manglende TRX. **442 ekte SQL Server-tilfeller** kreves i den
 separate SQL-porten. De daterte kjøringene nedenfor viser tidligere kandidatgrunnlag.
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 350 scenarioer bruker disponible Kestrel-verter,
+eksisterende app eller database: 374 scenarioer bruker disponible Kestrel-verter,
 inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06 og to fra EV07 og fire fra EV08,
-sju fra UX17, seks fra UX18 og to fra #140. Alle tidligere navn består.
+sju fra UX17, seks fra UX18, to fra #140, åtte fra #138s listeutvalg og 16 fra
+felles detaljretting. De siste revaliderer synlighet, grupper og autentisering,
+håndterer sletting, tømmer dialog-DOM ved Lukk/Escape og verner mot sene svar
+og JS-åpninger. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
 Kestrel, SQLite i minnet og testautentisering.
@@ -428,7 +440,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 350 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 374 beståtte scenarioer uten hopp.
 EV05/UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.

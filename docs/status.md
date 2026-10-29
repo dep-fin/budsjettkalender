@@ -94,7 +94,8 @@ Ingen egen modellendring eller migrasjon. [EV08-akseptansen](acceptance/2026-10-
 bevarer datert byggbevis; PR #144 er kilden til leveransens livsløp.
 
 [#140](https://github.com/depmartin/Budsjettkalender/issues/140), parent #136 punkt 4,
-er kandidat i [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142).
+er levert i [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142),
+bekreftet merget som `12d12601b0fe8d83d0a4a84b88cff589bd954572`.
 Direkte administratoroppretting/redigering får valgfri manuell kildelenke med
 prioritet foran dokumentets lenke og forklaring ved tømming. Én serverregel
 gjelder skriving, JSON-import og lesing; proveniens og køjustering bevares.
@@ -104,13 +105,31 @@ med levert EV07; begge migrasjonene med timestamp 20261029092000 beholdes.
 Forrige kandidat på EV07-basen bestod alle tre faktiske porter i
 [CI 40868270127](https://github.com/depmartin/Budsjettkalender/actions/runs/40868270127):
 1242 ordinære, 389 SQL Server og 346 Chromium. Dette er historisk bevis for den
-gamle basen. Kandidaten er nå avstemt med levert EV08, og alle navn fra begge
+gamle basen. Sluttkandidaten ble avstemt med levert EV08, og alle navn fra begge
 foreldre er bevart; samlet inventar er 1302/442/350. Lokal ordinærsuite består
 1302/1302, målrettet samspill 545/545 og relevante Edge/Kestrel-forløp 31/31,
 uten feil/hopp. SQL Server er bygget/oppdaget, ikke lokalt kjørt. Prøver og
 presise bevisgrenser står i [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md).
-Alle tre faktiske nye kandidat-CI-porter må være grønne. Ingen ny formell
-review/audit er utført i denne autoriserte CI-løkken. Ingen deploy inngår.
+Alle tre faktiske porter bestod i [slutt-CI 40875485618](https://github.com/depmartin/Budsjettkalender/actions/runs/40875485618):
+1302 ordinære, 442 ekte SQL Server- og 350 Chromium-tilfeller uten feil/hopp.
+PR-ens merge og alle tre jobbresultater er kontrollert live. Ingen ny formell
+review/audit ble utført i denne autoriserte CI-løkken. Ingen deploy inngår.
+
+[#138](https://github.com/depmartin/Budsjettkalender/issues/138), parent #136 punkt 1,
+er lokal kandidat med kommende frister i Liste, 25 per side, separat historikk
+og fersk detaljtilgang med tømming ved lukking. Den er avstemt med faktisk levert
+main `12d12601b0fe8d83d0a4a84b88cff589bd954572`. Alle sju egne produktblobber og
+fem egne testblobber fra gjennomgått `823d1530` er uendret; main-kontraktene
+for URL, migrasjoner, import/sletting og adressebytte er bevart eksakt.
+Inventar er **1303/442/374**, med alle hele foreldrenavn bevart og null dubletter.
+Én lokal ordinærsuite består **1303/1303** og kombinerte Edge/Kestrel-regresjoner
+**111/111**, uten feil/hopp. SQL Server er bare bygget og oppdaget lokalt.
+CI krever 442 ekte SQL Server- og 374 Chromium-resultater uten feil/hopp med
+uendrede porter. [Sluttavstemmingen](acceptance/2026-10-29-kommende-liste.md#sluttavstemming-med-levert-140-og-ev08-29-oktober-2026)
+binder lokale prøver, foreldreblobber og det særskilte gamle SQLite-bevisavviket.
+Samlet Standards-/Spec-review og separat sikkerhetsaudit på `823d1530` hadde
+0 funn; det hevdes ingen nye attester på integrert tre. Faktisk kandidat-CI og
+publisering gjenstår hos orkestratoren. #136 og #139 beholdes åpne.
 
 ## UX18 – samlet akseptanse og publisering
 
