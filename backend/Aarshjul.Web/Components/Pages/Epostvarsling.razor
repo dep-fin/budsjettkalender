@@ -51,6 +51,7 @@ else
     }
     else if (_status.Status == "VenterPaaBekreftelse")
     {
+        <p>Fristvarslingen er stanset til denne jobbadressen er bekreftet. Ingen fristvarsler sendes til tidligere eller ny adresse mens du venter.</p>
         <p>Åpne bekreftelsesmeldingen og bekreft adressen mens du er innlogget som samme bruker. Lenken varer i 15 minutter og kan brukes én gang.</p>
         <p>Ny bekreftelse kan bestilles etter ett minutt, høyst fem ganger per time. En ny lenke erstatter den gamle.</p>
         <button class="knapp" @onclick="SendNy" disabled="@_arbeider">Send ny bekreftelseslenke</button>
@@ -70,6 +71,21 @@ else
         </form>
         <button class="knapp" @onclick="MeldAv" disabled="@_arbeider">Meld meg av</button>
     }
+    @if (Post.Tilgjengelig && _status.Status is "Aktiv" or "VenterPaaBekreftelse" or "Avmeldt")
+    {
+        <form class="skjema" aria-label="Bytt jobbadresse" @onsubmit="ByttAdresse" @onsubmit:preventDefault="true" novalidate>
+            <fieldset disabled="@_arbeider">
+                <legend>Bytt jobbadresse</legend>
+                <p>Varslingen stanses til du bekrefter den nye adressen. Varseltyper, budsjettår og kategorier beholdes. Ny bekreftelse gir ingen historiske varsler fra ventetiden.</p>
+                @if (_status.Status == "Avmeldt") { <p>Ved adressebytte melder du deg på igjen med de lagrede varselvalgene. For samme adresse bruker du påmeldingen over.</p> }
+                <label for="ny-jobbadresse">Ny egen jobbadresse</label>
+                <input id="ny-jobbadresse" type="email" autocomplete="email" maxlength="254" @bind="_nyAdresse" @bind:event="oninput" aria-describedby="ny-adressehjelp" />
+                <p id="ny-adressehjelp">Bruk én adresse på et departementsdomene, for eksempel navn@jd.dep.no. Samme adresse endrer ikke status.</p>
+                <label><input type="checkbox" @bind="_egenadresseSamtykke" /> Jeg bekrefter at den nye adressen er min egen jobbadresse.</label>
+                <button class="knapp" type="submit">@(_status.Status == "Avmeldt" ? "Bytt adresse og meld meg på igjen" : "Bytt jobbadresse")</button>
+            </fieldset>
+        </form>
+    }
     @if (ErDemo && _status.Status == "VenterPaaBekreftelse")
     {
         <p class="melding">Demo sender bare til en kontrollert testmottaker i denne appen. Ingen ekstern e-post sendes.</p>
@@ -80,6 +96,8 @@ else
 @code {
     private EpostabonnementDto? _status;
     private string _adresse = "";
+    private string _nyAdresse = "";
+    private bool _egenadresseSamtykke;
     private bool _godtar, _arbeider;
     private bool _nye = true, _endringer;
     private IReadOnlyList<int> _tilgjengeligeAar = [];
@@ -104,6 +122,17 @@ else
     private Task SendNy() => Kjor(() => Kommando.SendNyAsync(), _ => "En ny bekreftelsesmelding er overlevert.");
     private Task LagreValg() => Kjor(() => Kommando.EndreValgAsync(_nye, _endringer, _status!.Versjon, _aar, _kategorier), _ => "Varselvalgene er lagret.");
     private Task MeldAv() => Kjor(() => Kommando.MeldAvAsync(), _ => "Du er avmeldt. Ingen nye fristvarsler vil bli sendt.");
+    private Task ByttAdresse() => Kjor(() => Kommando.EndreAdresseAsync(_nyAdresse, _egenadresseSamtykke, _status!.Versjon), status =>
+    {
+        _egenadresseSamtykke = false;
+        return status.Status switch
+        {
+            "VenterPaaBekreftelse" => "Varslingen er stanset til jobbadressen er bekreftet. Dine lagrede varselvalg er beholdt.",
+            "Aktiv" => "Abonnementet er aktivt. Jobbadressen er uendret eller allerede bekreftet.",
+            "Avmeldt" => "Abonnementet er avmeldt. Jobbadressen er uendret.",
+            _ => "Abonnementets gjeldende status er hentet."
+        };
+    });
     private async Task Kjor(Func<Task<EpostabonnementDto>> handling, Func<EpostabonnementDto, string>? melding = null)
     {
         if (_arbeider) return;

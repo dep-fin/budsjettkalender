@@ -42,6 +42,8 @@ public static class EpostEndepunkter
             => EndreAsync(http, brukere, id => abonnement.MeldAvAsync(id, ct), ct));
         gruppe.MapPost("/valg", (Varselvalg inndata, HttpContext http, IBrukeroppslag brukere, IEpostabonnement abonnement, CancellationToken ct)
             => EndreAsync(http, brukere, id => abonnement.EndreValgAsync(id, inndata.NyeFrister, inndata.VesentligeEndringer, inndata.Versjon, inndata.Budsjettaar, inndata.Kategorier, ct), ct));
+        gruppe.MapPost("/adresse", (Adressebytte inndata, HttpContext http, IBrukeroppslag brukere, IEpostabonnement abonnement, CancellationToken ct)
+            => EndreAsync(http, brukere, id => abonnement.EndreAdresseAsync(id, inndata.Adresse, inndata.EgenadresseSamtykke, inndata.Versjon, ct), ct));
     }
 
     private static async Task<IResult> EndreAsync(HttpContext http, IBrukeroppslag brukere,
@@ -57,5 +59,6 @@ public static class EpostEndepunkter
         int[]? Budsjettaar = null, Kategori[]? Kategorier = null);
     public sealed record Varselvalg(bool NyeFrister, bool VesentligeEndringer, Guid Versjon,
         int[]? Budsjettaar = null, Kategori[]? Kategorier = null);
+    public sealed record Adressebytte(string Adresse, bool EgenadresseSamtykke, Guid Versjon);
     public sealed class Bekreftelse { public string Token { get; init; } = ""; }
 }

@@ -1,13 +1,22 @@
 # Utvikling
 
-EV07-kandidaten bygger på levert EV06, EV05 og UX18 på main
-`28694c580141b91f9707c616a53ee95f05246e11`. Oppdaget inventar er **1228 ordinære
-tester, 379 SQL Server-tilfeller og 344 nettleserscenarioer**. Hele EV06-basens
-1157/310/342 navn er bevart eksakt uten dubletter. CI krever nøyaktig **379 SQL-
-og 344 Chromium-resultater** uten feil/hopp; antalls-, tids- og artefaktvern består.
+EV08-kandidaten bygger på levert EV07, EV06, EV05 og UX18 på main
+`d3bec41e7a42106e6f2b8bee80de0916c3f65b60`. Oppdaget inventar er **1288 ordinære
+tester, 432 SQL Server-tilfeller og 348 nettleserscenarioer**. Hele EV07-basens
+1228/379/344 navn er bevart eksakt uten dubletter. CI krever nøyaktig **432 SQL-
+og 348 Chromium-resultater** uten feil/hopp; antalls-, tids- og artefaktvern består.
 De daterte EV02–EV05- og UX18-resultatene nedenfor er historiske.
-Se [EV07-akseptansen](acceptance/2026-10-29-epost-ev07.md) for kandidatens prøver
-og gjenstående full CI. EV06 er levert i PR #135; dens akseptanse bevarer byggbevis.
+Se [EV08-akseptansen](acceptance/2026-10-29-epost-ev08.md) for kandidatens prøver
+og gjenstående full CI. EV07 er levert i PR #143; dens akseptanse bevarer byggbevis.
+
+EV08 bruker eksisterende lagring, normal demooppstart og migrasjonskjede uendret.
+Fra `/epostvarsling` kan Aktiv/Venter bytte egen adresse og Avmeldt uttrykkelig
+bytte og melde seg på igjen med beholdte varselvalg. Samme adresse er uendret.
+JSON-POST `/api/epostabonnement/adresse` tar `adresse`, `egenadresseSamtykke` og
+`versjon`; eieren hentes fra innlogging. Ingen type-/filtervalg skrives samtidig.
+Ett minutts pause og høyst fem bekreftelser per time gjelder på tvers av bytter.
+Fristvarslingen er stanset frem til ny bekreftelse. Sendefeil bevarer den nye
+ventende statusen. Ingen adressehistorikk, ny migrasjon eller ny produksjonsadapter.
 
 EV07 legger til `20261029092000_HistoriskSlettingssynlighet`: historiske gruppe-
 koder per eksplisitt slettingshendelse har FK til hendelsen, men ingen til dagens
@@ -129,7 +138,7 @@ Kontrollene krever både eksplisitt konfigurasjon, kontrollert miljø og adminis
 Produksjon registrerer aldri kontrollert klokke, tilgangskilde eller postadapter.
 
 EV03s opprinnelige direkte administratoroppretting er senere utvidet med
-direkte endringer (EV04), kø/godkjenning (EV06) og import/sletting (EV07-kandidat).
+direkte endringer (EV04), kø/godkjenning (EV06) og import/sletting (levert EV07).
 Abonnementets aktive varselvalg,
 adressebekreftelse og databaseordnet aktiveringsgrense gjelder; avmelding og ny aktivering gir
 ingen tilbakefylling fra avmeldt periode. Manglende aktiv konto eller fersk tilgang
@@ -307,13 +316,13 @@ grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gj
 
 ## Obligatorisk nettleserakseptanse
 
-Gjeldende EV07-kandidat krever nøyaktig **344 beståtte Chromium-scenarioer**
-uten hopp eller manglende TRX. **379 ekte SQL Server-tilfeller** kreves i den
+Gjeldende EV08-kandidat krever nøyaktig **348 beståtte Chromium-scenarioer**
+uten hopp eller manglende TRX. **432 ekte SQL Server-tilfeller** kreves i den
 separate SQL-porten. De daterte kjøringene nedenfor viser tidligere kandidatgrunnlag.
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 344 scenarioer bruker disponible Kestrel-verter,
-inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06 og to fra EV07,
+eksisterende app eller database: 348 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06, to fra EV07 og fire fra EV08,
 sju fra UX17 og seks fra UX18. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
@@ -391,7 +400,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 344 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 348 beståtte scenarioer uten hopp.
 EV05/UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -402,7 +411,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 344; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 348; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -502,7 +511,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 379 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 432 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

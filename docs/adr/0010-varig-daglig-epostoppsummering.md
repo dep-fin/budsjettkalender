@@ -205,3 +205,33 @@ og en generell fjerningsmarkør. Ingen tittel, notat, identitet, adresse, JSON e
 hemmelighet inngår i lenken. Siden krever vanlig innlogging og serverfiltrering,
 viser generell melding og beholder valgt år selv om årets siste frist er fjernet.
 Dette innfører ingen avlysningsmodul eller ny lese-/delingsrettighet.
+
+## EV08: adressebytte med ny full aktivering
+
+Adressebytte er en egen versjonskontrollert operasjon på brukerens eksisterende
+abonnement. Den vanlige påmeldingen avviser fortsatt en annen registrert adresse.
+Web binder eieren fra autentisert forespørsel eller krets; operasjonen tar bare
+ny adresse, uttrykkelig egenadressesamtykke og sist leste versjon. Samme
+normaliserte adresse er uendret, også uten transport. Avmeldt bruker kan velge
+adressebytte og ny påmelding uttrykkelig. En eldre forespørsel med versjonen fra
+før avmelding kan aldri gjenopplive abonnementet.
+
+Ny adresse og VenterPaaBekreftelse lagres før bekreftelsestransporten får noe.
+Aktivert tømmes; tidligere engangslenke erstattes med nytt hash og 15 minutters
+utløp. Opprettelsestid, varseltyper, eget år-/kategoriutvalg og eksisterende
+aktiveringsgrenser beholdes. Ett minutts pause og høyst fem bekreftelsesmeldinger
+per time deles med påmelding og nyutsending, også over flere adressebytter og
+sendefeil. Transportfeil gjør aldri gammel adresse aktiv igjen. Forsinket
+transportretur bevarer en samtidig vinnende status.
+
+Ny bekreftelse bruker den eksisterende ordnede aktiveringen og erstatter begge
+typegrenser, livssyklusgrensen og alle utvalgsklausuler i samme transaksjon som
+Aktiv. Lagrede valg beholdes. Hendelser fra før eller under venting gir dermed
+ingen tilbakefylling. Databasens commitrekkefølge avgjør fortsatt grensen ved
+like eller bakovergående UTC-tider.
+
+Senderen krever Aktiv og Aktivert og kontrollerer adresse/versjon igjen før
+innholdsoverlevering. Adressebytte stanser kølagt, ennå ikke overlevert innhold
+til begge adresser. Det rydder ingen UnderSending/Uavklart-planer og tillater
+ingen blind gjentakelse av mulig allerede overlevert post. Ingen adressehistorikk,
+parallelle abonnementer, modellendring eller ny migrasjon innføres.
