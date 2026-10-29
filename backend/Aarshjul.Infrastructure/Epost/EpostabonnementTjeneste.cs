@@ -38,7 +38,7 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
         var naa = klokke.GetUtcNow();
         if (rad is not null)
         {
-            if (rad.Adresse != adresse) throw new Valideringsfeil("Du har allerede registrert en annen jobbadresse. Adressebytte er ikke tilgjengelig ennå.");
+            if (rad.Adresse != adresse) throw new Valideringsfeil("Du har allerede registrert en annen jobbadresse. Bruk skjemaet Bytt jobbadresse.");
             if (rad.Status is "Aktiv" or "VenterPaaBekreftelse") return TilDto(rad);
             KontrollerSending(rad, naa);
         }
@@ -91,6 +91,27 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
     private static void ValiderValg(bool nye, bool endringer)
     {
         if (!nye && !endringer) throw new Valideringsfeil("Velg minst én varseltype.");
+    }
+
+    public async Task<EpostabonnementDto> EndreAdresseAsync(string brukerId, string adresse, bool egenadresseSamtykke, Guid versjon, CancellationToken ct = default)
+    {
+        adresse = NormaliserAdresse(adresse);
+        if (!egenadresseSamtykke) throw new Valideringsfeil("Bekreft at den nye adressen er din egen jobbadresse.");
+        await using var db = await fabrikk.CreateDbContextAsync(ct);
+        var rad = await db.Epostabonnementer.SingleOrDefaultAsync(x => x.BrukerId == brukerId, ct);
+        if (rad is null) throw new Valideringsfeil("Meld deg på før du bytter jobbadresse.");
+        if (rad.Versjon != versjon) throw new EpostabonnementKonflikt();
+        if (rad.Adresse == adresse) return TilDto(rad);
+        if (!post.Tilgjengelig) throw new Valideringsfeil("Adressebekreftelse er ikke satt i drift. Jobbadressen er ikke endret.");
+        var naa = klokke.GetUtcNow();
+        KontrollerSending(rad, naa);
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        rad.Adresse = adresse;
+        // Behold valg, opprettelsestid og kvote. Nye aktiveringsgrenser settes
+        // først ved ny bekreftelse, i samme databaseordnede transaksjon som Aktiv.
+        KlargjoerBekreftelse(rad, token, naa);
+        await LagreAsync(db, rad, ct);
+        return await SendAsync(db, rad, token, ct);
     }
 
     public async Task<EpostabonnementDto> SendNyAsync(string brukerId, CancellationToken ct = default)

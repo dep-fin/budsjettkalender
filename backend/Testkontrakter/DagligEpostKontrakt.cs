@@ -25,6 +25,144 @@ namespace Aarshjul.Testkontrakter;
 
 public abstract partial class DagligEpostKontrakt
 {
+    [Theory]
+    [InlineData(true, false, false)] [InlineData(false, true, false)] [InlineData(true, true, false)]
+    [InlineData(true, false, true)] [InlineData(false, true, true)] [InlineData(true, true, true)]
+    public async Task Adressebytte_stanser_begge_adresser_og_ny_bekreftelse_utelater_etterslep_med_beholdte_type_og_filtervalg(bool nye, bool endringer, bool alle)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var foer = await p.Skriv.OpprettAsync(Inndata("Endring før bytte"));
+        var under = await p.Skriv.OpprettAsync(Inndata("Endring under venting"));
+        var etter = await p.Skriv.OpprettAsync(Inndata("Endring etter bekreftelse"));
+        await p.Aktiver(); await VelgUtvalg(p, alle ? null : [2031], alle ? null : [Kategori.Budsjett], nye, endringer);
+        await p.Skriv.OpprettAsync(Inndata("Ny før bytte"));
+        var input = Inndata("Endring før bytte"); input.Dato = new(2030, 12, 5); await p.Skriv.OppdaterAsync(foer, input);
+        p.Klokke.Flytt(TimeSpan.FromMinutes(2)); var status = await p.Abonnement.HentAsync("a");
+        await p.Abonnement.EndreAdresseAsync("a", "ny@jd.dep.no", true, status.Versjon);
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        await p.Skriv.OpprettAsync(Inndata("Ny under venting"));
+        input = Inndata("Endring under venting"); input.Dato = new(2030, 12, 6); await p.Skriv.OppdaterAsync(under, input);
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        status = await p.Abonnement.BekreftAsync("a", p.Bekreftelsespost.Hent("a")!.Token);
+        Assert.Equal(nye, status.NyeFrister); Assert.Equal(endringer, status.VesentligeEndringer);
+        Assert.Equal(alle, status.AlleBudsjettaar); Assert.Equal(alle, status.AlleKategorier);
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        await p.Skriv.OpprettAsync(Inndata("Ny etter bekreftelse"));
+        input = Inndata("Endring etter bekreftelse"); input.Dato = new(2030, 12, 7); await p.Skriv.OppdaterAsync(etter, input);
+        var utenfor = Inndata("Annet år og kategori"); utenfor.Budsjettaar = 2040; utenfor.Kategori = Kategori.Regnskap;
+        await p.Skriv.OpprettAsync(utenfor); await p.Skriv.OpprettAsync(Inndata("Skjult POL", "POL"));
+        await p.Jobb().KjorAsync(); var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Equal("ny@jd.dep.no", melding.Adresse);
+        Assert.Equal(nye, melding.Tekst.Contains("Ny etter bekreftelse", StringComparison.Ordinal));
+        Assert.Equal(endringer, melding.Tekst.Contains("Endring etter bekreftelse", StringComparison.Ordinal));
+        Assert.Equal(alle && nye, melding.Tekst.Contains("Annet år og kategori", StringComparison.Ordinal));
+        Assert.DoesNotContain("før bytte", melding.Tekst); Assert.DoesNotContain("under venting", melding.Tekst); Assert.DoesNotContain("Skjult POL", melding.Tekst);
+    }
+
+    [Theory]
+    [InlineData(1)] [InlineData(2)]
+    public async Task Adressebytte_under_begge_sistekontroller_stanser_koelagt_post_og_ny_bekreftelse_gir_ingen_replay(int kontroll)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await p.Skriv.OpprettAsync(Inndata("Kølagt før adressebytte")); p.Klokke.Flytt(TimeSpan.FromMinutes(2)); var brukt = false;
+        var port = new FoerLagring(async kontekst =>
+        {
+            if (brukt) return;
+            var harKoblinger = kontekst.ChangeTracker.Entries<Oppsummeringshendelse>().Any(x => x.State == EntityState.Added);
+            var underSending = kontekst.ChangeTracker.Entries<Epostoppsummering>().Any(x => x.State == EntityState.Modified && x.Entity.Status == "UnderSending");
+            if (kontroll == 1 ? !underSending || harKoblinger : !harKoblinger) return;
+            brukt = true; var status = await p.Abonnement.HentAsync("a");
+            await p.Abonnement.EndreAdresseAsync("a", "ny@jd.dep.no", true, status.Versjon);
+        });
+        await p.Jobb(port).KjorAsync(); Assert.True(brukt); Assert.Empty(p.Post.Hent("a"));
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        await p.Abonnement.BekreftAsync("a", p.Bekreftelsespost.Hent("a")!.Token);
+        await p.Skriv.OpprettAsync(Inndata("Fersk etter ny bekreftelse")); await p.Jobb().KjorAsync();
+        var post = Assert.Single(p.Post.Hent("a")); Assert.Equal("ny@jd.dep.no", post.Adresse);
+        Assert.Contains("Fersk etter ny bekreftelse", post.Tekst); Assert.DoesNotContain("Kølagt før adressebytte", post.Tekst);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task Adressebytte_rydder_ikke_UnderSending_eller_Uavklart_og_gir_ingen_blind_retry(bool uavklart)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await p.Skriv.OpprettAsync(Inndata("Allerede overlevert")); var transport = new VentendePost(uavklart);
+        var sending = p.Jobb(post: transport).KjorAsync();
+        try
+        {
+            await transport.Ankommet.Task.WaitAsync(TimeSpan.FromSeconds(15)); p.Klokke.Flytt(TimeSpan.FromDays(1));
+            var status = await p.Abonnement.HentAsync("a"); await p.Abonnement.EndreAdresseAsync("a", "ny@jd.dep.no", true, status.Versjon);
+            await p.Abonnement.BekreftAsync("a", p.Bekreftelsespost.Hent("a")!.Token);
+            await p.Skriv.OpprettAsync(Inndata("Etter bytte mens utfall venter"));
+            Assert.Equal("Uavklart", Assert.Single((await p.Jobb(post: transport).KjorAsync()).Mottakere).Status);
+            Assert.Equal(1, transport.Antall); transport.Fortsett.TrySetResult(); await sending;
+            if (uavklart)
+            {
+                Assert.Equal("Uavklart", Assert.Single((await p.Jobb(post: transport).KjorAsync()).Mottakere).Status);
+                Assert.Equal(1, transport.Antall);
+            }
+        }
+        finally { transport.Fortsett.TrySetResult(); await sending; }
+    }
+
+    public static IEnumerable<object[]> AdressebytteCommitrekkefolger()
+    {
+        foreach (var type in new[] { "Ny", "Endret", "Slettet" })
+        foreach (var forsinket in new[] { false, true })
+        foreach (var ticks in new[] { 0, -1 }) yield return [type, forsinket, ticks];
+    }
+
+    [Theory]
+    [MemberData(nameof(AdressebytteCommitrekkefolger))]
+    public async Task Ny_bekreftelse_etter_adressebytte_ordner_alle_hendelsestyper_etter_commit_med_lik_eller_bakover_UTC(string type, bool bekreftelseForsinket, int ticks)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var rad = Importrad("Frist rundt ny bekreftelse");
+        var import = new FristDatautveksling(db.Fabrikk(), p.Klokke);
+        if (type != "Ny") await import.ImporterAsync(new() { Frister = [rad] });
+        await p.Aktiver(); await VelgUtvalg(p, [2031], [Kategori.Budsjett], true, true);
+        p.Klokke.Flytt(TimeSpan.FromMinutes(2)); var status = await p.Abonnement.HentAsync("a");
+        await p.Abonnement.EndreAdresseAsync("a", "ny@jd.dep.no", true, status.Versjon);
+        var mottatt = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fortsett = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lagringsport = new FoerLagring(async _ => { mottatt.TrySetResult(); await fortsett.Task.WaitAsync(TimeSpan.FromSeconds(15)); });
+        var leseport = new FoerImportlesing(mottatt, fortsett);
+        var fil = new FristDatabase { Frister = type == "Slettet" ? [] : [type == "Endret" ? rad with { Dato = new(2030, 12, 5) } : rad] };
+        Task Bekreft(bool vent) => new EpostabonnementTjeneste(db.Fabrikk(vent ? lagringsport : null), p.Klokke, p.Bekreftelsespost)
+            .BekreftAsync("a", p.Bekreftelsespost.Hent("a")!.Token);
+        Task Publiser(bool vent) => new FristDatautveksling(vent ? db.FabrikkMedKommando(leseport) : db.Fabrikk(), p.Klokke).ImporterAsync(fil);
+        var ventende = bekreftelseForsinket ? Bekreft(true) : Publiser(true);
+        try
+        {
+            await mottatt.Task.WaitAsync(TimeSpan.FromSeconds(15)); p.Klokke.Flytt(TimeSpan.FromTicks(ticks));
+            if (bekreftelseForsinket) await Publiser(false); else await Bekreft(false);
+            fortsett.TrySetResult(); await ventende; await p.Jobb().KjorAsync();
+            Assert.Equal(bekreftelseForsinket ? 0 : 1, p.Post.Hent("a").Count);
+            if (!bekreftelseForsinket) Assert.Equal("ny@jd.dep.no", Assert.Single(p.Post.Hent("a")).Adresse);
+        }
+        finally { fortsett.TrySetResult(); await ventende; }
+    }
+
+    [Theory]
+    [InlineData("foer")]
+    [InlineData("venter")]
+    [InlineData("etter")]
+    public async Task Adressebytte_erstatter_livssyklusgrensen_for_ny_og_fjernet_uten_tidligere_overlevering(string publisering)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver(); await VelgUtvalg(p, null, null, false, true);
+        var rad = Importrad("Livsløp rundt adressebytte"); var import = new FristDatautveksling(db.Fabrikk(), p.Klokke);
+        if (publisering == "foer") await import.ImporterAsync(new() { Frister = [rad] });
+        p.Klokke.Flytt(TimeSpan.FromMinutes(2)); var status = await p.Abonnement.HentAsync("a");
+        await p.Abonnement.EndreAdresseAsync("a", "ny@jd.dep.no", true, status.Versjon);
+        if (publisering == "venter") await import.ImporterAsync(new() { Frister = [rad] });
+        await p.Abonnement.BekreftAsync("a", p.Bekreftelsespost.Hent("a")!.Token);
+        if (publisering == "etter") await import.ImporterAsync(new() { Frister = [rad] });
+        await import.ImporterAsync(new() { Frister = [] }); await p.Jobb().KjorAsync();
+        Assert.Equal(publisering == "etter" ? 0 : 1, p.Post.Hent("a").Count);
+        if (publisering != "etter") Assert.Contains("Fjernet frist: Livsløp rundt adressebytte", Assert.Single(p.Post.Hent("a")).Tekst);
+    }
+
     [Fact]
     public async Task Import_publiserer_nye_frister_og_identisk_gjenimport_gir_ingen_ekstra_post()
     {

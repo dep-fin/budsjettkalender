@@ -46,6 +46,9 @@ jobbadresse. Påmeldingen kan vente på adressebekreftelse, være aktiv eller v�
 **Adressebekreftelse**: Brukerens bekreftelse på at vedkommende disponerer den oppgitte
 jobbadressen. Bekreftelsen tildeler ingen funksjonsrolle eller synlighetsgruppe.
 
+**Adressebytte**: Brukerens uttrykkelige erstatning av egen jobbadresse i det samme
+e-postabonnementet. Varslingen er stanset frem til den nye adressen er bekreftet.
+
 **Ny frist-hendelse**: Første publisering av en frist, som kan inngå i abonnentens
 daglige oppsummering. Et upublisert forslag er ingen slik hendelse.
 
