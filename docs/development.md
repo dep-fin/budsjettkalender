@@ -1,17 +1,16 @@
 # Utvikling
 
-EV09 / #119 er før publisering integrert med levert #140 / PR #142 på faktisk
-main `12d12601b0fe8d83d0a4a84b88cff589bd954572`, som også inneholder EV08 / PR #144.
-Oppdaget inventar er **1348 ordinære, 480 SQL Server- og 354 nettlesertilfeller**.
-Hele foreldreunionen 1347/479/354 består ordinalt uten tap eller dubletter;
-én ny main→EV09-oppgraderingsprøve per lagringssuite kommer i tillegg.
-CI krever nøyaktig **480 SQL- og 354 Chromium-resultater** uten feil/hopp.
-15/20/45 minutter, aktiv audit, hemmelighetssøk og bare TRX-artefakter er bevart.
-Lokalt består 1348 ordinære, 591 målrettede og 35 berørte Edge/Kestrel-forløp.
-SQL er bygget/oppdaget, ikke lokalt kjørt; full kandidat-CI og nye relevante
-review-/auditporter håndteres av orkestratoren før publisering. De daterte
-resultatene nedenfor er historiske. Se [EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md)
-og den leverte [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md).
+EV09 / #119 er levert gjennom PR #146 som main
+`dd2a24c87aceb692c576eafa155d02ee0541b12b`. EV10 / #120 er lokal kandidat fra
+samme base. Oppdaget inventar er **1403 ordinære, 510 SQL Server- og 359
+nettlesertilfeller**. Alle 1348/480/354 navn fra basen er bevart ordinalt uten
+tap eller dubletter. CI krever nøyaktig **510 SQL- og 359 Chromium-resultater**
+uten feil/hopp. Jobbgrensene 15/20/45 minutter, pakkeaudit og TRX-/hemmelighetsvern
+består. SQL Server er bygget og oppdaget lokalt; disponibel tilkobling mangler.
+Lokalt består 1403 ordinære og 46 berørte reelle Edge/Kestrel-forløp uten feil/hopp.
+Full SQL Server-/Chromium-kandidat-CI og samlet review/audit gjenstår.
+Se [EV10-akseptansen](acceptance/2026-10-29-epost-ev10.md) for lokale bevis og
+[EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md) for datert tidligere bevis.
 
 EV08 bruker eksisterende abonnementslagring uten egen modellendring/migrasjon.
 Fra `/epostvarsling` kan Aktiv/Venter bytte egen adresse og Avmeldt uttrykkelig
@@ -352,13 +351,13 @@ grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gj
 
 ## Obligatorisk nettleserakseptanse
 
-Gjeldende EV09-kandidat krever nøyaktig **354 beståtte Chromium-scenarioer**
-uten hopp eller manglende TRX. **480 ekte SQL Server-tilfeller** kreves i den
+Gjeldende EV10-kandidat krever nøyaktig **359 beståtte Chromium-scenarioer**
+uten hopp eller manglende TRX. **510 ekte SQL Server-tilfeller** kreves i den
 separate SQL-porten. De daterte kjøringene nedenfor viser tidligere kandidatgrunnlag.
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 354 scenarioer bruker disponible Kestrel-verter,
-inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06, to fra EV07, fire fra EV08 og fire fra EV09, to fra #140,
+eksisterende app eller database: 359 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06, to fra EV07, fire fra EV08 og fire fra EV09, fem fra EV10, to fra #140,
 sju fra UX17 og seks fra UX18. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
@@ -436,7 +435,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 354 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 359 beståtte scenarioer uten hopp.
 EV05/UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -447,7 +446,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 354; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 359; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -547,7 +546,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 480 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 510 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.
@@ -583,7 +582,7 @@ Produksjonsappen kjører foreløpig migrasjoner ved oppstart. Egen deploy-migrer
 SQL/Entra-oppsett, Data Protection og Azure-nettverk må verifiseres i et driftsmiljø.
 Se `infra/README.md` og gjennomgangens åpne oppgaver før utrulling.
 
-## EV09 – lokal kandidat med levert main integrert
+## EV09 – daterte lokale bevis før levering i PR #146
 
 [EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md) beskriver rød/grønn,
 1348 ordinære tilfeller, delte SQLite-/SQL Server-kontrakter, migrasjonskjede
@@ -611,3 +610,32 @@ python .github/scripts/kontroller-hemmeligheter.py TestResults
 Ingen ekstra produksjonsadapter, tenant-/postbokstilgang eller utrulling
 aktiveres av EV09. Fremtidig e-postadapter må oppfylle den synkrone
 transportmottakskontrakten i ADR-0010 før den kan tas i bruk.
+
+## EV10 – abonnentadministrasjon
+
+Administrator-innstillinger → Åpne e-postabonnenter er den nye flaten.
+`/admin/innstillinger/epostvarsling` og `/api/admin/epostabonnenter` krever
+administrator. JSON-POST til `/api/admin/epostabonnenter/stans` tar `brukerId`,
+`versjon` og `bekreftet`; aktøren hentes fra innloggingen. Konflikt gir 409 og
+krever ny lesing/bekreftelse. Valideringsfeil gir 400, feil innholdstype 415,
+lagringsfeil 503. Alle svar har no-store. Kalenderfeed er fortsatt en egen flate.
+
+Migrasjonen `20261029170000_Epostadministratorstans` legger til et tomt,
+varig revisjonsspor. Historiske migrasjoner og begge ID-er med timestamp
+20261029092000 beholdes. Demo bruker samme additive operasjoner i én transaksjon,
+med SQLite INTEGER-nøkkel for revisjonsrekkefølge. Ufullstendig audit-tabell eller
+manglende indeks avvises uten endring av eksisterende data.
+
+```powershell
+dotnet test backend/Aarshjul.Tests -c Release --no-build `
+  --filter 'FullyQualifiedName~EV10|FullyQualifiedName~EpostabonnentadministrasjonHttpTester|FullyQualifiedName~MigrasjonsmodellTester'
+dotnet test backend/Aarshjul.BrowserTests -c Release --no-build `
+  --filter 'FullyQualifiedName~EpostabonnementTester|FullyQualifiedName~DagligEpostTester|FullyQualifiedName~AdministratoroversiktTester|FullyQualifiedName~AbonnementTester'
+# Lokal Windows-prøve kan bruke AARSHJUL_BROWSER_CHANNEL=msedge.
+# Kandidat-CI bruker installert Chromium og ekte disponibel SQL Server.
+python .github/scripts/kontroller-hemmeligheter.py TestResults/120/final
+```
+
+Bruk [akseptansen](acceptance/2026-10-29-epost-ev10.md) for konkret kandidatgrunnlag,
+rød/grønn, faktisk inventar og lokale resultater. Ingen produksjonsadapter eller
+eksterne sender-/Entra-rettigheter aktiveres av denne leveransen.

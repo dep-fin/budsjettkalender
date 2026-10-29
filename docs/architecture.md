@@ -30,6 +30,14 @@ kontrollerte mottakeren. Produksjon registrerer en utilgjengelig transport og ka
 opprette påmelding. Bekreftelsestransporten får fortsatt ingen fristdata.
 Se [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md).
 
+Administrator-innstillinger → e-postabonnenter går gjennom
+`IEpostabonnentadministrasjon`. HTTP og kretskommandoen autoriserer administrator
+før andres abonnement leses eller stanses; aktøren hentes fra innloggingen.
+Stans krever målidentitet, gjeldende versjon og bekreftelse, og lagrer avmelding
+og revisjonsspor i samme transaksjon under EV09s overleveringslås. Lesing
+oppretter ingen kontoer. Verken roller, grupper eller kalenderfeed endres.
+Se [EV10-akseptansen](acceptance/2026-10-29-epost-ev10.md) og ADR-0010.
+
 Direkte manuell oppretting → atomisk ny frist-hendelse → varig dagsplan → fersk
 mottakertilgang → sentralt synlighetsfilter → egen tekst-/HTML-melding går gjennom
 `IDagligEpostoppsummering.KjorAsync`. Tid, lagring, identitetskilde og posttransport

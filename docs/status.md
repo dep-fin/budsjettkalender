@@ -106,25 +106,33 @@ med timestamp 20261029092000 beholdes. Den daterte
 [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md) bevarer tidligere
 bygg-/integrasjons-/CI-bevis; PR #142 er kilden til leveransens livsløp.
 
-EV09 ([#119](https://github.com/depmartin/Budsjettkalender/issues/119)) er en lokal
-kandidat med denne faktisk leverte hovedgrenen integrert før publisering. Hver
-tekst-/HTML-oppsummering får en egen snever
-avmeldingslenke. Anonym GET/HEAD endrer ingenting; uttrykkelig JSON-bekreftelse
-stanser bare den samme bekreftede livssyklusen. Eldre e-postlenker består gjennom
-filterendringer og senere oppsummeringer, og kan ikke stoppe ny aktivering.
-Siste abonnementslesing og synkront transportmottak deler en kort databaselås
-med avmelding; senere kvittering ventes uten låsen. Overlevert post kan ikke
-tilbakekalles, og UnderSending/Uavklart bevares. Additiv migrasjon og demooppgradering
-bevarer EV02–EV08 og manuelle kildelenker uten historisk flom. Oppdaget inventar
-er 1348 ordinære, 480 SQL Server- og 354 nettlesertilfeller. Hele foreldreunionen
-1347/479/354 er bevart ordinalt uten tap/dubletter, pluss én ny oppgraderingsprøve
-per lagringssuite. Lokalt består 1348 ordinære, 591 målrettede samspillstilfeller
-og 35 reelle Edge/Kestrel-forløp uten feil/hopp. SQL er bare bygget/oppdaget.
-[EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md) beskriver lokale bevis og grenser.
-Opprinnelig EV09 hadde Standards 0, Spec 0 og audit 0. Ny relevant samlet
-gjennomgang, separat sikkerhetsaudit og faktisk full kandidat-CI for den
-integrerte kandidaten gjenstår hos orkestratoren. Ingen produksjonsutsending
-eller utrulling inngår.
+EV09 ([#119](https://github.com/depmartin/Budsjettkalender/issues/119)) er bekreftet
+levert i [PR #146](https://github.com/depmartin/Budsjettkalender/pull/146), merget som
+`dd2a24c87aceb692c576eafa155d02ee0541b12b`. Slutt-[CI 40887998599](https://github.com/depmartin/Budsjettkalender/actions/runs/40887998599)
+bestod 1348 ordinære, 480 ekte SQL Server- og 354 Chromium-tilfeller uten feil/hopp.
+Samlet Standards-/Spec-review og separat sikkerhetsaudit er avklart for levert
+kandidat. Hver oppsummering har en snever avmeldingsrett per bekreftet livssyklus.
+Anonym GET/HEAD endrer ingenting; uttrykkelig JSON-bekreftelse stanser varslingen.
+Siste abonnementslesing og synkront transportmottak deler databaselås med avmelding;
+senere kvittering ventes uten lås. UnderSending/Uavklart og koblinger bevares.
+[EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md) beholder daterte lokale bevis.
+
+EV10 ([#120](https://github.com/depmartin/Budsjettkalender/issues/120)) er en lokal,
+ucommittet kandidat fra denne leverte EV09-basen i `work/Budsjettkalender-120`,
+branch `codex/120-abonnentadministrasjon`. Administrator-innstillinger har en egen
+abonnentflate med registrerte/påbegynte abonnementer, faktiske varselvalg, filtre,
+adressebekreftelse og siste administratorstans. Bekreftet stans krever gjeldende
+versjon og serverbundet aktør. Status og varig revisjonsspor lagres atomisk under
+EV09s transportgrense. Brukeren kan senere melde seg på og bekrefte igjen uten
+inaktivt etterslep. Lesing og stans endrer ingen roller eller medlemskap.
+Additiv migrasjon og demooppgradering bevarer tidligere data uten falske hendelser.
+Oppdaget inventar er 1403 ordinære, 510 SQL Server- og 359 nettlesertilfeller;
+alle 1348/480/354 basenavn er bevart uten tap eller dubletter. Samlet review,
+separat sikkerhetsaudit og faktisk full kandidat-CI gjenstår hos orkestratoren.
+Lokalt består 1403 ordinære og 46 berørte reelle Edge/Kestrel-forløp, uten feil/hopp.
+[EV10-akseptansen](acceptance/2026-10-29-epost-ev10.md) beskriver lokale bevis og
+miljøgrenser. Åpen PR #145 er ikke integrert. Ingen produksjonsutsending eller
+utrulling inngår.
 
 ## UX18 – samlet akseptanse og publisering
 

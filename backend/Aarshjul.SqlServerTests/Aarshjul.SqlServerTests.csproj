@@ -16,6 +16,7 @@
     <Compile Include="..\Testkontrakter\FasedataBevis.cs" Link="FasedataBevis.cs" />
     <Compile Include="..\Testkontrakter\EpostoppgraderingBevis.cs" Link="EpostoppgraderingBevis.cs" />
     <Compile Include="..\Testkontrakter\DagligEpostKontrakt.cs" Link="DagligEpostKontrakt.cs" />
+    <Compile Include="..\Testkontrakter\EpostabonnentadministrasjonKontrakt.cs" Link="EpostabonnentadministrasjonKontrakt.cs" />
     <Compile Include="..\Testkontrakter\AvmeldingslenkeKontrakt.cs" Link="AvmeldingslenkeKontrakt.cs" />
     <Compile Include="..\Testkontrakter\ImportvarslingKontrakt.cs" Link="ImportvarslingKontrakt.cs" />
     <Compile Include="..\Testkontrakter\InternkalenderSynkKontrakt.cs" Link="InternkalenderSynkKontrakt.cs" />

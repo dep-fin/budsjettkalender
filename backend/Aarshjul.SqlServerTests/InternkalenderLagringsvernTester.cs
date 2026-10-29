@@ -65,7 +65,7 @@ public sealed class InternkalenderLagringsvernTester : InternkalenderSynkKontrak
             Assert.Equal(new[] { "20261028083448_Epostabonnement", "20261028112544_UnikeInternrunder",
                 "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering",
                 "20261028165341_VarseltyperOgEndringer", "20261028193853_Abonnementsutvalg",
-                "20261029092000_HistoriskSlettingssynlighet", "20261029092000_ManuellKildelenke", "20261029143000_Avmeldingslenke" }, anvendte.TakeLast(9));
+                "20261029092000_HistoriskSlettingssynlighet", "20261029092000_ManuellKildelenke", "20261029143000_Avmeldingslenke", "20261029170000_Epostadministratorstans" }, anvendte.TakeLast(10));
         }
     }
 

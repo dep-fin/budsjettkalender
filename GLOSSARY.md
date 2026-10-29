@@ -52,6 +52,10 @@ stanse det aktuelle e-postabonnementets bekreftede påmeldingsperiode.
 **Adressebytte**: Brukerens uttrykkelige erstatning av egen jobbadresse i det samme
 e-postabonnementet. Varslingen er stanset frem til den nye adressen er bekreftet.
 
+**Administratorstans**: Administratorens bekreftede avmelding av et e-postabonnement,
+med registrert aktør og tidspunkt. Brukeren kan senere melde seg på igjen ved en ny
+uttrykkelig handling.
+
 **Ny frist-hendelse**: Første publisering av en frist, som kan inngå i abonnentens
 daglige oppsummering. Et upublisert forslag er ingen slik hendelse.
 

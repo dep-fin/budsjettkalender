@@ -53,6 +53,7 @@ public static class EpostoppgraderingBevis
     }
     public static void IgnorerEV09(ModelBuilder b)
     {
+        b.Ignore<Epostadministratorstans>();
         b.Entity<Epostoppsummering>().Ignore("AvmeldingsHash");
         b.Entity<Epostoppsummering>().Ignore("Avmeldingssekvens");
     }

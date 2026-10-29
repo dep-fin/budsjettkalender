@@ -293,3 +293,37 @@ filter- eller administrasjonsrett. Kontrollert tekstforhåndsvisning redigerer
 rålenken, og nettleserfeil/CI-artefakter har særskilt vern mot hemmeligheter.
 Migrasjonen Avmeldingslenke er additiv og nullable; EV02–EV08-oppgradering
 oppretter ingen historiske hendelser og bevarer ventende og overleverte planer.
+
+## EV10: abonnentoversikt og administratorstans
+
+`IEpostabonnentadministrasjon` leser fra registrerte abonnementer og henter bare
+eventuelt navn fra appens brukere. Manglende navn vises med stabil brukeridentitet.
+Lesing oppretter eller synkroniserer ingen kontoer, roller eller medlemskap.
+Utvalg leses fra samme lagrede kontrakt som selvbetjeningen; null betyr Alle,
+inkludert fremtidige budsjettår. Adressebekreftelse følger Aktivert, som beholdes
+ved avmelding og tømmes når ny adressebekreftelse må innhentes.
+
+HTTP-inngang og Blazor-side krever eksisterende administratorpolicy. Kretskommandoen
+kontrollerer autentisert identitet og policy på nytt ved hver lesing og stans.
+Aktøren bindes til stabil innloggingsclaim med samme prioritet som brukeroppslaget,
+uten kontooppdatering. FA alene gir ingen slik rett. Inngangene bruker no-store;
+mutasjon krever JSON eller den autoriserte kretskommandoen og uttrykkelig bekreftelse.
+
+Stans krever målidentitet og sist leste abonnementsversjon. Operasjonen tar
+EV09s rekkefølge- og abonnementslås før raden leses, og stanser den samme
+påmeldingen som selvbetjeningen. Vinnende statusendring og revisjonsspor lagres
+i samme transaksjon. Konflikt krever ny lesing og ny bekreftelse; tapende forsøk
+eller allerede avmeldt abonnement får ingen falsk revisjonshendelse.
+
+Den additive tabellen Epostadministratorstanser inneholder bare databasegenerert
+ID, abonnentidentitet, aktøridentitet, UTC-tid og handling. ID ordner hendelsene
+uavhengig av klokkejusteringer. Ingen e-postadresse, meldingsinnhold, fristdata,
+token eller hash inngår. Historikken beholdes gjennom ny påmelding og har ingen
+slettingskaskade til brukerkonto eller abonnement.
+
+Sendeforløpet beholder EV09s synkrone transportmottak under samme lås og senere
+kvittering uten lås. Stans før mottaket hindrer overlevering; allerede overlevert
+post kan ikke tilbakekalles. Planer, UnderSending/Uavklart og koblinger bevares.
+Ny uttrykkelig påmelding og bekreftelse setter friske grenser uten etterslep.
+Demooppgradering er atomisk og idempotent; SQL Server bruker vanlig migrasjonskjede.
+Ingen historiske abonnementer eller revisjonshendelser tilbakefylles.

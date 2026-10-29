@@ -74,6 +74,7 @@ public sealed class EpostabonnementTester : EpostabonnementKontrakt
         {
             base.OnModelCreating(b);
             b.Ignore<Epostabonnement>();
+            b.Ignore<Epostadministratorstans>();
         }
     }
 }
