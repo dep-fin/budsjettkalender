@@ -1,13 +1,13 @@
 # Utvikling
 
-EV05-kandidaten er avstemt med levert UX18 på faktisk main
-`134857de41527e4442ed3f7009620487f13f82f4`. Oppdaget inventar er **1063 ordinære
-tester, 216 SQL Server-tilfeller og 336 nettleserscenarioer**. Alle navn fra både
-publisert EV05 (1057/216/330) og levert UX18 (1024/186/332) er bevart eksakt uten
-dubletter. CI krever nøyaktig **216 SQL- og 336 Chromium-resultater** uten feil/hopp;
-antalls-, tids- og artefaktvern består. De daterte EV02–EV04- og UX18-resultatene
-nedenfor er historiske. Se [EV05-akseptansen](acceptance/2026-10-28-epost-ev05.md)
-for integrasjonsprøver og gjenstående kandidat-CI.
+EV06-kandidaten bygger på levert EV05 og UX18 på main
+`29421c2ff1a1595ecfaba5e80d18ce529ade8c03`. Oppdaget inventar er **1157 ordinære
+tester, 310 SQL Server-tilfeller og 342 nettleserscenarioer**. Hele basens
+1063/216/336 navn er bevart eksakt uten dubletter. CI krever nøyaktig **310 SQL-
+og 342 Chromium-resultater** uten feil/hopp; antalls-, tids- og artefaktvern består.
+De daterte EV02–EV05- og UX18-resultatene nedenfor er historiske.
+Se [EV06-akseptansen](acceptance/2026-10-29-epost-ev06.md) for kandidatens prøver
+og gjenstående full CI. EV06 endrer ingen databasemodell eller migrasjon.
 
 Migrasjonen `20261028193853_Abonnementsutvalg` legger til nullable `UtvalgJson` i
 e-postabonnementet. Produksjon bruker vanlig EF-migrasjon; `Demoskjema.SikreAsync`
@@ -297,13 +297,14 @@ grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gj
 
 ## Obligatorisk nettleserakseptanse
 
-Gjeldende EV05/UX18-kandidat krever nøyaktig **336 beståtte Chromium-scenarioer**
-uten hopp eller manglende TRX. **216 ekte SQL Server-tilfeller** kreves i den
+Gjeldende EV06-kandidat krever nøyaktig **342 beståtte Chromium-scenarioer**
+uten hopp eller manglende TRX. **310 ekte SQL Server-tilfeller** kreves i den
 separate SQL-porten. De daterte kjøringene nedenfor viser tidligere kandidatgrunnlag.
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 332 scenarioer bruker disponible Kestrel-verter,
-inklusive fem fra EV02, tre fra EV03, fire fra EV04, sju fra UX17 og seks fra UX18. Alle tidligere navn består.
+eksisterende app eller database: 342 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06,
+sju fra UX17 og seks fra UX18. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
 Kestrel, SQLite i minnet og testautentisering.
@@ -380,7 +381,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 336 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 342 beståtte scenarioer uten hopp.
 EV05/UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -391,7 +392,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 336; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 342; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -491,7 +492,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 216 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 310 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

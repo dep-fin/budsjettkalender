@@ -116,3 +116,36 @@ førhistorikk. Begge sistekontroller av abonnementets versjon og fristinnhold be
 Migrasjonen Abonnementsutvalg legger bare til én nullable tekstkolonne. Demo
 oppgraderer EV02, EV03 og EV04 atomisk og idempotent. Historiske testkontekster
 beholder sin opprinnelige modell; ny migrasjon endrer ikke eldre målmodeller.
+
+## EV06: godkjenning i kø og av genererte forslag
+
+GodkjennAsync og JusterOgGodkjennAsync utvider den eksisterende felles
+publiseringsoperasjonen med Ny eller Endret og samme koordinering som direkte
+administratorpublisering. Førtilstanden leses fra målfristen i operasjonens
+kontekst før overskriving; Fristtilstand normaliserer dato-/periodebetydningen.
+Den felles hendelsesbyggeren for kø og direkte redigering validerer faktisk
+innholdsendring og begrunnelse på 1–300 tegn ved manuell markering. Den kan ikke
+undertrykke automatisk vesentlighet. Rene korrekturer og identisk innhold gir
+ingen hendelse. Godkjenners markering tilhører publiseringshandlingen og lagres
+ikke på bidragsyterens forslag.
+
+Forslag har fortsatt ingen klokkeslettkolonne. Direkte godkjenning av et
+endringsforslag bevarer målfristens klokkeslett ved dagspresisjon. Justerings-
+skjemaet prefyller denne tiden og kan endre eller tømme den; månedspresisjon
+fjerner meningsløst klokkeslett. Nye forslag er heldags ved direkte godkjenning,
+mens justering kan angi klokkeslett. Det kreves ingen migrasjon eller ny
+genereringsmodell.
+
+Forslagets status/justerte felter, ny eller endret frist, synlighet,
+innboksmelding, hendelse og publiseringssekvens fullføres i samme transaksjon.
+Endringsforslag bevarer synlighet, opphav, kilde og dokumentkobling. Robotbevis
+blir på det bevarte forslaget. Innsending, generering/regenerering og avvisning
+oppretter ingen fristvarsling. Innsenders ordinære innboks fungerer også når en
+godkjent korrektur ikke gir e-posthendelse.
+
+Konkurranseoversettelsen forblir avgrenset til konflikter på Forslag. Slettet
+mål eller samtidig redigering av målinnhold beholder databasefeilen; hele
+godkjenningen rulles tilbake uten feil førmetadata eller ekstra hendelse.
+EV05s hele før-eller-etter-utvalg, filtrering før gruppering og dagens synlighet
+med fersk mottakertilgang brukes uendret. Begge køinnganger prøves gjennom
+samme delte SQLite-/SQL Server-kontrakter og reell Kestrel-nettlesergrense.

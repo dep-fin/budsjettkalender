@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Aarshjul.Infrastructure.Epost;
 
-/// <summary>Aktiveres bare av adressebekreftelse og direkte manuell publisering.</summary>
+/// <summary>Aktiveres av abonnementsvalg og vellykket publisering, også fra godkjenningskøen.</summary>
 internal sealed class EpostrekkefolgeLagring : SaveChangesInterceptor
 {
     internal bool Aktiv { get; set; }

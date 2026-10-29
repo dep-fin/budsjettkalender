@@ -48,6 +48,15 @@ selvstendig kontrollert identitetsregister, ikke sist lagrede innloggingsclaims.
 Se [ADR-0010](adr/0010-varig-daglig-epostoppsummering.md) og
 [EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md).
 
+Godkjenning og justering med godkjenning bruker samme varige hendelser og
+databaseordnede lagring. Nytt bruker-/robot-/generert forslag gir Ny først ved
+publisering. Endringsforslag sammenlikner faktisk innlest måltilstand med den
+publiserte ettertilstanden og beholder synlighet, opphav og kildespor. En liten
+felles hendelsesbygger skjuler vesentlighetsvalideringen for direkte redigering
+og køen, uten egen kontekst eller lagring. Forslagets konkurransetoken og
+fristinnholdets samtidighetspredikater verner samme atomiske operasjon.
+Se [EV06-akseptansen](acceptance/2026-10-29-epost-ev06.md).
+
 HTTP-policyer og Blazor-sideautorisasjon er tilgangsgrensen for skrivetjenestene.
 Tjenestegrensesnittene i seg selv er ikke en ekstra autorisasjonsgrense.
 Ved nye innganger må policyene håndheves og testes der.

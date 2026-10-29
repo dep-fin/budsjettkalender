@@ -115,12 +115,12 @@ else
             <textarea @bind="_inndata.Notat" rows="2"></textarea>
         </label>
 
-        @if (Id is not null && !ErJuster)
+        @if (Id is not null || ErJuster && _erEndre)
         {
             <fieldset>
                 <legend>E-post om vesentlig endring</legend>
                 <p>Endret dato, klokkeslett, presisjon, kvalifikator, budsjettår eller kategori varsles automatisk. Vanlig tekstkorrektur varsles ikke.</p>
-                <label><input type="checkbox" @bind="_inndata.VesentligEndring" /> Marker annen faktisk innholdsendring som vesentlig</label>
+                <label class="filtervalg"><input type="checkbox" @bind="_inndata.VesentligEndring" /> Marker annen faktisk innholdsendring som vesentlig</label>
                 @if (_inndata.VesentligEndring)
                 {
                     <label>Kort endringsforklaring

@@ -135,7 +135,7 @@ else
 
                     @if (t.Feil is not null)
                     {
-                        <div class="feil">@t.Feil</div>
+                        <div class="feil" role="alert">@t.Feil</div>
                     }
 
                     @if (t.Modus == Kortmodus.Godkjenn)
@@ -143,6 +143,17 @@ else
                         @if (e.ForslagType == ForslagType.Endring)
                         {
                             <p class="melding">Synligheten på fristen står uendret — et endringsforslag rører kun innholdet.</p>
+                            <fieldset disabled="@t.Arbeider">
+                                <legend>E-post om vesentlig endring</legend>
+                                <p>Endret dato, klokkeslett, presisjon, kvalifikator, budsjettår eller kategori varsles automatisk. Vanlig tekstkorrektur varsles ikke.</p>
+                                <label class="filtervalg"><input type="checkbox" @bind="t.VesentligEndring" /> Marker annen faktisk innholdsendring som vesentlig</label>
+                                @if (t.VesentligEndring)
+                                {
+                                    <label>Kort endringsforklaring
+                                        <input @bind="t.Endringsforklaring" maxlength="300" />
+                                    </label>
+                                }
+                            </fieldset>
                         }
                         else
                         {
@@ -309,6 +320,8 @@ else
                 .Where(k => !string.Equals(k, Pol, StringComparison.OrdinalIgnoreCase) && _grupper.Any(g => g.Kode == k))
                 .ToHashSet();
         t.Feil = null;
+        t.VesentligEndring = false;
+        t.Endringsforklaring = null;
         t.Modus = Kortmodus.Godkjenn;
     }
 
@@ -336,7 +349,9 @@ else
             {
                 ForslagId = e.Id,
                 Synlighetskoder = e.ForslagType == ForslagType.Endring ? [] : t.Koder.ToList(),
-                PolBekreftet = e.ForslagType != ForslagType.Endring && t.Koder.Contains(Pol)
+                PolBekreftet = e.ForslagType != ForslagType.Endring && t.Koder.Contains(Pol),
+                VesentligEndring = e.ForslagType == ForslagType.Endring && t.VesentligEndring,
+                Endringsforklaring = e.ForslagType == ForslagType.Endring ? t.Endringsforklaring : null
             });
             await LastAsync();
         }
@@ -394,5 +409,7 @@ else
         public string? Begrunnelse { get; set; }
         public string? Feil { get; set; }
         public bool Arbeider { get; set; }
+        public bool VesentligEndring { get; set; }
+        public string? Endringsforklaring { get; set; }
     }
 }
