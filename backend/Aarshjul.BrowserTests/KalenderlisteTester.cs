@@ -66,10 +66,13 @@ public sealed class KalenderlisteTester
         await n.Side.GetByRole(AriaRole.Searchbox).FillAsync("HIST138");
         var aarvalg = n.Side.GetByRole(AriaRole.Group, new() { Name = "Budsjettår", Exact = true });
         await aarvalg.GetByRole(AriaRole.Button, new() { Name = "Fjern alle", Exact = true }).ClickAsync();
+        await Expect(Utvalg(n)).ToContainTextAsync("Budsjettår: Ingen valgt");
         await n.Side.GetByLabel("2026", new() { Exact = true }).CheckAsync();
         await n.Side.GetByLabel("2028", new() { Exact = true }).CheckAsync();
+        await Expect(Utvalg(n)).ToContainTextAsync("Budsjettår: 2026, 2028");
         await n.Side.GetByLabel("Gul bok", new() { Exact = true }).UncheckAsync();
         await Bytt(n, "Liste");
+        await Expect(Sidestatus(n)).ToHaveTextAsync("Side 1 av 3 · 53 frister");
         await Neste(n).ClickAsync();
         await Expect(Sidestatus(n)).ToHaveTextAsync("Side 2 av 3 · 53 frister");
         await Neste(n).ClickAsync();

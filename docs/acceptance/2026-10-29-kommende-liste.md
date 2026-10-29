@@ -521,3 +521,81 @@ bevisjournal og bevisfiler. `StagedGitTree` kommer fra `git write-tree` etter
 løste og staged konflikter, og er ikke en commit. De gamle manifestene og
 deres opprinnelige hashverdier beholdes. Ny kandidat-CI og publisering er
 fortsatt orkestratorens porter.
+
+## Avgrenset CI-retting etter kjøring 40885826810, 29. oktober 2026
+
+[PR #145s første kandidat-CI](https://github.com/depmartin/Budsjettkalender/actions/runs/40885826810)
+kjørte publisert head `70e6c21afb46ab66c655273294f51815cda74fe7`, med samme tre
+`a3f351e2f69a5ac57d1b55ea838a6432f5105efc` som lokal head
+`a501fbd87d4077d4d7317fafceb9f4ef6f19560e`. Ordinær- og SQL-portene bestod
+1303/1303 og 442/442. Chromium utførte alle 374 tilfeller: **373 bestått, én
+feil, null hopp**. Testresultatet oppgir 18 minutter og 38 sekunder. Den ene feilen
+var `KalenderlisteTester.Historikk_har_egen_side_seneste_foerst_og_bevarer_filtre_detaljer_fokus_og_kalenderkontekst`:
+første «Neste side» forble deaktivert, og eksisterende 10000 ms klikkgrense utløp.
+Dette var ikke en grønn samlet kandidat-CI.
+
+### Rødt bevis og avklart årsak
+
+Den foregående Astra-diagnosen er bevart i `TestResults/138-ci-40885826810/`.
+`browser-job.log` linje 427–457 viser CI-feilen. Fem faktiske lokale kjøringer av
+den uendrede metoden ga fire beståtte og én feil; den røde
+`diagnose-repeat/run-4/repeat-4.trx` viste **47 i stedet for 53 kommende frister**.
+Et avbrutt sandboxforsøk uten testresultat regnes ikke som en sjette kjøring.
+
+Testen kalte `CheckAsync` rett etter «Fjern alle», før serverens tømte årsutvalg
+var rendret. Playwright kunne fortsatt lese `checked=true` fra den gamle DOM-en
+og fullføre uten klikk eller ny valghendelse. Den senere tømmingen etterlot da
+ingen år eller bare 2028. Null eller 47 frister var korrekt for dette utilsiktede
+utvalget. Dette er en feil i testoppsettets synkronisering.
+
+Seks kontrollerte prober ved samme klokke skiller årsaken fra listeberegningen:
+to prober som holdt tømmingsrenderen til etter begge sjekkene ga null frister og
+deaktivert «Neste side»; to som holdt den til etter første sjekk ga 47 frister.
+To prober som ventet på serverteksten «Budsjettår: Ingen valgt» ga begge år,
+53 frister og korrekt side 2 av 3. `diagnose-conclusion.json` og
+`diagnose-probe-results.json` binder observasjonene og prøvegrensen. Disse
+diagnosebevisene er historikk fra før rettingen, ikke nye prøver av rettet kode.
+
+### Minste retting og nye grønne prøver
+
+Bare oppsettet i den ene metoden er endret, med tre nye synlige forventninger:
+
+- Etter «Fjern alle» venter testen på «Budsjettår: Ingen valgt» før årsvalgene.
+- Etter årsvalgene bekrefter den «Budsjettår: 2026, 2028».
+- Etter bytte til Liste bekrefter den «Side 1 av 3 · 53 frister» før første blaing.
+
+Alle opprinnelige handlinger, forventninger, data, navn, teoriargumenter og
+prøvegrenser er bevart. Ingen produktkode, felles testhjelper, CI-port,
+antallskontroll eller timeout er endret; ingen søvn eller nytt testtilfelle er lagt
+til. `TestResults/138-ci-40885826810-fix/final/preservation.json` kontrollerer at hele
+testfilen er originalen med nøyaktig disse tre innsettingene.
+
+Låst browser-restore og ferske Release-bygg av Web og BrowserTests med SDK
+**10.0.402** bestod med null advarsler/feil og NuGet-audit `true` / `all` / `low`.
+Samme ferdige runtime ble deretter brukt uten ny kompilering mellom prøvene:
+
+| Ny lokal kontroll | Resultat | Bevis i `TestResults/138-ci-40885826810-fix/final/` |
+| --- | --- | --- |
+| Eksakt historikkmetode, ti separate kjøringer | **10/10**, null feil/hopp; ny evidensmappe per kjøring | `repeat/run-1/` til `repeat/run-10/`, `test-summary.json` |
+| Alle `KalenderlisteTester`, `KalenderfilterTester` og `KalenderperspektivTester`, én samlet kjøring | **15/15**: 7 liste-, 3 filter- og 5 perspektivtilfeller; null feil/hopp | `targeted/targeted.trx`, `targeted-names.txt` |
+| Hele browserinventaret, inklusive teoriargumenter | **374**, alle navn eksakt bevart, null dubletter | `browser-names.txt`, `inventory-summary.json` |
+
+TRX-resultatene er sammenliknet med de hele forventede navnene; executed er lik
+forventet antall, alle resultater er Passed og notExecuted er null. Alle nye
+prøver bruker installert Edge, ekte Kestrel og nye disponible SQLite-databaser.
+Bare prøveoppsettet er endret, så ordinær- og SQL-suitene er ikke kjørt på nytt
+lokalt i denne runden. De tidligere resultatene beholder sine revisjonsgrenser.
+
+Gamle manifest, røde/grønne prøver, diagnosefiler og det eksplisitte avviket i de
+tre gamle SQLite-bevisfilene ovenfor er beholdt. Ingen gammel auditdatabase er
+åpnet med SQLite. Råfilkontrollen binder denne rundens starttilstand; den
+tilbakefører ikke eller rekonstruerer de tre opprinnelige filenes bytes.
+`final/hash-summary.json` bekrefter **448 backendkildefiler og 823 Web-/browser-
+runtimefiler uten drift gjennom sluttprøvene**, samt **8755 eldre bevisfiler uten
+ytterligere endring fra denne rundens starttilstand**. De tre historiske
+SQLite-unntakene består; tallet er ingen attest av deres opprinnelige bytes.
+
+Rettede lokale prøver erstatter ikke ny full kandidat-CI med **1303 ordinære,
+442 ekte SQL Server- og 374 Chromium-tilfeller** uten feil/hopp. Ingen ny review,
+sikkerhetsaudit, commit, push, GitHub-mutasjon eller deploy er utført i denne
+avgrensede CI-løkken. Andre arbeidsflater og deres prosesser/databaser er urørt.
