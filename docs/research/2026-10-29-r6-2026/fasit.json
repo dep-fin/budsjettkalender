@@ -1,0 +1,110 @@
+{
+  "method": "Manuelt transkribert og kontrollert visuelt mot original PDF side 3; linjeskift i titlene er erstattet med mellomrom. Ingen OCR eller appforslag brukt som fasit.",
+  "rows": [
+    {
+      "row": 1,
+      "page": 3,
+      "section": "2.1",
+      "originalTitle": "Frist for innsending av førsteutkast/skisse til omtale av strukturelle utfordringer og -tiltak",
+      "originalDateText": "16. oktober 2026",
+      "calendarYear": 2026,
+      "kind": "day",
+      "isoDate": "2026-10-16",
+      "workYear": 2028
+    },
+    {
+      "row": 2,
+      "page": 3,
+      "section": "2.1",
+      "originalTitle": "Frist for ferdigstillelse av omtalen av strukturelle utfordringer og -tiltak",
+      "originalDateText": "18. desember 2026",
+      "calendarYear": 2026,
+      "kind": "day",
+      "isoDate": "2026-12-18",
+      "workYear": 2028
+    },
+    {
+      "row": 3,
+      "page": 3,
+      "section": "2.1",
+      "originalTitle": "Frist for spesifikasjon av driftspostene for 2027-budsjettet",
+      "originalDateText": "4. januar 2027",
+      "calendarYear": 2027,
+      "kind": "day",
+      "isoDate": "2027-01-04",
+      "workYear": 2028,
+      "explicitBudgetYearInTitle": 2027,
+      "interpretation": "Kilden sier 2027-budsjettet. Arbeidsår 2028 er kjørekontekst, ikke grunnlag for å endre denne teksten."
+    },
+    {
+      "row": 4,
+      "page": 3,
+      "section": "2.1",
+      "originalTitle": "Frist for innsending av materiale til teknisk justering og flerårige budsjettkonsekvenser av gjeldende politikk",
+      "originalDateText": "6. januar 2027",
+      "calendarYear": 2027,
+      "kind": "day",
+      "isoDate": "2027-01-06",
+      "workYear": 2028
+    },
+    {
+      "row": 5,
+      "page": 3,
+      "section": "2.1",
+      "originalTitle": "Frist for innsending av mulige innsparingstiltak",
+      "originalDateText": "15. januar 2027",
+      "calendarYear": 2027,
+      "kind": "day",
+      "isoDate": "2027-01-15",
+      "workYear": 2028
+    },
+    {
+      "row": 6,
+      "page": 3,
+      "section": "2.1",
+      "originalTitle": "Frist for innsending av satsingsforslag",
+      "originalDateText": "22. januar 2027",
+      "calendarYear": 2027,
+      "kind": "day",
+      "isoDate": "2027-01-22",
+      "workYear": 2028
+    },
+    {
+      "row": 7,
+      "page": 3,
+      "section": "2.1",
+      "originalTitle": "Frist for tabeller for nettobudsjetterte virksomheter",
+      "originalDateText": "26. februar 2027",
+      "calendarYear": 2027,
+      "kind": "day",
+      "isoDate": "2027-02-26",
+      "workYear": 2028
+    },
+    {
+      "row": 8,
+      "page": 3,
+      "section": "2.1",
+      "originalTitle": "Regjeringens marskonferanse",
+      "originalDateText": "9.–10. mars 2027",
+      "calendarYear": 2027,
+      "kind": "interval",
+      "isoDate": null,
+      "workYear": 2028,
+      "start": "2027-03-09",
+      "end": "2027-03-10"
+    },
+    {
+      "row": 9,
+      "page": 3,
+      "section": "2.1",
+      "originalTitle": "Utsending av Hovedbudsjettskriv",
+      "originalDateText": "Ultimo mars 2027",
+      "calendarYear": 2027,
+      "kind": "tentative-month",
+      "isoDate": null,
+      "workYear": 2028,
+      "month": "2027-03",
+      "qualifier": "Ultimo"
+    }
+  ]
+}

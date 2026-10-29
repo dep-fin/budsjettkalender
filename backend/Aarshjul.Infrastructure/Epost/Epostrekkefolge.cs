@@ -11,4 +11,5 @@ internal sealed class Epostaktivering
     public required string BrukerId { get; set; }
     public long Sekvens { get; set; }
     public long Endringssekvens { get; set; }
+    public long Livssyklussekvens { get; set; }
 }

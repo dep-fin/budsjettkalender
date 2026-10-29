@@ -1,0 +1,22 @@
+{
+  "framework": ".NET 10.0.13",
+  "os": "Microsoft Windows 10.0.26300",
+  "architecture": "X64",
+  "assemblies": [
+    {
+      "name": "Aarshjul.Infrastructure",
+      "version": "1.0.0.0",
+      "sha256": "ACAADD52C985BC22B07111F6A04F588E6E4B1792C2762B185B79F33CEB1A244F"
+    },
+    {
+      "name": "UglyToad.PdfPig",
+      "version": "0.1.15.0",
+      "sha256": "D6AA1D42B9B324E59B1E0800E51BDF471B82FB5B2E8EC8EFE6D43BA9BF199251"
+    },
+    {
+      "name": "Microsoft.EntityFrameworkCore",
+      "version": "10.0.9.0",
+      "sha256": "1C763D6AE0CBD473929CFBCD50E4E1FE77969CA524FB6E8602DF865F24204A1D"
+    }
+  ]
+}

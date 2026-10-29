@@ -47,8 +47,9 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         // EV02-abonnenter har ingen aktiveringsrad. Grense 0 inkluderer bare
         // nye hendelser; migrasjonen tilbakefyller ingen tidligere frister.
         var grenser = await db.Set<Epostaktivering>().AsNoTracking().SingleOrDefaultAsync(x => x.BrukerId == id, ct);
-        var hendelser = await Ubehandlede(db, id, abonnent, grenser?.Sekvens ?? 0, grenser?.Endringssekvens ?? 0).ToListAsync(ct);
-        if (hendelser.Count == 0) return new(id, plan?.Id, "IngenHendelser");
+        var hendelseIder = await Ubehandlede(db, id, abonnent, grenser?.Sekvens ?? 0, grenser?.Endringssekvens ?? 0)
+            .Select(h => h.Id).ToListAsync(ct);
+        if (hendelseIder.Count == 0) return new(id, plan?.Id, "IngenHendelser");
         if (plan is null)
         {
             plan = new() { BrukerId = id, LokalDato = dato, AktivertUtcTicks = start };
@@ -79,19 +80,13 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         rett = await HentTilgangAsync(id, ct);
         if (rett.Status != MottakertilgangStatus.Aktiv || rett.Synlighet is null)
             return await UtsettAsync(db, plan, "UavklartTilgang", ct);
-        var fristIder = hendelser.Select(x => x.FristId).ToList();
-        var frister = await db.Frister.AsNoTracking().Where(x => x.Status == FristStatus.Godkjent && fristIder.Contains(x.Id))
-            .FiltrerSynlige(rett.Synlighet).OrderBy(x => x.Sorteringsdag).ThenBy(x => x.Tittel).ThenBy(x => x.Id)
-            .Select(x => new Fristinnhold(x.Id, x.Tittel, x.Dato, x.Datopresisjon, x.Datokvalifikator, x.Klokkeslett, x.Budsjettaar, x.Kategori, x.Loep, x.Notat, x.ManuellKildeUrl)).ToListAsync(ct);
         var gjeldende = await db.Epostabonnementer.AsNoTracking().SingleOrDefaultAsync(x => x.BrukerId == id, ct);
         if (gjeldende is null || gjeldende.Status != "Aktiv" || !(gjeldende.NyeFrister || gjeldende.VesentligeEndringer)
             || gjeldende.Aktivert?.UtcTicks != start || gjeldende.Adresse != abonnent.Adresse || gjeldende.Versjon != abonnent.Versjon)
             return await UtsettAsync(db, plan, "EndretAbonnement", ct);
         var utvalg = Abonnementsutvalg.Les(gjeldende.UtvalgJson);
-        var autoriserte = frister.ToDictionary(f => f.Id);
-        hendelser = hendelser.Where(h => autoriserte.TryGetValue(h.FristId, out var f) && Relevant(h, f, utvalg)).ToList();
-        fristIder = hendelser.Select(h => h.FristId).Distinct().ToList();
-        frister = frister.Where(f => fristIder.Contains(f.Id)).ToList();
+        var (frister, hendelser) = await HentInnholdAsync(db, id, hendelseIder, rett.Synlighet,
+            utvalg, grenser?.Livssyklussekvens ?? 0, ct);
         if (frister.Count == 0) return await UtsettAsync(db, plan, "IngenSynligeFrister", ct);
 
         // Lagre nøyaktige hendelser før overlevering; sene commits forblir ubehandlet.
@@ -103,11 +98,12 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         rett = await HentTilgangAsync(id, ct);
         if (rett.Status != MottakertilgangStatus.Aktiv || rett.Synlighet is null)
             return await UtsettAsync(db, plan, "UavklartTilgang", ct);
-        var sisteFrister = await db.Frister.AsNoTracking().Where(x => x.Status == FristStatus.Godkjent && fristIder.Contains(x.Id))
-            .FiltrerSynlige(rett.Synlighet).OrderBy(x => x.Sorteringsdag).ThenBy(x => x.Tittel).ThenBy(x => x.Id)
-            .Select(x => new Fristinnhold(x.Id, x.Tittel, x.Dato, x.Datopresisjon, x.Datokvalifikator, x.Klokkeslett, x.Budsjettaar, x.Kategori, x.Loep, x.Notat, x.ManuellKildeUrl)).ToListAsync(ct);
+        var (sisteFrister, sisteHendelser) = await HentInnholdAsync(db, id, hendelseIder, rett.Synlighet,
+            utvalg, grenser?.Livssyklussekvens ?? 0, ct);
         var sisteAbonnement = await db.Epostabonnementer.AsNoTracking().SingleOrDefaultAsync(x => x.BrukerId == id, ct);
-        if (sisteAbonnement?.Versjon != gjeldende.Versjon || !frister.SequenceEqual(sisteFrister) || !post.Tilgjengelig || Datohjelp.Idag(klokke) != dato)
+        if (sisteAbonnement?.Versjon != gjeldende.Versjon || !frister.SequenceEqual(sisteFrister)
+            || !hendelser.Select(h => h.Id).SequenceEqual(sisteHendelser.Select(h => h.Id))
+            || !post.Tilgjengelig || Datohjelp.Idag(klokke) != dato)
             return await UtsettAsync(db, plan, "EndretFoerOverlevering", ct);
         var melding = LagMelding(plan.Id, id, gjeldende.Adresse, frister, hendelser, lenke);
         try { await post.SendAsync(melding, ct); }
@@ -128,7 +124,7 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
     private static IQueryable<NyFristHendelse> Ubehandlede(AppDbContext db, string id, Epostabonnement abonnement, long nyeStart, long endringerStart)
         => db.NyFristHendelser.AsNoTracking().Where(h =>
             (h.Type == "Ny" && abonnement.NyeFrister && h.Publiseringssekvens > nyeStart
-             || h.Type == "Endret" && abonnement.VesentligeEndringer && h.Publiseringssekvens > endringerStart)
+             || (h.Type == "Endret" || h.Type == "Slettet") && abonnement.VesentligeEndringer && h.Publiseringssekvens > endringerStart)
             && !db.Oppsummeringshendelser.Any(k => k.HendelseId == h.Id && k.Oppsummering.BrukerId == id
                 && (k.Oppsummering.Status == "Bekreftet" || k.Oppsummering.Status == "UnderSending" || k.Oppsummering.Status == "Uavklart")));
 
@@ -143,7 +139,45 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         // kan brukes som fallback; ingen førtilstand eller historikk konstrueres.
         if (h.Type == "Ny" && h.EtterJson is null)
             return utvalg.Treffer(h.Publiseringssekvens, gjeldende.Budsjettaar, gjeldende.Kategori);
-        return Treffer(h.EtterJson) || h.Type == "Endret" && Treffer(h.FoerJson);
+        return h.Type == "Slettet" ? Treffer(h.FoerJson) : Treffer(h.EtterJson) || h.Type == "Endret" && Treffer(h.FoerJson);
+    }
+
+    private static async Task<(List<Fristinnhold> Frister, List<NyFristHendelse> Hendelser)> HentInnholdAsync(
+        AppDbContext db, string brukerId, List<Guid> hendelseIder, ISynlighetskontekst rett,
+        Abonnementsutvalg utvalg, long livssyklusstart, CancellationToken ct)
+    {
+        var fristIder = db.NyFristHendelser.Where(h => hendelseIder.Contains(h.Id)).Select(h => h.FristId);
+        var frister = await db.Frister.AsNoTracking().Where(f => f.Status == FristStatus.Godkjent && fristIder.Contains(f.Id))
+            .FiltrerSynlige(rett)
+            .Select(f => new Fristinnhold(f.Id, f.Tittel, f.Dato, f.Datopresisjon, f.Datokvalifikator,
+                f.Klokkeslett, f.Budsjettaar, f.Kategori, f.Loep, f.Notat, false, f.ManuellKildeUrl)).ToListAsync(ct);
+        var synligeIder = frister.Select(f => f.Id).ToList(); var grupper = rett.Grupper.ToList();
+        // Historisk metadata filtreres i SQL. Bare eksplisitt atomisk Slettet kan
+        // bruke siste publiserte synlighet; en manglende frist er ingen fallback.
+        var hendelser = await db.NyFristHendelser.AsNoTracking().Where(h => hendelseIder.Contains(h.Id)
+            && (h.Type == "Slettet"
+                ? !db.Frister.Any(f => f.Id == h.FristId && f.Status == FristStatus.Godkjent)
+                  && !db.NyFristHendelser.Any(t => t.FristId == h.FristId && t.Publiseringssekvens > h.Publiseringssekvens)
+                  && (rett.SerAlt || db.Set<FristHendelsessynlighet>().Any(s => s.HendelseId == h.Id && grupper.Contains(s.GruppeKode)))
+                  && !db.NyFristHendelser.Any(n => n.FristId == h.FristId && n.Type == "Ny"
+                      && n.Publiseringssekvens > livssyklusstart && n.Publiseringssekvens <= h.Publiseringssekvens
+                      && !db.Oppsummeringshendelser.Any(k => k.Oppsummering.BrukerId == brukerId && k.Oppsummering.Status == "Bekreftet"
+                          && db.NyFristHendelser.Any(t => t.Id == k.HendelseId && t.FristId == h.FristId)))
+                : synligeIder.Contains(h.FristId)))
+            .OrderBy(h => h.Publiseringssekvens).ThenBy(h => h.Id).ToListAsync(ct);
+        // Bare siste bortfall beskrives. Endret-metadata følger aldri med en
+        // sletting når dagens publiserte frist ikke lenger gir lesetilgang.
+        var slettinger = hendelser.Where(h => h.Type == "Slettet").GroupBy(h => h.FristId).Select(g => g.Last()).ToList();
+        foreach (var h in slettinger)
+            if (h.FoerJson is { } json && JsonSerializer.Deserialize<Fristtilstand>(json) is { } f)
+                frister.Add(new(h.FristId, f.Tittel, f.Dato, f.Presisjon, f.Kvalifikator, f.Tid, f.Budsjettaar, f.Kategori, f.Loep, f.Notat, true, f.ManuellKildeUrl));
+        var autoriserte = frister.ToDictionary(f => f.Id);
+        hendelser = hendelser.Where(h => (h.Type != "Slettet" || slettinger.Contains(h))
+            && autoriserte.TryGetValue(h.FristId, out var f) && Relevant(h, f, utvalg)).ToList();
+        var relevante = hendelser.Select(h => h.FristId).ToHashSet();
+        return (frister.Where(f => relevante.Contains(f.Id))
+            .OrderBy(f => Datoberegning.Sorteringsdag(f.Dato, f.Presisjon, f.Kvalifikator))
+            .ThenBy(f => f.Tittel).ThenBy(f => f.Id).ToList(), hendelser);
     }
 
     private async Task<Mottakertilgang> HentTilgangAsync(string id, CancellationToken ct)
@@ -179,8 +213,8 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         {
             var gruppe = hendelser.Where(h => h.FristId == f.Id).OrderBy(h => h.Publiseringssekvens).ToList();
             var ny = gruppe.Any(h => h.Type == "Ny");
-            var linje = $"{(ny ? "Ny frist" : "Vesentlig endring")}: {f.Tittel} – {Dato(f.Dato, f.Presisjon, f.Kvalifikator, f.Tid)} – Budsjettår {f.Budsjettaar} – Kategori {f.Kategori}";
-            if (!ny)
+            var linje = $"{(f.Slettet ? "Fjernet frist" : ny ? "Ny frist" : "Vesentlig endring")}: {f.Tittel} – {Dato(f.Dato, f.Presisjon, f.Kvalifikator, f.Tid)} – Budsjettår {f.Budsjettaar} – Kategori {f.Kategori}";
+            if (!ny && !f.Slettet)
             {
                 var foer = gruppe.First().FoerJson is { } json ? JsonSerializer.Deserialize<Fristtilstand>(json) : null;
                 if (foer is not null)
@@ -194,6 +228,15 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
             }
             tekst.AppendLine(linje);
             html.Append("<li>").Append(WebUtility.HtmlEncode(linje)).Append("</li>");
+            if (f.Slettet)
+            {
+                // Bare et lite kalenderutvalg; ingen tittel, notat, ID eller token.
+                var query = $"?aar={f.Budsjettaar}&kategori={(int)f.Kategori}&dato={f.Dato:yyyy-MM-dd}&fjernet=1";
+                var fjernetlenke = new Uri(lenke, query).AbsoluteUri;
+                tekst.AppendLine("Åpne relevant kalenderutvalg (krever innlogging): " + fjernetlenke);
+                html.Append("<p><a href=\"").Append(WebUtility.HtmlEncode(fjernetlenke))
+                    .Append("\">Åpne relevant kalenderutvalg (krever innlogging)</a></p>");
+            }
         }
         tekst.AppendLine().Append("Åpne kalenderen (krever innlogging): ").Append(lenke.AbsoluteUri);
         html.Append("</ul><p><a href=\"").Append(WebUtility.HtmlEncode(lenke.AbsoluteUri)).Append("\">Åpne kalenderen (krever innlogging)</a></p>");
@@ -206,5 +249,5 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         => presisjon == Datopresisjon.Maaned
             ? $"Tentativt: {(kvalifikator?.ToString().ToLowerInvariant() is { } k ? k + " " : "")}{dato.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("nb-NO"))}"
             : dato.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture) + (tid is { } klokke ? $" kl. {klokke:HH:mm}" : "");
-    private sealed record Fristinnhold(Guid Id, string Tittel, DateOnly Dato, Datopresisjon Presisjon, Datokvalifikator? Kvalifikator, TimeOnly? Tid, int Budsjettaar, Kategori Kategori, string? Loep, string? Notat, string? ManuellKildeUrl);
+    private sealed record Fristinnhold(Guid Id, string Tittel, DateOnly Dato, Datopresisjon Presisjon, Datokvalifikator? Kvalifikator, TimeOnly? Tid, int Budsjettaar, Kategori Kategori, string? Loep, string? Notat, bool Slettet, string? ManuellKildeUrl);
 }

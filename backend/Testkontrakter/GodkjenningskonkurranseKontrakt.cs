@@ -404,6 +404,11 @@ public abstract class GodkjenningskonkurranseKontrakt : Genereringskontrakt
             // Erstatt-alt-importen sletter målfristen etter lesing, før godkjenningen lagrer.
             var resultat = await import.ImporterAsync(new FristDatabase { Frister = [] });
             Assert.Equal(1, resultat.AntallErstattet);
+            await using var foerFeil = database.Fabrikk().CreateDbContext();
+            var slettet = Assert.Single(await foerFeil.NyFristHendelser.ToListAsync());
+            Assert.Equal("Slettet", slettet.Type); Assert.Equal(fristId, slettet.FristId);
+            var sekvensFoerFeil = await Sekvens(foerFeil);
+            Assert.True(sekvensFoerFeil > 0);
             port.Slipp();
             var feil = await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => godkjenning.WaitAsync(TimeSpan.FromSeconds(20)));
             Assert.DoesNotContain("allerede behandlet", feil.Message);
@@ -415,8 +420,10 @@ public abstract class GodkjenningskonkurranseKontrakt : Genereringskontrakt
             Assert.Empty((await import.EksporterAsync()).Frister);
             Assert.Empty(await varsler.HentForBrukerAsync("innsender"));
             await using var kontroll = database.Fabrikk().CreateDbContext();
-            Assert.Empty(await kontroll.NyFristHendelser.ToListAsync());
-            Assert.Equal(0, await Sekvens(kontroll));
+            var bevart = Assert.Single(await kontroll.NyFristHendelser.ToListAsync());
+            Assert.Equal(slettet.Id, bevart.Id); Assert.Equal(slettet.FoerJson, bevart.FoerJson);
+            Assert.Equal(slettet.Publiseringssekvens, bevart.Publiseringssekvens);
+            Assert.Equal(sekvensFoerFeil, await Sekvens(kontroll));
         }
         finally
         {

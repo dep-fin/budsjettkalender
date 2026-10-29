@@ -1,26 +1,51 @@
 # Utvikling
 
-#140-kandidaten bygger på faktisk merget EV06 / PR #135 på main
-`28694c580141b91f9707c616a53ee95f05246e11`. Oppdaget inventar er **1167 ordinære
-tester, 316 SQL Server-tilfeller og 344 nettleserscenarioer**. Basen hadde
-1157/310/342. CI krever nøyaktig **316 SQL- og 344 Chromium-resultater** uten
-feil/hopp; tidsgrensene 15/20/45 minutter, aktiv audit og bare TRX-artefakter består.
-De daterte EV02–EV06- og UX18-resultatene nedenfor er historiske.
-Se [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md) for lokale
-prøver og skillet mellom bygget/oppdaget SQL-port og faktisk kandidat-CI.
+#140 / PR #142 er avstemt med faktisk merget EV07 / PR #143 på main
+`d3bec41e7a42106e6f2b8bee80de0916c3f65b60` 29. oktober 2026. Oppdaget inventar er
+**1242 ordinære tester, 389 SQL Server-tilfeller og 346 nettleserscenarioer**.
+Alle navn fra EV07-main (1228/379/344) og den tidligere #140-kandidaten
+(1167/316/344) er bevart eksakt, tegnsensitivt og uten dubletter. Fire nye
+integrasjonstilfeller i hver databaseport prøver begge oppgraderingsstier,
+lenkeinnholdets øyeblikksbilder, vesentlighet og avvisning før sletting/hendelser.
+CI krever nøyaktig **389 SQL- og 346 Chromium-resultater** uten feil/hopp.
+Tidsgrenser 15/20/45 minutter, aktiv audit og bare TRX-artefakter består.
+Se den daterte [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md)
+for integrerte lokale prøver og skillet mellom disse og ny faktisk kandidat-CI.
+De tidligere EV02–EV07-/UX18-tallene nedenfor og i egne akseptanser er historiske.
 
 `20261029092000_ManuellKildelenke` legger bare til nullable `Frister.ManuellKildeUrl`,
-uten tilbakefylling. Den inngår i fristens eksisterende konkurransekontroll.
-`Demoskjema.SikreAsync` oppgraderer også en allerede oppdatert EV05-demo idempotent;
-ny demo får kolonnen ved `EnsureCreated`. Tom manuell lenke bruker tilknyttet
-dokuments tillatte lenke. Direkte administratoroppretting/redigering, import og
-lesing bruker samme HTTPS-/regjeringen.no-regel. Køjustering har ikke feltet og
-begge godkjenningsinnganger bevarer målfristens manuelle lenke.
+uten tilbakefylling. Kolonnen inngår i fristens eksisterende konkurransekontroll.
+Tom manuell lenke bruker tilknyttet dokuments tillatte lenke. Direkte administrator-
+oppretting/redigering, import og lesing bruker samme HTTPS-/regjeringen.no-regel.
+Køjustering har ikke feltet; begge godkjenningsinnganger bevarer lenken.
+JSON-eksportens versjon **1** får valgfritt `manuellKildeUrl`. Gammel v1 uten
+feltet betyr null. Ny app bevarer feltet; eldre appversjoner kan ikke forventes
+å bevare det ved en retur. Hele importkandidaten valideres før sletting, også
+ved forhåndsvisning. Ren lenkeendring gir ingen automatisk vesentlig hendelse;
+dagens begrunnede administratorvalg gjelder fortsatt.
 
-JSON-eksportens versjon **1** får det valgfrie feltet `manuellKildeUrl`. Gammel
-versjon 1 uten feltet betyr null. Ny app bevarer lenken i eksport/import;
-eldre appversjoner kan ikke forventes å bevare det nye feltet ved en retur.
-Hele importkandidaten valideres før sletting, også ved forhåndsvisning.
+EV07s `20261029092000_HistoriskSlettingssynlighet` bevarer historiske gruppekoder
+per eksplisitt slettingshendelse med FK til hendelsen, uten FK til dagens frist
+eller grupperegister. Livssyklussekvensen bevarer opprinnelig aktivering gjennom
+senere typevalg. Eksisterende aktiveringsrader får nåværende sekvens som grense;
+type-/utvalgsgrenser, planer og hendelser beholdes uten historisk tilbakefylling.
+Import sammenlikner reell publisert før-/ettertilstand per identitet atomisk med
+hendelser, historisk synlighet og sekvens. Identisk gjenimport og korrektur
+varsler ikke. Sletting bruker fersk mottakertilgang og siste publiserte synlighet.
+Se [EV07-akseptansen](acceptance/2026-10-29-epost-ev07.md) og ADR-0010.
+
+Begge migrasjons-ID-er beholdes med samme timestamp. EF ordner på hele ID-en:
+`HistoriskSlettingssynlighet` før `ManuellKildelenke`. Førstes målmodell beskriver
+EV07; sistes målmodell og slutt-snapshot beskriver begge leveranser. Begges faktiske
+Up/Down er uendret. SQL-prøvene starter både med bare levert EV07 og med bare den
+opprinnelige kildelenkemigrasjonen registrert i migrasjonshistorikken, og krever
+at normal `MigrateAsync` installerer akkurat den manglende migrasjonen idempotent.
+Disse tilfellene krever ekte SQL Server i CI når lokal testvariabel mangler.
+Normal `Demoskjema.SikreAsync` oppgraderer EV02–EV05 og hver enkelt gren atomisk og
+idempotent. Tidlig retur krever begge skjemaendringer; ny demo bruker EnsureCreated.
+Demo-/SQL-prøvene bevarer lenke eller historisk publikum, hele datagrunnlaget og
+en ventende legacy-plan. Modellprøvene sammenlikner faktisk Up/Down og målmodeller
+og krever ingen ventende SQL Server-modellendringer.
 
 Migrasjonen `20261028193853_Abonnementsutvalg` legger til nullable `UtvalgJson` i
 e-postabonnementet. Produksjon bruker vanlig EF-migrasjon; `Demoskjema.SikreAsync`
@@ -132,8 +157,9 @@ Andre brukere får verken vedkommendes meldinger eller bekreftelseslenke.
 Kontrollene krever både eksplisitt konfigurasjon, kontrollert miljø og administrator.
 Produksjon registrerer aldri kontrollert klokke, tilgangskilde eller postadapter.
 
-Kun direkte manuell administratoroppretting lager hendelser i EV03. Kø, generering,
-import, endringer og sletting varsles ikke ennå. Abonnementets aktive Nye frister-valg,
+EV03s opprinnelige direkte administratoroppretting er senere utvidet med
+direkte endringer (EV04), kø/godkjenning (EV06) og import/sletting (EV07-kandidat).
+Abonnementets aktive varselvalg,
 adressebekreftelse og databaseordnet aktiveringsgrense gjelder; avmelding og ny aktivering gir
 ingen tilbakefylling fra avmeldt periode. Manglende aktiv konto eller fersk tilgang
 utsetter mottakeren. Gjeldende godkjente frist og synlighet filtreres før projeksjon,
@@ -310,14 +336,14 @@ grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gj
 
 ## Obligatorisk nettleserakseptanse
 
-Gjeldende #140-kandidat krever nøyaktig **344 beståtte Chromium-scenarioer**
-uten hopp eller manglende TRX. **316 ekte SQL Server-tilfeller** kreves i den
+Gjeldende integrerte #140-kandidat krever nøyaktig **346 beståtte Chromium-scenarioer**
+uten hopp eller manglende TRX. **389 ekte SQL Server-tilfeller** kreves i den
 separate SQL-porten. De daterte kjøringene nedenfor viser tidligere kandidatgrunnlag.
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 344 scenarioer bruker disponible Kestrel-verter,
-inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06,
-sju fra UX17, seks fra UX18 og to nye fra #140. Alle tidligere navn består.
+eksisterende app eller database: 346 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06 og to fra EV07,
+sju fra UX17, seks fra UX18 og to fra #140. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
 Kestrel, SQLite i minnet og testautentisering.
@@ -394,7 +420,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 344 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 346 beståtte scenarioer uten hopp.
 EV05/UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -405,7 +431,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 344; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 346; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -505,7 +531,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 316 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 389 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

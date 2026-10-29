@@ -5,12 +5,34 @@ using Aarshjul.Infrastructure.Epost;
 using Aarshjul.Infrastructure.Internkalender;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Xunit;
 
 namespace Aarshjul.Testkontrakter;
 
 public static class EpostoppgraderingBevis
 {
+    // De to leveransene hadde samme timestamp, men uavhengige additive Up-operasjoner.
+    // Installer akkurat én autentisk gren før den normale oppgraderingsgrensen prøves.
+    public static async Task InstallerGrenmigrasjonAsync(Epostdatabase database, Migration migrasjon)
+    {
+        await using var db = database.Fabrikk().CreateDbContext();
+        await using var transaksjon = await db.Database.BeginTransactionAsync();
+        if (db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+            foreach (var kolonne in migrasjon.UpOperations.OfType<AddColumnOperation>().Where(c => c.ColumnType == "nvarchar(max)"))
+                kolonne.ColumnType = "TEXT";
+        foreach (var kommando in db.GetService<IMigrationsSqlGenerator>().Generate(migrasjon.UpOperations, db.Model))
+            await db.Database.ExecuteSqlRawAsync(kommando.CommandText);
+        if (db.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+        {
+            var attributt = (MigrationAttribute)Attribute.GetCustomAttribute(migrasjon.GetType(), typeof(MigrationAttribute))!;
+            var versjon = (string)migrasjon.TargetModel.FindAnnotation("ProductVersion")!.Value!;
+            await db.Database.ExecuteSqlRawAsync(db.GetService<IHistoryRepository>().GetInsertScript(new(attributt.Id, versjon)));
+        }
+        await transaksjon.CommitAsync();
+    }
+
     // Autentisk modell for abonnementet før EV05. Bare migrasjonsoppsett bruker den;
     // alle kontroller etter oppgradering og all runtime bruker dagens modell.
     public static IDbContextFactory<AppDbContext> HistoriskFabrikk(Epostdatabase database)
@@ -25,7 +47,8 @@ public static class EpostoppgraderingBevis
     private sealed class HistoriskKontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
     {
         protected override void OnModelCreating(ModelBuilder b)
-        { base.OnModelCreating(b); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson); b.Entity<Frist>().Ignore(x => x.ManuellKildeUrl); }
+        { base.OnModelCreating(b); b.Entity<Frist>().Ignore(x => x.ManuellKildeUrl); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson);
+            b.Ignore<FristHendelsessynlighet>(); b.Entity("Aarshjul.Infrastructure.Epost.Epostaktivering").Ignore("Livssyklussekvens"); }
     }
     public sealed record EV03Plan(Guid Behandlet, Guid Ventende, Guid GammelPlan, Guid VentendePlan);
 

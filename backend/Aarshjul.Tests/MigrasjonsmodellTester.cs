@@ -37,6 +37,10 @@ public sealed class MigrasjonsmodellTester
     public void EV05_maal_bevarer_tidligere_vern_og_samsvarer_med_siste_snapshot()
         => KontrollerMaal("20261028193853_Abonnementsutvalg", true, true, true);
 
+    [Fact]
+    public void EV07_maal_bevarer_tidligere_vern_og_samsvarer_med_siste_snapshot()
+        => KontrollerMaal("20261029092000_HistoriskSlettingssynlighet", true, true, true);
+
     private static void KontrollerMaal(
         string migrasjonId, bool oppsummering, bool ordnet, bool endringer)
     {
@@ -93,6 +97,9 @@ public sealed class MigrasjonsmodellTester
 
         if (migrasjonId == samling.Migrations.Last().Key)
         {
+            var historisk = maal.FindEntityType(typeof(FristHendelsessynlighet))!;
+            Assert.Equal(64, historisk.FindProperty(nameof(FristHendelsessynlighet.GruppeKode))!.GetMaxLength());
+            Assert.Equal(typeof(NyFristHendelse).FullName, Assert.Single(historisk.GetForeignKeys()).PrincipalEntityType.Name);
             var snapshot = initialiser.Initialize(samling.ModelSnapshot!.Model, designTime: true);
             Assert.False(differ.HasDifferences(maal.GetRelationalModel(), snapshot.GetRelationalModel()));
         }

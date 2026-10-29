@@ -177,3 +177,123 @@ Dette er en avgrenset CI-retting av en testlokator. De 13 lokale utføringene
 erstatter ikke en ny full Chromium-kjøring eller de øvrige kandidat-CI-portene.
 Ingen ny samlet review, sikkerhetsaudit, commit, push, GitHub-endring eller
 deploy er utført i denne rettingsrunden.
+
+
+## Datert main-integrasjon 29. oktober 2026
+
+Avsnittene ovenfor er historiske bevis for de revisjonene som navngis der.
+Den nødvendige integrasjonen i PR #142s pågående CI-løkke har foreldre
+`f9ad140089164f4abcaeb3fe7ded5e6e4c828ec5` (lokal kandidat etter de to
+avgrensede CI-rettingene) og faktisk EV07-main
+`d3bec41e7a42106e6f2b8bee80de0916c3f65b60` (merget PR #143).
+Tidligere publisert head `f5afea1c7cd47c31471699267dd9903d88b6ebc2` har
+samme tree `1e0344a8bc84236029e514a9420d35bf3569789e` som første forelder.
+`git merge --no-commit origin/main` ga faktisk filoverlapp. Ingen umerget
+#138-/liste-/søkeendring inngår. Begge bestillingene, kommentarene og leverte
+kontrakter er lest på nytt. Andre checkouts, databaser og prosesser er bevart.
+
+De ti konfliktfilene var CI, FristDatautveksling, Demoskjema,
+DagligEpostoppsummering, begge DagligEpostTester, SQLs
+InternkalenderLagringsvernTester, EpostoppgraderingBevis, development og status.
+Import beholder både felles URL-validering før sletting, v1-feltet, proveniens
+og EV07s atomiske publiseringsdiff, slettingshistorikk og sekvens. Demoskjema
+krever begge skjemaendringer før tidlig retur. Historiske testmodeller utelater
+bare felt som faktisk manglet i sine opprinnelige skjemaer. Begge oppgraderings-
+testene og deres opprinnelige navn/forventninger er bevart; forventet samlet
+migrasjonshistorikk omfatter nå begge additive migrasjoner.
+
+Funksjonell integrasjonskontroll fanget to konkrete avvik før retting:
+`integration-red.trx` har 7 beståtte og 2 feil av 9. Kildelenkemigrasjonens gamle
+målmodell beskrev feilaktig bortfall av EV07s historiske tabell/kolonne.
+Den kronologisk siste målmodellen er derfor oppdatert til den samlede modellen.
+Valg av EV07s nye felles innholdsleser alene mistet også URL-en fra sammenlikningen
+før overlevering: eksisterende `Lenkeendring_under_planlegging...` ga Bekreftet
+der kontrakten krever EndretFoerOverlevering. Den felles leseren inkluderer nå
+manuell URL i både dagens og slettet innhold, og brukes fortsatt ved begge
+ferske tilgangs-/innholdskontroller. Begge eksisterende prøver består etter
+rettingen. Dette er funksjonell samspillkontroll i CI-løkken.
+
+Begge migrasjons-ID-er beholder timestamp 20261029092000 og uendrede Up/Down.
+EFs faktiske sortering på hele ID-en er HistoriskSlettingssynlighet og deretter
+ManuellKildelenke. EV07s Designer er bevart; kildelenkens siste Designer og
+snapshot beskriver begge leveranser. Modellprøvene sammenlikner alle berørte
+Up/Down-overganger og siste snapshot og krever ingen ventende SQL-modellendringer.
+Nye SQLite-demo- og SQL-tilfeller starter fra hver opprinnelige gren: den ene
+migrasjonens autentiske Up-operasjoner, og i SQL også dens historikkrad, installeres
+før normal oppgradering. SQL krever nøyaktig den andre som pending. Begge
+oppgraderingsstier prøver idempotens, bevart lenke eller historisk publikum,
+hele tidligere datagrunnlaget og fullføring av en ventende legacy-plan.
+SQLite-demoene består lokalt; SQL-tilfellene må kjøres faktisk i ny CI.
+
+To nye delte importprøver verifiserer normalisert lenke gjennom forhåndsvisning,
+eksport, publisert før-/etter-/slettingsøyeblikksbilde og senere sikker
+oppsummering. Ren lenkeendring gir ingen automatisk vesentlig hendelse. En ugyldig
+senere importlenke bevarer hele eksporten, hendelser, historiske grupper og
+sekvens; den tidligere legitime slettingen kan fortsatt oppsummeres.
+EV07s to reelle fil-/e-postforløp er utvidet med faktisk nedlastet og gjenimportert
+manuell lenke, leserutens effektive URL og en ren lenkeendring uten ny post,
+før eksisterende datoendring, feil/rollback/retry og sletting prøves.
+
+De tidligere CI-rettingene er bevart som eksakt samme Git-blob: SQLs FasemalTester
+bruker historisk førlesing, og KildelenkeTester avgrenser tastaturlokatoren til
+Kalenderliste. Ingen større timeout eller søvn er innført. Begge migrasjoners
+Up/Down, EV07s Designer og daterte akseptanse samt alle 15 kildefunnsfiler fra
+leverte #137 er også bevart som opprinnelige Git-blobber. PDF-en har fortsatt
+491309 bytes og SHA-256 B902EABED996A1C077D1F242D11B24ECFDE044F898880BEB1ADAD5CEBB9FB60A.
+`preserved-sourceblobs.json` binder disse 21 filene; de 54 gamle bevisfilene i
+de to tidligere bevismanifestene har null hashdrift.
+`scope-preservation.json` kontrollerer dessuten åtte uendrede kontraktfiler:
+Kalender/Kalendertilstand er eksakt levert main, mens skjema, URL-regel,
+skriving/lesing, vesentlighetsbygger og Fristtilstand er eksakt tidligere #140.
+
+Sluttbevis ligger i `TestResults/140/main-integration/`:
+
+| Kontroll på integrert kandidat | Faktisk lokalt resultat | Bevis |
+| --- | --- | --- |
+| Tre låste restore med aktiv audit | Bestått, 0 advarsler/feil; true/all/low, ingen suppressions | `restore-final-{ordinary,sql,browser}.log`, `audit-properties-*.json` |
+| Tre Release-bygg med SDK 10.0.402 | Bestått, 0 advarsler/feil | `build-final-{ordinary,sql,browser}.log` |
+| Målrettet funksjonell integrasjonsprøve | 372/372, 0 feil/hopp | `integration-targeted.trx` |
+| Hele ordinærsuiten, kjørt én gang etter siste kildeendring | 1242/1242, 0 feil/hopp | `ordinary-final.trx` |
+| Relevante ekte Edge/Kestrel-forløp | 89/89, 0 feil/hopp; 560.815 sekunder | `browser-final.trx`, `browser-filter.txt`, `browser-selected-names.txt` |
+| Faktisk inventar | 1242 ordinære / 389 SQL Server / 346 nettleser | `inventory-comparison.json`, `*-names.txt` |
+| Kilde-/runtimebinding | 444 backendfiler / 1495 runtimefiler; 0 drift | `backend-stability.json`, `runtime-stability.json` |
+
+Nettleserutvalget er 19 daglige e-postforløp, 3 kildelenkeforløp, 16 fristoverføringer,
+5 overføringskappløp, 5 påmeldinger, 4 fasemal-/omstartsforløp, 4 tilgangsforløp,
+9 kalenderforløp, 3 kalenderfiltre, 5 kalenderperspektiver og 16 fristnavigasjoner.
+Hvert scenario bruker sin egen disponible testdatabase/loopback-port og avslutter
+bare sin egen Kestrel. Fire ferske sluttbilder er lest enkeltvis: mobilt kildelenke-
+skjema, kildelenkedetaljer på skrivebord og EV07s slettingslenke ved 390/1280 piksler.
+Hjelpetekst, tastaturfokus, vanlig innlogget kalender og relevant års-/kategoriutvalg
+består uten målt vannrett dokumentoverflyt. Bildene ligger under `browser-final/`.
+
+Et rent arkiv av faktisk main er låst gjenopprettet, Release-bygget og oppdaget
+separat innen denne checkoutens TestResults. Sammenlikningen er ordinal og
+tegnsensitiv: alle mains 1228/379/344 og den tidligere kandidatens 1167/316/344
+navn finnes eksakt i den integrerte kandidaten, uten dubletter. Samlet økning
+fra main er 14/10/2. Utover unionen av foreldrenes eksisterende tilfeller er det
+4 nye ordinære og 4 nye SQL-tilfeller. CI endrer bare faktiske antall til 389/346;
+hele resten av arbeidsflyten er kontrollert lik main etter linjeskiftnormalisering.
+15/20/45 minutter, audit, testutføring uten hopp, TRX-krav og artefaktvern består.
+
+Et innledende bygg av den nye delte migrasjonshjelperen viste en manglende
+SQLite-utvidelsesmetode i SQL-prosjektet. Hjelperen velger nå leverandør via
+ProviderName uten ny pakkeavhengighet. SQL-byggfeilen er bevart i
+`build-sql-provider-error.log`; alle senere sluttbygg og den ene fulle
+ordinærkjøringen bruker den rettede kilden.
+
+`candidate-files.json`, `evidence-files.json`, `merge-candidate.json` og
+`verification.json` er nye sluttmanifest. De binder faktisk staged tree,
+Git-blobber, arbeidsfilenes bytes, runtime og lokale bevis. `git write-tree`
+lager ingen commit. Orkestratoren skal committe denne mergede kandidaten og
+publisere eksakt samme tree før ny full CI.
+
+Ingen lokal AARSHJUL_TEST_SQLSERVER er konfigurert. 389 SQL-tilfeller er bygget
+og oppdaget, ikke kjørt; de to virkelige SQL-oppgraderingsstiene er fortsatt
+en uttrykkelig ny CI-port. 89 Edge-forløp er et avgrenset utvalg av 346 og
+erstatter ikke full Chromium. Alle tre faktiske nye kandidat-CI-jobber må være
+grønne. Tidligere samlede review-/auditresultater gjelder de historiske
+kandidatene; ingen ny formell review eller sikkerhetsaudit er utført i denne
+autoriserte CI-løkken. Lokal demo/SQLite/kontrollert post beviser ikke Entra,
+Azure SQL, M365 eller ekstern levering. Ingen commit, push, GitHub-mutasjon,
+produksjonsutsending, ekstern tilgangsendring eller deploy er utført her.
