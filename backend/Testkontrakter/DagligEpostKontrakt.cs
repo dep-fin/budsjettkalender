@@ -1,11 +1,18 @@
 using Aarshjul.Application.Epost;
 using Aarshjul.Application.Frister;
+using Aarshjul.Application.Brukere;
+using Aarshjul.Application.Brukerforslag;
+using Aarshjul.Application.Godkjenningsko;
 using Aarshjul.Application.Synlighet;
 using Aarshjul.Application;
 using Aarshjul.Domain;
 using Aarshjul.Infrastructure;
 using Aarshjul.Infrastructure.Epost;
 using Aarshjul.Infrastructure.Frister;
+using Aarshjul.Infrastructure.Brukerforslag;
+using Aarshjul.Infrastructure.Godkjenningsko;
+using Aarshjul.Infrastructure.Varsler;
+using Aarshjul.Infrastructure.Generering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -16,10 +23,372 @@ namespace Aarshjul.Testkontrakter;
 
 public abstract class DagligEpostKontrakt
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Koe_publiserer_foerst_ved_godkjenning_og_sender_til_egen_mottaker(bool juster)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        var input = Inndata("Fra kø <fag>");
+        var id = await SendForslag(db, input);
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        IGodkjenningsko ko = new GodkjenningskoTjeneste(db.Fabrikk());
+        if (juster) await ko.JusterOgGodkjennAsync(id, input);
+        else await ko.GodkjennAsync(new() { ForslagId = id, Synlighetskoder = ["FAG"] });
+        await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Equal("egen@fin.dep.no", melding.Adresse);
+        Assert.Contains("Ny frist: Fra kø <fag>", melding.Tekst);
+        Assert.Contains("&lt;fag&gt;", melding.Html); Assert.DoesNotContain("<fag>", melding.Html);
+        Assert.Empty(p.Post.Hent("annen"));
+    }
+
+    private static Task<Guid> SendForslag(Epostdatabase db, FristInndata input, Guid? maal = null)
+        => new ForslagsinnsendingTjeneste(db.Fabrikk()).SendInnAsync(new BrukerforslagInndata
+        {
+            Tittel = input.Tittel, Dato = input.Dato, Datopresisjon = input.Datopresisjon,
+            Datokvalifikator = input.Datokvalifikator, Budsjettaar = input.Budsjettaar,
+            Kategori = input.Kategori, Notat = input.Notat,
+            ForeslaattSynlighet = input.Synlighetskoder, EndrerFristId = maal
+        }, new GjeldendeBruker("innsender", "Innsender", Funksjonsrolle.Bidragsyter, ["FAG"]));
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Koe_endrer_dato_med_ekte_foertilstand_og_bevart_maal_tid_og_synlighet(bool juster)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Etablert mål"); var maal = await p.Skriv.OpprettAsync(input);
+        await p.Aktiver(); await VelgUtvalg(p, null, null, false, true);
+        input.Dato = new(2030, 12, 5);
+        var forslag = await SendForslag(db, input, maal);
+        IGodkjenningsko ko = new GodkjenningskoTjeneste(db.Fabrikk(), p.Klokke);
+        if (juster)
+        {
+            var skjema = (await ko.HentForslagForJusteringAsync(forslag))!.Felter;
+            Assert.Equal(new TimeOnly(13, 45), skjema.Klokkeslett);
+            skjema.Synlighetskoder = ["POL"]; // Endringsforslag kan aldri erstatte målgruppene.
+            await ko.JusterOgGodkjennAsync(forslag, skjema);
+        }
+        else await ko.GodkjennAsync(new() { ForslagId = forslag, Synlighetskoder = ["POL"] });
+        await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains("Vesentlig endring: Etablert mål", melding.Tekst);
+        Assert.Contains("Tidligere: 20.11.2030 kl. 13:45", melding.Tekst);
+        Assert.Contains("05.12.2030 kl. 13:45", melding.Tekst);
+        var synlig = Assert.Single(await new FristTjeneste(db.Fabrikk(), p.Klokke).HentSynligeAsync(new Synlighetskontekst(false, ["FAG"]), new() { InkluderHistorikk = true }));
+        Assert.Equal(maal, synlig.Id);
+    }
+
     private static async Task VelgUtvalg(Proeve p, int[]? aar, Kategori[]? kategorier, bool nye = true, bool endringer = false)
     {
         var status = await p.Abonnement.HentAsync("a");
         await p.Abonnement.EndreValgAsync("a", nye, endringer, status.Versjon, aar, kategorier);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Koe_godkjenner_manuell_vesentlig_tekst_med_trygg_forklaring_etter_omstart(bool juster)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Utvidet leveranse"); var maal = await p.Skriv.OpprettAsync(input);
+        await p.Aktiver(); await VelgUtvalg(p, null, null, false, true);
+        input.Notat = "Flere <fagområder> & oppgaver";
+        input.VesentligEndring = true; input.Endringsforklaring = "Utvidet <oppdrag>";
+        var forslag = await SendForslag(db, input, maal);
+        await PubliserForslag(db, p, forslag, input, juster);
+        // Ny jobb/kontekst leser de varige hendelsene; ingen rendret melding holdes av køtjenesten.
+        await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains("Forklaring: Utvidet <oppdrag>", melding.Tekst);
+        Assert.Contains("Flere <fagområder> & oppgaver", melding.Tekst);
+        Assert.Contains("&lt;oppdrag&gt;", melding.Html); Assert.DoesNotContain("<oppdrag>", melding.Html);
+        p.Klokke.Flytt(TimeSpan.FromDays(1)); await p.Jobb().KjorAsync(); Assert.Single(p.Post.Hent("a"));
+    }
+
+    private static Task<Guid> PubliserForslag(Epostdatabase db, Proeve p, Guid id, FristInndata input, bool juster,
+        SaveChangesInterceptor? port = null)
+    {
+        IGodkjenningsko ko = new GodkjenningskoTjeneste(db.Fabrikk(port), p.Klokke);
+        return juster ? ko.JusterOgGodkjennAsync(id, input) : ko.GodkjennAsync(new()
+        {
+            ForslagId = id, Synlighetskoder = input.Synlighetskoder, PolBekreftet = input.Synlighetskoder.Contains("POL"),
+            VesentligEndring = input.VesentligEndring, Endringsforklaring = input.Endringsforklaring
+        });
+    }
+
+    public static IEnumerable<object[]> KoSemantikk()
+    {
+        foreach (var juster in new[] { false, true })
+        foreach (var (felt, varsles) in new[] { ("dato", true), ("presisjon", true), ("maaned", true),
+            ("kvalifikator", true), ("fjernKvalifikator", true), ("aar", true), ("kategori", true),
+            ("referansedag", false), ("tentativTid", false), ("dagKvalifikator", false),
+            ("tittel", false), ("notat", false), ("uendret", false) })
+            yield return [juster, felt, varsles];
+        yield return [true, "tid", true]; yield return [true, "heldag", true];
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Generering_regenerering_og_avvisning_sender_ingen_post_foer_faktisk_publisering(bool juster)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await using (var oppsett = db.Fabrikk().CreateDbContext())
+        {
+            oppsett.Gjentaksregler.Add(new() { Id = Guid.NewGuid(), Loep = "ev06", Tittel = "Generert køfrist",
+                Regeltype = Regeltype.FastDato, Regelparametre = """{"maaned":11,"dag":20,"aar_forskyvning":-1}""" });
+            await oppsett.SaveChangesAsync();
+        }
+        var generering = new GenereringsTjeneste(db.Fabrikk(), new Synlighetsregel(Options.Create(new SynlighetsregelOpsjoner { StandardKoder = ["FAG", "POL"] })));
+        await generering.GenererAsync(new(2031)); var gammel = Assert.Single(await generering.HentGenererteAsync(2031));
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        await generering.GenererAsync(new(2031)); var ny = Assert.Single(await generering.HentGenererteAsync(2031));
+        Assert.NotEqual(gammel.ForslagId, ny.ForslagId);
+        IGodkjenningsko ko = new GodkjenningskoTjeneste(db.Fabrikk(), p.Klokke);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => ko.GodkjennAsync(new() { ForslagId = gammel.ForslagId, Synlighetskoder = ["FAG"] }));
+        await ko.AvvisAsync(ny.ForslagId); await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        await generering.GenererAsync(new(2031)); ny = Assert.Single(await generering.HentGenererteAsync(2031));
+        await PubliserForslag(db, p, ny.ForslagId, Inndata("Generert køfrist"), juster); await p.Jobb().KjorAsync();
+        Assert.Contains("Ny frist: Generert køfrist", Assert.Single(p.Post.Hent("a")).Tekst);
+        Assert.Empty(await new Varseltjeneste(db.Fabrikk()).HentForBrukerAsync("innsender"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Robotpublisering_bevarer_kilde_dokument_og_uttrekksbevis_med_en_nyhending(bool juster)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        var dokument = Guid.NewGuid(); var id = Guid.NewGuid();
+        await using (var oppsett = db.Fabrikk().CreateDbContext())
+        {
+            var forslag = new Forslag { Id = id, Tittel = "Robotfrist", Dato = new(2030, 11, 20), Budsjettaar = 2031,
+                Opphav = Opphav.Robot, KildeEllerInnsender = "R-4", DokumentId = dokument, ForeslaattSynlighet = "[\"FAG\"]" };
+            forslag.UttrekksBevis.Add(new() { Id = Guid.NewGuid(), Felt = "dato", TolketVerdi = "2030-11-20", Kildeutdrag = "frist 20. november", Konfidens = .97 });
+            oppsett.Forslag.Add(forslag); await oppsett.SaveChangesAsync();
+        }
+        IGodkjenningsko ko = new GodkjenningskoTjeneste(db.Fabrikk(), p.Klokke);
+        var bevis = Assert.Single(Assert.Single(await ko.HentKoAsync()).Bevis); Assert.Equal("frist 20. november", bevis.Kildeutdrag);
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        var fristId = await PubliserForslag(db, p, id, Inndata("Robotfrist"), juster);
+        var publisert = await new FristTjeneste(db.Fabrikk(), p.Klokke).HentEnAsync(new Synlighetskontekst(true, []), fristId);
+        Assert.NotNull(publisert); Assert.Equal("R-4", publisert.Kilde); Assert.Equal(dokument, publisert.DokumentId);
+        await using (var kontroll = db.Fabrikk().CreateDbContext())
+        {
+            var bevart = await kontroll.Forslag.Include(f => f.UttrekksBevis).SingleAsync();
+            Assert.Equal(Opphav.Robot, bevart.Opphav); Assert.Equal(dokument, bevart.DokumentId);
+            Assert.Equal("frist 20. november", Assert.Single(bevart.UttrekksBevis).Kildeutdrag);
+        }
+        await p.Jobb().KjorAsync(); Assert.Contains("Ny frist: Robotfrist", Assert.Single(p.Post.Hent("a")).Tekst);
+    }
+
+    [Theory]
+    [MemberData(nameof(KoSemantikk))]
+    public async Task Koe_bruker_semantisk_vesentlighet_og_bevarer_innboks_uten_fristpost(bool juster, string endring, bool varsles)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Semantisk køfrist");
+        if (endring is "maaned" or "kvalifikator" or "fjernKvalifikator" or "referansedag" or "tentativTid")
+        { input.Datopresisjon = Datopresisjon.Maaned; input.Datokvalifikator = Datokvalifikator.Medio; }
+        var maal = await p.Skriv.OpprettAsync(input); await p.Aktiver(); await VelgUtvalg(p, null, null, false, true);
+        switch (endring)
+        {
+            case "dato": input.Dato = new(2030, 11, 21); break;
+            case "tid": input.Klokkeslett = new(14, 0); break;
+            case "heldag": input.Klokkeslett = null; break;
+            case "presisjon": input.Datopresisjon = Datopresisjon.Maaned; break;
+            case "maaned": input.Dato = new(2030, 12, 20); break;
+            case "kvalifikator": input.Datokvalifikator = Datokvalifikator.Primo; break;
+            case "fjernKvalifikator": input.Datokvalifikator = null; break;
+            case "aar": input.Budsjettaar = 2032; break;
+            case "kategori": input.Kategori = Kategori.Regnskap; break;
+            case "referansedag": input.Dato = new(2030, 11, 5); break;
+            case "tentativTid": input.Klokkeslett = new(23, 0); break;
+            case "dagKvalifikator": input.Datokvalifikator = Datokvalifikator.Ultimo; break;
+            case "tittel": input.Tittel = "Rettet tittel"; break;
+            case "notat": input.Notat = "Korrektur"; break;
+        }
+        var forslag = await SendForslag(db, input, maal);
+        await PubliserForslag(db, p, forslag, input, juster); await p.Jobb().KjorAsync();
+        Assert.Equal(varsles ? 1 : 0, p.Post.Hent("a").Count);
+        Assert.Equal("Forslaget ditt er godkjent.", Assert.Single(await new Varseltjeneste(db.Fabrikk()).HentForBrukerAsync("innsender")).Tekst);
+        if (varsles)
+        {
+            var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains("Vesentlig endring", melding.Tekst);
+            Assert.Contains("Tidligere:", melding.Tekst); Assert.Contains("<li>", melding.Html);
+        }
+    }
+
+    public static IEnumerable<object[]> UgyldigKoMarkering()
+    {
+        foreach (var juster in new[] { false, true })
+        foreach (var (forklaring, endre) in new[] { ("", true), ("   ", true), (new string('x', 301), true), ("linje\nbrudd", true), ("Uendret", false) })
+            yield return [juster, forklaring, endre];
+    }
+
+    [Theory]
+    [InlineData(false, 2031, Kategori.Budsjett, 2032, Kategori.Regnskap, true)]
+    [InlineData(true, 2031, Kategori.Budsjett, 2032, Kategori.Regnskap, true)]
+    [InlineData(false, 2032, Kategori.Regnskap, 2031, Kategori.Budsjett, true)]
+    [InlineData(true, 2032, Kategori.Regnskap, 2031, Kategori.Budsjett, true)]
+    [InlineData(false, 2031, Kategori.Regnskap, 2032, Kategori.Budsjett, false)]
+    [InlineData(true, 2031, Kategori.Regnskap, 2032, Kategori.Budsjett, false)]
+    [InlineData(false, 2032, Kategori.Budsjett, 2031, Kategori.Regnskap, false)]
+    [InlineData(true, 2032, Kategori.Budsjett, 2031, Kategori.Regnskap, false)]
+    public async Task Koeendring_matcher_hele_foer_eller_hele_etter_og_aldri_krysstreff(bool juster,
+        int foerAar, Kategori foerKategori, int etterAar, Kategori etterKategori, bool treff)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Utvalgsfrist("Kø med utvalgsendring", foerAar, foerKategori); var maal = await p.Skriv.OpprettAsync(input);
+        await p.Aktiver(); await VelgUtvalg(p, [2031], [Kategori.Budsjett], false, true);
+        input.Budsjettaar = etterAar; input.Kategori = etterKategori;
+        await PubliserForslag(db, p, await SendForslag(db, input, maal), input, juster); await p.Jobb().KjorAsync();
+        Assert.Equal(treff ? 1 : 0, p.Post.Hent("a").Count);
+        if (treff)
+        {
+            var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains($"Budsjettår {foerAar}", melding.Tekst);
+            Assert.Contains($"Budsjettår {etterAar}", melding.Tekst); Assert.Contains("Vesentlig endring", melding.Tekst);
+        }
+    }
+
+    [Fact]
+    public async Task Koehendelser_filtreres_foer_gruppering_og_historiske_forklaringer()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Utvalgsfrist("Samlet køfrist", 2032, Kategori.Regnskap); var maal = await p.Skriv.OpprettAsync(input);
+        await p.Aktiver(); await VelgUtvalg(p, [2031], [Kategori.Budsjett], false, true);
+        input.Notat = "Historisk irrelevant"; input.VesentligEndring = true; input.Endringsforklaring = "Utelatt forklaring";
+        await PubliserForslag(db, p, await SendForslag(db, input, maal), input, false);
+        input.Budsjettaar = 2031; input.Kategori = Kategori.Budsjett; input.Notat = "Relevant etterverdi";
+        input.Endringsforklaring = "Relevant forklaring";
+        await PubliserForslag(db, p, await SendForslag(db, input, maal), input, true); await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains("Relevant forklaring", melding.Tekst);
+        Assert.DoesNotContain("Utelatt forklaring", melding.Tekst); Assert.DoesNotContain("Utelatt forklaring", melding.Html);
+        Assert.Equal(1, melding.Html.Split("<li>").Length - 1);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Koeendring_avslorer_ikke_historikk_etter_endret_synlighet_eller_tilbakekalt_tilgang(bool synlighet)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Køhistorikk skal stanses"); var maal = await p.Skriv.OpprettAsync(input);
+        await p.Aktiver(); await VelgUtvalg(p, null, null, false, true); input.Dato = new(2030, 12, 5);
+        await PubliserForslag(db, p, await SendForslag(db, input, maal), input, false);
+        if (synlighet) { input.Synlighetskoder = ["POL"]; await p.Skriv.OppdaterAsync(maal, input); }
+        else p.Tilgang.Sett("a", new(MottakertilgangStatus.Inaktiv));
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+    }
+
+    [Theory]
+    [MemberData(nameof(UgyldigKoMarkering))]
+    public async Task Koe_avviser_ugyldig_manuell_markering_uten_behandling_eller_post(bool juster, string forklaring, bool endre)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Urørt kømål"); var maal = await p.Skriv.OpprettAsync(input);
+        await p.Aktiver(); await VelgUtvalg(p, null, null, false, true);
+        if (endre) input.Notat = "Faktisk nytt innhold";
+        var forslag = await SendForslag(db, input, maal);
+        input.VesentligEndring = true; input.Endringsforklaring = forklaring;
+        await Assert.ThrowsAsync<Valideringsfeil>(() => PubliserForslag(db, p, forslag, input, juster));
+        Assert.Single(await new GodkjenningskoTjeneste(db.Fabrikk()).HentKoAsync());
+        Assert.Empty(await new Varseltjeneste(db.Fabrikk()).HentForBrukerAsync("innsender"));
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+    }
+
+    [Theory]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    public async Task Koe_ny_og_endret_grupperes_for_hvert_varselvalg_og_dagens_synlighet(bool juster, bool nye, bool endringer)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await VelgUtvalg(p, null, null, nye, endringer);
+        var input = Inndata("Køfrist før endring");
+        var id = await PubliserForslag(db, p, await SendForslag(db, input), input, juster);
+        input.Tittel = "Køfrist siste tilstand"; input.Dato = new(2030, 12, 5);
+        await PubliserForslag(db, p, await SendForslag(db, input, id), input, juster);
+        var skjult = Inndata("Skjult POL køfrist", "POL");
+        await PubliserForslag(db, p, await SendForslag(db, skjult), skjult, juster);
+        await p.Jobb().KjorAsync(); var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains(nye ? "Ny frist: Køfrist siste tilstand" : "Vesentlig endring: Køfrist siste tilstand", melding.Tekst);
+        Assert.Equal(1, melding.Html.Split("<li>").Length - 1); Assert.DoesNotContain("Skjult POL", melding.Tekst);
+        Assert.DoesNotContain("Skjult POL", melding.Html);
+        if (!nye) Assert.Contains("Tidligere: 20.11.2030", melding.Tekst);
+        p.Klokke.Flytt(TimeSpan.FromDays(1)); await p.Jobb().KjorAsync(); Assert.Single(p.Post.Hent("a"));
+    }
+
+    [Theory]
+    [InlineData(false, false, 0)]
+    [InlineData(false, false, -1)]
+    [InlineData(false, true, 0)]
+    [InlineData(false, true, -1)]
+    [InlineData(true, false, 0)]
+    [InlineData(true, false, -1)]
+    [InlineData(true, true, 0)]
+    [InlineData(true, true, -1)]
+    public async Task Koe_publisering_og_adresseaktivering_foelger_commit_ved_lik_eller_bakover_UTC(bool juster, bool aktiveringForsinket, int ticks)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        await p.Abonnement.MeldPaaAsync("a", "egen@fin.dep.no", true);
+        p.Tilgang.Sett("a", new(MottakertilgangStatus.Aktiv, new Synlighetskontekst(false, ["FAG"])));
+        var input = Inndata("Kø publiseres rundt aktivering"); var id = await SendForslag(db, input);
+        var ankommet = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fortsett = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var port = new FoerLagring(async _ => { ankommet.TrySetResult(); await fortsett.Task.WaitAsync(TimeSpan.FromSeconds(15)); });
+        Task ventende = aktiveringForsinket
+            ? new EpostabonnementTjeneste(db.Fabrikk(port), p.Klokke, p.Bekreftelsespost).BekreftAsync("a", p.Bekreftelsespost.Hent("a")!.Token)
+            : PubliserForslag(db, p, id, input, juster, port);
+        try
+        {
+            await ankommet.Task.WaitAsync(TimeSpan.FromSeconds(15)); p.Klokke.Flytt(TimeSpan.FromTicks(ticks));
+            if (aktiveringForsinket) await PubliserForslag(db, p, id, input, juster);
+            else await p.Abonnement.BekreftAsync("a", p.Bekreftelsespost.Hent("a")!.Token);
+            fortsett.TrySetResult(); await ventende; await p.Jobb().KjorAsync();
+            Assert.Equal(aktiveringForsinket ? 0 : 1, p.Post.Hent("a").Count);
+        }
+        finally { fortsett.TrySetResult(); await ventende; }
+    }
+
+    [Theory]
+    [InlineData(false, false, 0)]
+    [InlineData(false, false, -1)]
+    [InlineData(false, true, 0)]
+    [InlineData(false, true, -1)]
+    [InlineData(true, false, 0)]
+    [InlineData(true, false, -1)]
+    [InlineData(true, true, 0)]
+    [InlineData(true, true, -1)]
+    public async Task Koe_publisering_og_filterutvidelse_bevarer_relevant_utvalg_i_commitrekkefolge(bool juster, bool utvidelseForsinket, int ticks)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        await VelgUtvalg(p, [2031], null);
+        var gammel = Inndata("Ventende relevant køfrist");
+        await PubliserForslag(db, p, await SendForslag(db, gammel), gammel, juster);
+        var input = Utvalgsfrist("Kø fra nytilvalgt år", 2032); var id = await SendForslag(db, input);
+        var status = await p.Abonnement.HentAsync("a");
+        var ankommet = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fortsett = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var port = new FoerLagring(async _ => { ankommet.TrySetResult(); await fortsett.Task.WaitAsync(TimeSpan.FromSeconds(15)); });
+        Task ventende = utvidelseForsinket
+            ? new EpostabonnementTjeneste(db.Fabrikk(port), p.Klokke, p.Bekreftelsespost).EndreValgAsync("a", true, false, status.Versjon, null, null)
+            : PubliserForslag(db, p, id, input, juster, port);
+        try
+        {
+            await ankommet.Task.WaitAsync(TimeSpan.FromSeconds(15)); p.Klokke.Flytt(TimeSpan.FromTicks(ticks));
+            if (utvidelseForsinket) await PubliserForslag(db, p, id, input, juster);
+            else await VelgUtvalg(p, null, null);
+            fortsett.TrySetResult(); await ventende; await p.Jobb().KjorAsync();
+            var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains("Ventende relevant køfrist", melding.Tekst);
+            Assert.Equal(!utvidelseForsinket, melding.Tekst.Contains("Kø fra nytilvalgt år", StringComparison.Ordinal));
+        }
+        finally { fortsett.TrySetResult(); await ventende; }
     }
     private static FristInndata Utvalgsfrist(string tittel, int aar, Kategori kategori = Kategori.Budsjett)
     { var input = Inndata(tittel); input.Budsjettaar = aar; input.Kategori = kategori; return input; }

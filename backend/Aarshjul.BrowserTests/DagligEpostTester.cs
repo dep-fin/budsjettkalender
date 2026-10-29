@@ -6,6 +6,168 @@ namespace Aarshjul.BrowserTests;
 public sealed class DagligEpostTester
 {
     [Theory]
+    [InlineData(false, 390)]
+    [InlineData(false, 1280)]
+    [InlineData(true, 390)]
+    [InlineData(true, 1280)]
+    public async Task EV06_koe_publiserer_ny_manuell_og_automatisk_endring_med_innboks_og_gammel_fane(bool juster, int bredde)
+        => await Trygt(async n =>
+        {
+            await n.LoggInn("demo-fa"); await MeldPaa(n, true, true); await Bekreft(n);
+            await ForslagTester.Send(n, "EV06 køfrist");
+            await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-01T07:00"); await Kjor(n, "0 bekreftet");
+            await n.Gaa("/admin/ko?aar=alle");
+            var gammel = await n.Side.Context.NewPageAsync(); await n.Gaa("/admin/ko?aar=alle", gammel);
+            var gammeltKort = ForslagTester.Kort(gammel, "EV06 køfrist");
+            await gammeltKort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
+            var kort = ForslagTester.Kort(n.Side, "EV06 køfrist");
+            await n.Side.SetViewportSizeAsync(bredde, 844);
+            if (juster)
+            {
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Juster", Exact = true }).ClickAsync();
+                await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Marker annen faktisk innholdsendring som vesentlig", Exact = true })).ToHaveCountAsync(0);
+                await n.Side.GetByLabel("Klokkeslett (valgfritt – tomt = heldags)", new() { Exact = true }).FillAsync("13:45");
+                await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
+            }
+            else
+            {
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
+                await Expect(kort.GetByRole(AriaRole.Checkbox, new() { Name = "Marker annen faktisk innholdsendring som vesentlig", Exact = true })).ToHaveCountAsync(0);
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft godkjenning", Exact = true }).ClickAsync();
+                await Expect(kort).ToHaveCountAsync(0);
+            }
+            await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Godkjenningskø", Exact = true })).ToBeVisibleAsync();
+            await Expect(ForslagTester.Kort(n.Side, "EV06 køfrist")).ToHaveCountAsync(0);
+            await gammeltKort.GetByRole(AriaRole.Button, new() { Name = "Bekreft godkjenning", Exact = true }).ClickAsync();
+            await Expect(gammeltKort.GetByRole(AriaRole.Alert)).ToContainTextAsync("allerede behandlet");
+            await n.Gaa("/demo/epostkjoring"); await Kjor(n, "1 bekreftet");
+            await n.LoggInn("demo-fa"); await n.Gaa("/demo/epostmottaker");
+            await Expect(n.Side.GetByRole(AriaRole.Article)).ToHaveCountAsync(1);
+            await Expect(n.Side.GetByRole(AriaRole.Article)).ToContainTextAsync("Ny frist: EV06 køfrist");
+            await n.Gaa("/varsler"); await Expect(n.Side.Locator(".varsel").Filter(new() { HasText = "godkjent" })).ToHaveCountAsync(2);
+            var maal = Assert.Single(await n.Frister(), f => (string?)f!["tittel"] == "EV06 køfrist")!;
+            var maalId = (string)maal["id"]!;
+            await SendEndring(n, maalId, "Utvidet <arbeidsoppgave>");
+            await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-02T07:00"); await Kjor(n, "0 bekreftet");
+            await n.Gaa("/admin/ko?aar=alle"); await n.Side.SetViewportSizeAsync(bredde, 844);
+            kort = ForslagTester.Kort(n.Side, "EV06 køfrist");
+            if (juster) await kort.GetByRole(AriaRole.Button, new() { Name = "Juster", Exact = true }).ClickAsync();
+            else await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
+            var markering = n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Marker annen faktisk innholdsendring som vesentlig", Exact = true });
+            await markering.FocusAsync(); await n.Side.Keyboard.PressAsync("Space");
+            var bekreft = n.Side.GetByRole(AriaRole.Button, new() { Name = juster ? "Lagre" : "Bekreft godkjenning", Exact = true });
+            await bekreft.ClickAsync(); await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("kort forklaring");
+            if (!juster)
+            {
+                // Avbryt og åpne samme kort: ingen markering/forklaring skal henge igjen.
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Avbryt", Exact = true }).ClickAsync();
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
+                await Expect(markering).Not.ToBeCheckedAsync(); await markering.CheckAsync();
+            }
+            await n.Side.GetByLabel("Kort endringsforklaring", new() { Exact = true }).FillAsync("Flere <fagområder>");
+            Assert.True(await n.Side.EvaluateAsync<bool>("document.documentElement.scrollWidth <= window.innerWidth"), "Godkjenningsfeltene må passe mobilbredden.");
+            await n.Side.ScreenshotAsync(new() { Path = Path.Combine(n.Mappe, $"ev06-vesentlig-{juster}-{bredde}.png"), FullPage = true });
+            await bekreft.FocusAsync(); await n.Side.Keyboard.PressAsync("Enter");
+            await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Godkjenningskø", Exact = true })).ToBeVisibleAsync();
+            await Expect(ForslagTester.Kort(n.Side, "EV06 køfrist")).ToHaveCountAsync(0);
+            await n.Gaa("/demo/epostkjoring"); await Kjor(n, "1 bekreftet");
+            await n.LoggInn("demo-fa"); await n.Gaa("/demo/epostmottaker");
+            var tekstpost = n.Side.GetByRole(AriaRole.Article).Filter(new() { HasText = "Flere <fagområder>" });
+            await Expect(tekstpost).ToHaveCountAsync(1); await Expect(tekstpost).ToContainTextAsync("Vesentlig endring: EV06 køfrist");
+            await Expect(tekstpost.Locator("fagområder")).ToHaveCountAsync(0);
+            await SendEndring(n, maalId, "Utvidet <arbeidsoppgave>", "2030-12-05");
+            await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-03T07:00"); await n.Gaa("/admin/ko?aar=alle");
+            kort = ForslagTester.Kort(n.Side, "EV06 køfrist");
+            if (juster)
+            {
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Juster", Exact = true }).ClickAsync();
+                await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { Name = "Marker annen faktisk innholdsendring som vesentlig", Exact = true })).Not.ToBeCheckedAsync();
+                await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
+            }
+            else
+            {
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
+                await Expect(kort.GetByRole(AriaRole.Checkbox, new() { Name = "Marker annen faktisk innholdsendring som vesentlig", Exact = true })).Not.ToBeCheckedAsync();
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft godkjenning", Exact = true }).ClickAsync();
+                await Expect(kort).ToHaveCountAsync(0);
+            }
+            await n.Gaa("/demo/epostkjoring"); await Kjor(n, "1 bekreftet");
+            await n.LoggInn("demo-fa"); await n.Gaa("/demo/epostmottaker");
+            var datopost = n.Side.GetByRole(AriaRole.Article).Filter(new() { HasText = "05.12.2030" });
+            await Expect(datopost).ToHaveCountAsync(1); await Expect(datopost).ToContainTextAsync("Tidligere: 20.11.2030");
+            if (juster) await Expect(datopost).ToContainTextAsync("kl. 13:45");
+            await n.Gaa("/varsler"); await Expect(n.Side.Locator(".varsel").Filter(new() { HasText = "godkjent" })).ToHaveCountAsync(4);
+        });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EV06_generering_regenerering_avvisning_og_POL_gir_ingen_fristpost_foer_publisering(bool juster)
+        => await Trygt(async n =>
+        {
+            await Aktiver(n, "demo-fa"); await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-01T07:00");
+            await n.Gaa("/admin/mal/ny");
+            await n.Side.GetByLabel("Funksjon / løp", new() { Exact = true }).FillAsync("ev06-generert");
+            await n.Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync("EV06 generert");
+            await n.Side.GetByLabel("Dag", new() { Exact = true }).FillAsync("20");
+            await n.Side.GetByLabel("Måned", new() { Exact = true }).SelectOptionAsync("11");
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre regel", Exact = true }).ClickAsync();
+            await n.Gaa("/admin/generer"); await n.Side.GetByLabel("Målbudsjettår").FillAsync("2031");
+            await n.Side.GetByLabel("Målbudsjettår").PressAsync("Tab");
+            await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Budsjettår 2031", Exact = true })).ToBeVisibleAsync();
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Generér", Exact = true }).ClickAsync();
+            var kort = ForslagTester.Kort(n.Side, "EV06 generert"); await Expect(kort).ToBeVisibleAsync();
+            Assert.DoesNotContain(await n.Frister(), f => (string?)f!["tittel"] == "EV06 generert");
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Beregn på nytt med satte ankre", Exact = true }).ClickAsync();
+            await n.Side.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { Name = "Beregn og erstatt", Exact = true }).ClickAsync();
+            await Expect(kort).ToBeVisibleAsync();
+            await n.Gaa("/demo/epostkjoring"); await Kjor(n, "0 bekreftet");
+            await n.LoggInn("demo-fa"); await ForslagTester.Send(n, "EV06 avvises"); await ForslagTester.Send(n, "EV06 skjult POL", "POL");
+            await n.LoggInn("demo-admin"); await n.Gaa("/admin/ko?aar=alle");
+            kort = ForslagTester.Kort(n.Side, "EV06 avvises"); await kort.GetByRole(AriaRole.Button, new() { Name = "Avvis", Exact = true }).ClickAsync();
+            await kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft avvisning", Exact = true }).ClickAsync(); await Expect(kort).ToHaveCountAsync(0);
+            kort = ForslagTester.Kort(n.Side, "EV06 skjult POL"); await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
+            await kort.GetByRole(AriaRole.Checkbox, new() { NameRegex = new("\\(POL\\)$") }).CheckAsync();
+            await kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft godkjenning", Exact = true }).ClickAsync(); await Expect(kort).ToHaveCountAsync(0);
+            await n.Gaa("/demo/epostkjoring"); await Kjor(n, "0 bekreftet");
+            await n.Gaa("/admin/generer?aar=2031"); kort = ForslagTester.Kort(n.Side, "EV06 generert");
+            if (juster)
+            {
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Juster", Exact = true }).ClickAsync();
+                await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).ClickAsync();
+            }
+            else
+            {
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
+                await Expect(kort.GetByRole(AriaRole.Checkbox, new() { NameRegex = new("\\(POL\\)$") })).Not.ToBeCheckedAsync();
+                await kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft godkjenning", Exact = true }).ClickAsync(); await Expect(kort).ToHaveCountAsync(0);
+            }
+            await n.Gaa("/demo/epostkjoring"); await Kjor(n, "1 bekreftet");
+            await n.LoggInn("demo-fa"); await n.Gaa("/demo/epostmottaker");
+            var post = n.Side.GetByRole(AriaRole.Article); await Expect(post).ToHaveCountAsync(1);
+            await Expect(post).ToContainTextAsync("Ny frist: EV06 generert");
+            await Expect(post).Not.ToContainTextAsync("EV06 skjult POL"); await Expect(post).Not.ToContainTextAsync("EV06 avvises");
+            await n.Gaa("/varsler"); await Expect(n.Side.Locator(".varsel").Filter(new() { HasText = "Forslaget ditt er avvist." })).ToHaveCountAsync(1);
+        });
+
+    private static async Task Bekreft(Nettleser n)
+    {
+        await n.Gaa("/demo/epostmottaker");
+        await n.Side.GetByRole(AriaRole.Link, new() { Name = "Bekreft jobbadressen", Exact = true }).ClickAsync();
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Bekreft min jobbadresse", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Status)).ToContainTextAsync("Jobbadressen er bekreftet");
+    }
+
+    private static async Task SendEndring(Nettleser n, string maal, string notat, string? dato = null)
+    {
+        await n.Gaa($"/forslag/endre/{maal}");
+        await n.Side.GetByLabel("Notat", new() { Exact = true }).FillAsync(notat);
+        if (dato is not null) await n.Side.GetByLabel("Dato", new() { Exact = true }).FillAsync(dato);
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Send inn", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = "EV06 køfrist" }).Filter(new() { HasText = "Venter" })).ToHaveCountAsync(1);
+    }
+
+    [Theory]
     [InlineData(390)]
     [InlineData(1280)]
     public async Task EV05_selvbetjent_utvalg_bevares_og_er_uavhengig_av_kalenderen(int bredde)

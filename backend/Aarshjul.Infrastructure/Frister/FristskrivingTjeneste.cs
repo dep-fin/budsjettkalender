@@ -3,6 +3,7 @@ using Aarshjul.Application.Frister;
 using Aarshjul.Domain;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using Aarshjul.Infrastructure.Epost;
 
 namespace Aarshjul.Infrastructure.Frister;
 
@@ -54,19 +55,11 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory, Ti
 
         var foer = Fristtilstand.Fra(frist);
         SettFelter(frist, inndata);
-        var etter = Fristtilstand.Fra(frist);
-        var automatisk = foer.ErAutomatiskVesentlig(etter);
-        if (inndata.VesentligEndring && (foer == etter || string.IsNullOrWhiteSpace(inndata.Endringsforklaring)
-            || inndata.Endringsforklaring.Trim().Length > 300 || inndata.Endringsforklaring.Any(char.IsControl)))
-            throw new Valideringsfeil("En vesentlig innholdsendring krever faktisk endret innhold og en kort forklaring på høyst 300 tegn.");
-        if (frist.Status == FristStatus.Godkjent && (automatisk || inndata.VesentligEndring))
+        var hendelse = Fristendringshendelse.Lag(frist, foer, inndata.VesentligEndring,
+            inndata.Endringsforklaring, klokke ?? TimeProvider.System);
+        if (hendelse is not null)
         {
-            db.NyFristHendelser.Add(new NyFristHendelse
-            {
-                FristId = id, Type = "Endret", OpprettetUtcTicks = (klokke ?? TimeProvider.System).GetUtcNow().UtcTicks,
-                FoerJson = JsonSerializer.Serialize(foer), EtterJson = JsonSerializer.Serialize(etter),
-                Forklaring = inndata.VesentligEndring ? inndata.Endringsforklaring!.Trim() : null
-            });
+            db.NyFristHendelser.Add(hendelse);
             db.KoordinerEpostlagring();
         }
 

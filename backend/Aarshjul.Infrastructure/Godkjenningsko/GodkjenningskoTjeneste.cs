@@ -5,6 +5,7 @@ using Aarshjul.Application.Frister;
 using Aarshjul.Application.Godkjenningsko;
 using Aarshjul.Domain;
 using Microsoft.EntityFrameworkCore;
+using Aarshjul.Infrastructure.Epost;
 
 namespace Aarshjul.Infrastructure.Godkjenningsko;
 
@@ -14,7 +15,7 @@ namespace Aarshjul.Infrastructure.Godkjenningsko;
 /// valg — her håndhevet på serveren via <see cref="GodkjennInndata.PolBekreftet"/>). Avvisning
 /// bevarer forslaget (status avvist) og oppretter et varsel ved brukerforslag.
 /// </summary>
-public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) : IGodkjenningsko
+public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvider? klokke = null) : IGodkjenningsko
 {
     private const string Pol = "POL";
 
@@ -105,12 +106,14 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
             .FirstOrDefaultAsync(f => f.Id == inndata.ForslagId && f.Status == FristStatus.Forslag, ct)
             ?? throw new Valideringsfeil("Forslaget finnes ikke eller er allerede behandlet.");
 
-        return await PubliserAsync(db, forslag, inndata.Synlighetskoder, inndata.PolBekreftet, ct);
+        return await PubliserAsync(db, forslag, inndata.Synlighetskoder, inndata.PolBekreftet,
+            inndata.VesentligEndring, inndata.Endringsforklaring, null, ct);
     }
 
     /// <summary>Felles publisering: gjelder både ren godkjenning og «juster og godkjenn». For
     /// endringsforslag oppdateres kun mål-fristens innhold; <c>synlig_for</c> står urørt (punkt C).</summary>
-    private async Task<Guid> PubliserAsync(AppDbContext db, Forslag forslag, IReadOnlyList<string> synlighetskoder, bool polBekreftet, CancellationToken ct)
+    private async Task<Guid> PubliserAsync(AppDbContext db, Forslag forslag, IReadOnlyList<string> synlighetskoder,
+        bool polBekreftet, bool vesentligEndring, string? endringsforklaring, FristInndata? justering, CancellationToken ct)
     {
         if (forslag.Dato is not { } dato)
             throw new Valideringsfeil("Forslaget mangler dato. Juster forslaget og sett en dato før godkjenning.");
@@ -125,7 +128,17 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
                 .FirstOrDefaultAsync(f => f.Id == endrerId, ct)
                 ?? throw new Valideringsfeil("Fristen som skulle endres finnes ikke.");
 
+            var foer = Fristtilstand.Fra(frist);
             SettFristfelter(frist, forslag, dato);
+            if (justering is not null) frist.Klokkeslett = justering.Klokkeslett;
+            if (frist.Datopresisjon != Datopresisjon.Dag) frist.Klokkeslett = null;
+            var hendelse = Fristendringshendelse.Lag(frist, foer, vesentligEndring,
+                endringsforklaring, klokke ?? TimeProvider.System);
+            if (hendelse is not null)
+            {
+                db.NyFristHendelser.Add(hendelse);
+                db.KoordinerEpostlagring();
+            }
             fristId = frist.Id;
         }
         else
@@ -143,9 +156,16 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
                 DokumentId = forslag.DokumentId
             };
             SettFristfelter(frist, forslag, dato);
+            frist.Klokkeslett = forslag.Datopresisjon == Datopresisjon.Dag ? justering?.Klokkeslett : null;
             foreach (var kode in koder)
                 frist.Synlighet.Add(new FristSynlighet { GruppeKode = kode });
             db.Frister.Add(frist);
+            db.NyFristHendelser.Add(new NyFristHendelse
+            {
+                FristId = frist.Id, OpprettetUtcTicks = (klokke ?? TimeProvider.System).GetUtcNow().UtcTicks,
+                EtterJson = JsonSerializer.Serialize(Fristtilstand.Fra(frist))
+            });
+            db.KoordinerEpostlagring();
             fristId = frist.Id;
         }
 
@@ -193,6 +213,9 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
             return null;
 
         var erEndring = forslag.ForslagType == ForslagType.Endring;
+        var maalTid = erEndring && forslag.EndrerFristId is { } maalId
+            ? await db.Frister.AsNoTracking().Where(f => f.Id == maalId).Select(f => f.Klokkeslett).FirstOrDefaultAsync(ct)
+            : null;
 
         // Prefyll innholdsfeltene. For endringsforslag skjules synlighet (punkt C); ellers prefylles
         // foreslått synlighet UTEN POL, slik at POL aldri blir forhåndshuket i skjemaet.
@@ -205,9 +228,10 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
         var felter = new FristInndata
         {
             Tittel = forslag.Tittel,
-            Dato = forslag.Dato ?? DateOnly.FromDateTime(DateTime.Today),
+            Dato = forslag.Dato ?? Datohjelp.Idag(klokke ?? TimeProvider.System),
             Datopresisjon = forslag.Datopresisjon,
             Datokvalifikator = forslag.Datokvalifikator,
+            Klokkeslett = forslag.Datopresisjon == Datopresisjon.Dag ? maalTid : null,
             Budsjettaar = forslag.Budsjettaar,
             Kategori = forslag.Kategori,
             Loep = forslag.Loep,
@@ -237,7 +261,8 @@ public class GodkjenningskoTjeneste(IDbContextFactory<AppDbContext> dbFactory) :
         forslag.Notat = string.IsNullOrWhiteSpace(felter.Notat) ? null : felter.Notat.Trim();
 
         var polBekreftet = felter.Synlighetskoder.Any(k => string.Equals(k, Pol, StringComparison.OrdinalIgnoreCase));
-        return await PubliserAsync(db, forslag, felter.Synlighetskoder, polBekreftet, ct);
+        return await PubliserAsync(db, forslag, felter.Synlighetskoder, polBekreftet,
+            felter.VesentligEndring, felter.Endringsforklaring, felter, ct);
     }
 
     private static void SettFristfelter(Frist frist, Forslag forslag, DateOnly dato)

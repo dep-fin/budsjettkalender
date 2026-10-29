@@ -1,6 +1,6 @@
 # Gjeldende status
 
-Oppdatert 28. oktober 2026. Dette er samlet leveransestatus. [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132)
+Oppdatert 29. oktober 2026. Dette er samlet leveransestatus. [PR #134](https://github.com/depmartin/Budsjettkalender/pull/134), [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132)
 og kommentarene i [#75](https://github.com/depmartin/Budsjettkalender/issues/75) og
 [#93](https://github.com/depmartin/Budsjettkalender/issues/93) er kilden til siste
 publiserte head, faktisk CI, mergecommit, verifisert main og oppgavenes livsløp. Tidligere kandidatbeskrivelser og lokale
@@ -41,16 +41,29 @@ Additiv migrasjon og idempotent demooppgradering bevarer EV03-data uten tilbakef
 lokale prøver og daværende porter; gjeldende livsløp står i PR #133. Kø/generering, import/sletting
 og produksjonsporter tilhører senere EV-tickets. Ingen deploy er utført.
 
-EV05 ([#115](https://github.com/depmartin/Budsjettkalender/issues/115)) er publisert i
+EV05 ([#115](https://github.com/depmartin/Budsjettkalender/issues/115)) er levert i
 [PR #134](https://github.com/depmartin/Budsjettkalender/pull/134), med eget budsjettår-/kategoriutvalg
 ved påmelding og versjonskontrollerte innstillinger. Null/tomt betyr Alle, også
 fremtidige år. Utvidelser beholder ventende treff uten historisk tilbakefylling;
 innsnevring håndheves før overlevering. Endringer matcher hele før- eller
 etterutvalget innen dagens synlighet og ferske mottakertilgang. Additiv migrasjon
-og demooppgradering bevarer EV02–EV04. Den publiserte kandidaten avstemmes nå med
-levert UX18 på faktisk main `134857de41527e4442ed3f7009620487f13f82f4`.
+og demooppgradering bevarer EV02–EV04. Levert UX18 er avstemt før bekreftet merge
+som `29421c2ff1a1595ecfaba5e80d18ce529ade8c03` på main.
+Slutt-[CI 40770318096](https://github.com/depmartin/Budsjettkalender/actions/runs/40770318096)
+bestod 1063 ordinære, 216 ekte SQL Server- og 336 Chromium-tilfeller uten feil/hopp.
 [EV05-akseptansen](acceptance/2026-10-28-epost-ev05.md) skiller opprinnelige lokale
 bevis fra integrasjonsprøver og ny kandidat-CI. Ingen deploy inngår.
+
+EV06 ([#116](https://github.com/depmartin/Budsjettkalender/issues/116)) er en lokal
+kandidat fra denne mergede basen. Begge godkjenningsinnganger lagrer førstegangs-
+eller vesentlig endringshendelse atomisk med forslag, frist og innboksmelding.
+Godkjennerens begrunnede innholdsendring følger samme regel som direkte redigering;
+endringsforslag beholder synlighet og direkte godkjenning bevarer målfristens tid.
+Innsending, generering/regenerering, avvisning og korrektur gir ingen fristpost.
+[EV06-akseptansen](acceptance/2026-10-29-epost-ev06.md) beskriver rød/grønn,
+konkurranseprøver og reelle brukerforløp. Oppdaget inventar er 1157 ordinære,
+310 SQL Server- og 342 nettlesertilfeller med hele basens navn bevart. Samlet
+review, separat sikkerhetsaudit og full kandidat-CI gjenstår før levering.
 
 ## UX18 – samlet akseptanse og publisering
 
