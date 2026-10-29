@@ -29,6 +29,9 @@ public sealed class Epostoppsummering
     public string Status { get; set; } = "Planlagt";
     public string? Utsettelsesgrunn { get; set; }
     public long? BekreftetUtcTicks { get; set; }
+    /// <summary>Bare hash av avmeldingsretten. Råverdien finnes kun i overlevert melding.</summary>
+    public string? AvmeldingsHash { get; set; }
+    public long? Avmeldingssekvens { get; set; }
     public Guid Versjon { get; set; } = Guid.NewGuid();
     public ICollection<Oppsummeringshendelse> Hendelser { get; set; } = new List<Oppsummeringshendelse>();
 }

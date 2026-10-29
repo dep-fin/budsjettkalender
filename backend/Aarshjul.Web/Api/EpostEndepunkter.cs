@@ -9,6 +9,28 @@ public static class EpostEndepunkter
 {
     public static void MapEpostEndepunkter(this IEndpointRouteBuilder app)
     {
+        app.MapMethods("/epostvarsling/avmeld", ["HEAD"], () => Results.Ok()).AllowAnonymous();
+        // Denne ene anonyme inngangen gir bare avmeldingsrett. Les kroppen her,
+        // slik at også ugyldig JSON får en generell feil uten modellbindingsdetaljer.
+        app.MapPost("/api/epostabonnement/avmeldingslenke", async (HttpContext http, IEpostabonnement abonnement, CancellationToken ct) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            if (!http.Request.HasJsonContentType())
+                return Results.Json(new { feil = "Avmelding krever en JSON-forespørsel." }, statusCode: StatusCodes.Status415UnsupportedMediaType);
+            if (http.Request.ContentLength > 4096)
+                return Results.BadRequest(new { feil = "Avmeldingen kunne ikke behandles." });
+            if (http.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } grense)
+                grense.MaxRequestBodySize = 4096;
+            try
+            {
+                var inndata = await http.Request.ReadFromJsonAsync<Avmeldingslenke>(ct);
+                await abonnement.MeldAvMedLenkeAsync(inndata?.Token, ct);
+                return Results.Ok(new { melding = "Hvis lenken gjelder dette abonnementet, er videre e-postvarsling stanset." });
+            }
+            catch (System.Text.Json.JsonException) { return Results.BadRequest(new { feil = "Avmeldingen kunne ikke behandles." }); }
+            catch (BadHttpRequestException) { return Results.BadRequest(new { feil = "Avmeldingen kunne ikke behandles." }); }
+            catch (Exception) { return Results.Json(new { feil = "Avmeldingen kunne ikke behandles. Prøv igjen fra e-posten." }, statusCode: StatusCodes.Status503ServiceUnavailable); }
+        }).AllowAnonymous();
         var gruppe = app.MapGroup("/api/epostabonnement").RequireAuthorization();
         // Også operasjonene uten nyttelast krever JSON. Dermed kan en fremmed
         // nettside ikke sende en enkel cookie-autentisert HTML-form-POST hit.
@@ -61,4 +83,5 @@ public static class EpostEndepunkter
         int[]? Budsjettaar = null, Kategori[]? Kategorier = null);
     public sealed record Adressebytte(string Adresse, bool EgenadresseSamtykke, Guid Versjon);
     public sealed class Bekreftelse { public string Token { get; init; } = ""; }
+    public sealed class Avmeldingslenke { public string? Token { get; init; } }
 }

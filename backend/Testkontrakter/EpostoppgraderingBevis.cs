@@ -48,9 +48,86 @@ public static class EpostoppgraderingBevis
     {
         protected override void OnModelCreating(ModelBuilder b)
         { base.OnModelCreating(b); b.Entity<Frist>().Ignore(x => x.ManuellKildeUrl); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson);
+            IgnorerEV09(b);
             b.Ignore<FristHendelsessynlighet>(); b.Entity("Aarshjul.Infrastructure.Epost.Epostaktivering").Ignore("Livssyklussekvens"); }
     }
+    public static void IgnorerEV09(ModelBuilder b)
+    {
+        b.Entity<Epostoppsummering>().Ignore("AvmeldingsHash");
+        b.Entity<Epostoppsummering>().Ignore("Avmeldingssekvens");
+    }
     public sealed record EV03Plan(Guid Behandlet, Guid Ventende, Guid GammelPlan, Guid VentendePlan);
+
+    public static async Task<EV03Plan> LeggTilEV08PlanAsync(Epostdatabase database)
+    {
+        var plan = await LeggTilEV03PlanAsync(database, ev04: true, ev08: true);
+        await using var db = HistoriskFabrikk(database).CreateDbContext();
+        db.Epostoppsummeringer.AddRange(
+            new() { BrukerId = "avbrutt-ev08", LokalDato = new(2029, 12, 30), Status = "UnderSending" },
+            new() { BrukerId = "uavklart-ev08", LokalDato = new(2029, 12, 30), Status = "Uavklart" });
+        await db.SaveChangesAsync();
+        return plan;
+    }
+
+    public static async Task BekreftEV09PlanAsync(Epostdatabase database, EV03Plan plan, KontrollertBekreftelsespost bekreftelsespost, bool avmeld = false)
+    {
+        var klokke = new EpostabonnementKontrakt.Proeveklokke();
+        var kilde = new KontrollertMottakertilgang();
+        kilde.Sett("eldre", new(MottakertilgangStatus.Aktiv, new Aarshjul.Application.Synlighet.Synlighetskontekst(true, [])));
+        var post = new KontrollertOppsummeringspost();
+        var jobb = new DagligEpostoppsummering(database.Fabrikk(), klokke, kilde, post,
+            Microsoft.Extensions.Options.Options.Create(new DagligEpostOpsjoner()));
+        var resultat = Assert.Single((await jobb.KjorAsync()).Mottakere);
+        Assert.Equal("Bekreftet", resultat.Status);
+        Assert.Equal(plan.VentendePlan, resultat.OppsummeringId);
+        Assert.Equal(1, resultat.AntallFrister);
+        var melding = Assert.Single(post.Hent("eldre"));
+        Assert.True(System.Text.RegularExpressions.Regex.IsMatch(melding.Tekst, @"/epostvarsling/avmeld#[0-9A-Fa-f]{64}(?![0-9A-Fa-f])"),
+            "En ventende plan fra EV08 skal fullføres med en avmeldingslenke.");
+        Assert.True(System.Text.RegularExpressions.Regex.IsMatch(melding.Html, @"/epostvarsling/avmeld#[0-9A-Fa-f]{64}(?![0-9A-Fa-f])"),
+            "Både tekst og HTML skal ha avmeldingslenke.");
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            Assert.Equal(2, await db.NyFristHendelser.CountAsync());
+            Assert.Equal(2, await db.Oppsummeringshendelser.CountAsync());
+            Assert.Equal(4, await db.Epostoppsummeringer.CountAsync());
+            Assert.Equal("UnderSending", (await db.Epostoppsummeringer.SingleAsync(x => x.BrukerId == "avbrutt-ev08")).Status);
+            Assert.Equal("Uavklart", (await db.Epostoppsummeringer.SingleAsync(x => x.BrukerId == "uavklart-ev08")).Status);
+            var tidligere = await db.Epostoppsummeringer.SingleAsync(x => x.Id == plan.GammelPlan);
+            Assert.Equal("Bekreftet", tidligere.Status);
+            Assert.Null(db.Entry(tidligere).Property("AvmeldingsHash").CurrentValue);
+            Assert.Null(db.Entry(tidligere).Property("Avmeldingssekvens").CurrentValue);
+            var fullfoert = await db.Epostoppsummeringer.SingleAsync(x => x.Id == plan.VentendePlan);
+            Assert.True(db.Entry(fullfoert).Property("AvmeldingsHash").CurrentValue is string { Length: 64 },
+                "Oppgraderingen skal bevare et avtrykk for faktisk sendeforsøk.");
+            Assert.Equal(7L, db.Entry(fullfoert).Property("Avmeldingssekvens").CurrentValue);
+        }
+        // Ventende adressebekreftelse fra EV08 virker etter oppgradering og får
+        // en ny aktiveringsgrense fremfor gammelt varslingsetterslep.
+        var abonnement = new EpostabonnementTjeneste(database.Fabrikk(), klokke, bekreftelsespost);
+        Assert.Equal("Aktiv", (await abonnement.BekreftAsync("venter", bekreftelsespost.Hent("venter")!.Token)).Status);
+        kilde.Sett("venter", new(MottakertilgangStatus.Aktiv, new Aarshjul.Application.Synlighet.Synlighetskontekst(true, [])));
+        Assert.Equal("IngenHendelser", (await jobb.KjorAsync()).Mottakere.Single(m => m.BrukerId == "venter").Status);
+        Assert.Empty(post.Hent("venter"));
+        if (avmeld)
+        {
+            var token = System.Text.RegularExpressions.Regex.Match(melding.Tekst, @"/epostvarsling/avmeld#([0-9A-Fa-f]{64})(?![0-9A-Fa-f])").Groups[1].Value;
+            Assert.True(token.Length == 64, "Oppgradert plan skal gi en faktisk avmeldingsrett.");
+            await abonnement.MeldAvMedLenkeAsync(token);
+            Assert.Equal("Avmeldt", (await abonnement.HentAsync("eldre")).Status);
+            Assert.Equal("Aktiv", (await abonnement.HentAsync("venter")).Status);
+            klokke.Flytt(TimeSpan.FromDays(1));
+            await new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(database.Fabrikk(), klokke).OpprettAsync(new()
+            {
+                Tittel = "Kildelenke etter oppgradering og avmelding", Dato = new(2030, 11, 20), Budsjettaar = 2031,
+                Synlighetskoder = ["FA"], ManuellKildeUrl = "https://regjeringen.no/no/etter-ev09"
+            });
+            await jobb.KjorAsync();
+            Assert.Single(post.Hent("eldre"));
+            await abonnement.MeldAvMedLenkeAsync(token);
+            Assert.Equal("Avmeldt", (await abonnement.HentAsync("eldre")).Status);
+        }
+    }
 
     public static async Task<EV03Plan> LeggTilEV04PlanAsync(Epostdatabase database)
     {
@@ -68,7 +145,8 @@ public static class EpostoppgraderingBevis
 
     public static async Task<string> HentVarslingsdataAsync(Epostdatabase database)
     {
-        await using var db = database.Fabrikk().CreateDbContext();
+        // Sammenlikn de opprinnelige feltene også før additive EV09-kolonner finnes.
+        await using var db = HistoriskFabrikk(database).CreateDbContext();
         async Task<string[]> Rader<T>() where T : class
         {
             var rader = await db.Set<T>().ToArrayAsync();
@@ -99,14 +177,16 @@ public static class EpostoppgraderingBevis
         Assert.Equal("Bekreftet", (await db.Epostoppsummeringer.SingleAsync(x => x.Id == plan.GammelPlan)).Status);
     }
 
-    public static async Task<EV03Plan> LeggTilEV03PlanAsync(Epostdatabase database, bool ev04 = false)
+    public static async Task<EV03Plan> LeggTilEV03PlanAsync(Epostdatabase database, bool ev04 = false, bool ev08 = false)
     {
-        await using var db = database.Fabrikk().CreateDbContext();
+        await using var db = HistoriskFabrikk(database).CreateDbContext();
         var frister = await db.Frister.Where(x => x.Status == FristStatus.Godkjent).OrderBy(x => x.Tittel).Take(2).Select(x => x.Id).ToListAsync();
         var bevis = new EV03Plan(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO NyFristHendelser (Id, FristId, OpprettetUtcTicks, Publiseringssekvens) VALUES ({bevis.Behandlet}, {frister[0]}, {10L}, {6L})");
         await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO NyFristHendelser (Id, FristId, OpprettetUtcTicks, Publiseringssekvens) VALUES ({bevis.Ventende}, {frister[1]}, {10L}, {8L})");
-        if (ev04)
+        if (ev08)
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO Epostaktiveringer (BrukerId, Sekvens, Endringssekvens, Livssyklussekvens) VALUES ({"eldre"}, {7L}, {0L}, {7L})");
+        else if (ev04)
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO Epostaktiveringer (BrukerId, Sekvens, Endringssekvens) VALUES ({"eldre"}, {7L}, {0L})");
         else await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO Epostaktiveringer (BrukerId, Sekvens) VALUES ({"eldre"}, {7L})");
         await db.Database.ExecuteSqlRawAsync("UPDATE Epostrekkefolge SET Verdi = 9 WHERE Id = 1");
@@ -232,7 +312,7 @@ public static class EpostoppgraderingBevis
         await eldreAbonnement.EndreValgAsync("eldre", true, true, eldreStatus.Versjon);
         Assert.Equal("Bekreftet", Assert.Single((await jobb.KjorAsync()).Mottakere).Status);
         var melding = Assert.Single(post.Hent("eldre"));
-        Assert.Contains("Ny frist etter EV03-oppgradering", melding.Tekst);
+        Assert.Contains("Ny frist etter EV03-oppgradering", EposttekstBevis.UtenHemmelighet(melding.Tekst));
         Assert.Equal(1, melding.Tekst.Split("Ny frist:", StringSplitOptions.None).Length - 1);
         // Også ventende EV02-bekreftelse/versjon overlever, men aktivering gir ikke etterslep.
         var abonnement = new EpostabonnementTjeneste(database.Fabrikk(), klokke, bekreftelsespost);

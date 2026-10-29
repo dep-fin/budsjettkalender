@@ -16,8 +16,9 @@ public sealed class MigrasjonsmodellTester
         using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlServer("Server=localhost;Database=KunModell;Integrated Security=True").Options);
         var samling = db.GetService<IMigrationsAssembly>();
+        var manuell = samling.CreateMigration(samling.Migrations["20261029092000_ManuellKildelenke"], db.Database.ProviderName!);
         var siste = samling.CreateMigration(samling.Migrations.Last().Value, db.Database.ProviderName!);
-        var kolonne = Assert.IsType<AddColumnOperation>(Assert.Single(siste.UpOperations));
+        var kolonne = Assert.IsType<AddColumnOperation>(Assert.Single(manuell.UpOperations));
         Assert.Equal("ManuellKildeUrl", kolonne.Name); Assert.Equal("Frister", kolonne.Table);
         Assert.True(kolonne.IsNullable); Assert.Null(kolonne.DefaultValue);
         Assert.True(siste.TargetModel.FindEntityType(typeof(Frist))!.FindProperty("ManuellKildeUrl")!.IsConcurrencyToken);
@@ -40,6 +41,10 @@ public sealed class MigrasjonsmodellTester
     [Fact]
     public void EV07_maal_bevarer_tidligere_vern_og_samsvarer_med_siste_snapshot()
         => KontrollerMaal("20261029092000_HistoriskSlettingssynlighet", true, true, true);
+
+    [Fact]
+    public void EV09_maal_bevarer_tidligere_vern_og_samsvarer_med_siste_snapshot()
+        => KontrollerMaal("20261029143000_Avmeldingslenke", true, true, true);
 
     private static void KontrollerMaal(
         string migrasjonId, bool oppsummering, bool ordnet, bool endringer)
@@ -83,6 +88,17 @@ public sealed class MigrasjonsmodellTester
             Assert.True(plan.FindProperty("Versjon")!.IsConcurrencyToken);
             Assert.Equal(ordnet, plan.FindProperty("Status")!.IsConcurrencyToken);
             Assert.Equal(ordnet, hendelse.FindProperty("Publiseringssekvens") is not null);
+            var avmelding = migrasjonId == "20261029143000_Avmeldingslenke";
+            Assert.Equal(avmelding, plan.FindProperty("AvmeldingsHash") is not null);
+            Assert.Equal(avmelding, plan.FindProperty("Avmeldingssekvens") is not null);
+            if (avmelding)
+            {
+                Assert.True(plan.FindProperty("AvmeldingsHash")!.IsNullable);
+                Assert.Equal(64, plan.FindProperty("AvmeldingsHash")!.GetMaxLength());
+                Assert.True(plan.FindProperty("Avmeldingssekvens")!.IsNullable);
+                Assert.Contains(plan.GetIndexes(), i => !i.IsUnique && i.Properties.Select(p => p.Name).SequenceEqual(new[] { "AvmeldingsHash" })
+                    && i.GetFilter() == "[AvmeldingsHash] IS NOT NULL");
+            }
         }
         Assert.Equal(ordnet, maal.FindEntityType("Aarshjul.Infrastructure.Epost.Epostaktivering") is not null);
         Assert.Equal(ordnet, maal.FindEntityType("Aarshjul.Infrastructure.Epost.Epostrekkefolge") is not null);

@@ -15,6 +15,7 @@ internal sealed class Nettleser
     private readonly IPlaywright _playwright;
     private readonly IBrowser _browser;
     private readonly ConcurrentQueue<string> _feil = new();
+    private readonly ConcurrentQueue<string> _klientlogg = new();
     private readonly List<IBrowserContext> _kontekster = [];
     private readonly ConcurrentQueue<string> _applogg;
     public string Mappe { get; }
@@ -117,6 +118,8 @@ internal sealed class Nettleser
             side.SetDefaultTimeout(10_000);
             side.PageError += (_, e) => _feil.Enqueue(RedigerHemmelighet(e));
             side.Console += (_, e) => { if (e.Type == "error") _feil.Enqueue(RedigerHemmelighet(e.Location + " " + e.Text)); };
+            side.PageError += (_, e) => _klientlogg.Enqueue(e);
+            side.Console += (_, e) => _klientlogg.Enqueue(e.Location + " " + e.Text);
         };
         return await ctx.NewPageAsync();
     }
@@ -220,10 +223,14 @@ internal sealed class Nettleser
 
     public void BekreftIngenKretsfeil() => Assert.True(_feil.IsEmpty, string.Join("; ", _feil.Distinct()));
 
+    public void BekreftIngenHemmelighet(string hemmelighet)
+        => Assert.False(_applogg.Concat(_klientlogg).Any(x => x.Contains(hemmelighet, StringComparison.Ordinal)), "Hemmelig lenke må ikke finnes i app- eller nettleserlogger.");
+
     private static string RedigerHemmelighet(string tekst)
     {
         tekst = System.Text.RegularExpressions.Regex.Replace(tekst, @"/kalender/feed/[^\s'""<>]+", "/kalender/feed/[skjult]");
         tekst = System.Text.RegularExpressions.Regex.Replace(tekst, @"/epostvarsling/bekreft[^\s'""<>]*", "/epostvarsling/bekreft[skjult]");
+        tekst = System.Text.RegularExpressions.Regex.Replace(tekst, @"/epostvarsling/avmeld[^\s'""<>]*", "/epostvarsling/avmeld[skjult]");
         return System.Text.RegularExpressions.Regex.Replace(tekst, @"\b[0-9A-Fa-f]{64}\b", "[skjult bekreftelse]");
     }
 }

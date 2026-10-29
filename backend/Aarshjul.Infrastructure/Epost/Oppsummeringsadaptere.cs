@@ -13,11 +13,22 @@ public interface IMottakertilgangskilde
 
 public sealed record Mottakertilgang(MottakertilgangStatus Status, ISynlighetskontekst? Synlighet = null);
 
-/// <summary>En bekreftelse betyr at transporten tok imot meldingen, ikke observert ekstern levering.</summary>
+/// <summary>
+/// StartOverlevering tar eierskap til meldingen synkront, før metoden returnerer en kvittering.
+/// Transporten kan ikke legge inn asynkron venting før dette mottaket. Task beskriver
+/// bare senere kvittering; feil betyr mulig overlevering. Klargjøring må gjøres før
+/// denne grensen. Ekstern levering er ikke bekreftet av mottaket.
+/// </summary>
 public interface IOppsummeringspost
 {
     bool Tilgjengelig { get; }
-    Task SendAsync(Oppsummeringsmelding melding, CancellationToken ct = default);
+    Overleveringskvittering StartOverlevering(Oppsummeringsmelding melding, CancellationToken ct = default);
+}
+
+/// <summary>Meldingen er mottatt; bare utfallet kan vente. Metoden som returnerer denne kan ikke være async.</summary>
+public sealed class Overleveringskvittering(Task utfall)
+{
+    public Task Utfall { get; } = utfall;
 }
 
 // Ingen automatisk ToString med adresse eller fristinnhold.
@@ -40,7 +51,7 @@ public sealed class UtilgjengeligMottakertilgang : IMottakertilgangskilde
 public sealed class UtilgjengeligOppsummeringspost : IOppsummeringspost
 {
     public bool Tilgjengelig => false;
-    public Task SendAsync(Oppsummeringsmelding melding, CancellationToken ct = default)
+    public Overleveringskvittering StartOverlevering(Oppsummeringsmelding melding, CancellationToken ct = default)
         => throw new InvalidOperationException("Oppsummeringstransport er ikke satt i drift.");
 }
 
@@ -62,11 +73,11 @@ public sealed class KontrollertOppsummeringspost : IOppsummeringspost
     public bool Stanset { get; set; }
     public bool Tilgjengelig => !Stanset;
     public IReadOnlyList<Oppsummeringsmelding> Hent(string brukerId) => _meldinger.Where(x => x.BrukerId == brukerId).ToList();
-    public Task SendAsync(Oppsummeringsmelding melding, CancellationToken ct = default)
+    public Overleveringskvittering StartOverlevering(Oppsummeringsmelding melding, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
         if (Stanset) throw new InvalidOperationException("Kontrollert transport er stanset.");
         _meldinger.Enqueue(melding);
-        return Task.CompletedTask;
+        return new(Task.CompletedTask);
     }
 }

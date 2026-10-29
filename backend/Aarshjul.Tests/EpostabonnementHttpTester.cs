@@ -6,11 +6,120 @@ using Microsoft.Extensions.DependencyInjection;
 using Aarshjul.Application.Datautveksling;
 using System.Text.Json;
 using Aarshjul.Domain;
+using Aarshjul.Application.Epost;
+using Aarshjul.Application.Frister;
+using Aarshjul.Application.Synlighet;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Aarshjul.Tests;
 
 public sealed class EpostabonnementHttpTester
 {
+    [Fact]
+    public async Task Anonym_avmeldingsinngang_er_generisk_uten_leserett_og_form_POST()
+    {
+        using var app = new TestApplikasjon(); using var anonym = app.CreateClient();
+        using var eier = app.CreateClient(); eier.DefaultRequestHeaders.Add("X-Test-Rolle", "Leser");
+        await eier.PostAsJsonAsync("/api/epostabonnement", new { adresse = "egen@fin.dep.no", godtarStandardvalg = true });
+        var foer = await eier.GetStringAsync("/api/epostabonnement");
+        foreach (var metode in new[] { HttpMethod.Get, HttpMethod.Head })
+        {
+            using var svar = await anonym.SendAsync(new HttpRequestMessage(metode, "/epostvarsling/avmeld"));
+            Assert.Equal(HttpStatusCode.OK, svar.StatusCode); Assert.True(svar.Headers.CacheControl?.NoStore);
+        }
+        using var bekreft = await anonym.PostAsJsonAsync("/api/epostabonnement/avmeldingslenke", new { token = "ugyldig", brukerId = "test-bruker", adresse = "annen@jd.dep.no", nyeFrister = false });
+        Assert.Equal(HttpStatusCode.OK, bekreft.StatusCode); Assert.True(bekreft.Headers.CacheControl?.NoStore);
+        var kvittering = await bekreft.Content.ReadFromJsonAsync<JsonObject>();
+        Assert.Equal(new[] { "melding" }, kvittering!.Select(x => x.Key));
+        Assert.False(bekreft.Headers.Contains("Access-Control-Allow-Origin"));
+        using var form = await anonym.PostAsync("/api/epostabonnement/avmeldingslenke", new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = "ugyldig" }));
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, form.StatusCode); Assert.True(form.Headers.CacheControl?.NoStore);
+        Assert.Equal(foer, await eier.GetStringAsync("/api/epostabonnement"));
+        foreach (var sti in new[] { "/api/epostabonnement", "/api/frister", "/api/eksport/frister-json" })
+            Assert.Equal(HttpStatusCode.Unauthorized, (await anonym.GetAsync(sti + "?token=ugyldig")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Faktisk_oppsummeringslenke_kan_bare_avmelde_sitt_abonnement_med_uttrykkelig_JSON_handling()
+    {
+        using var app = new TestApplikasjon(); using var anonym = app.CreateClient();
+        using var eier = app.CreateClient(); eier.DefaultRequestHeaders.Add("X-Test-Rolle", "Leser");
+        using var annen = app.CreateClient(); annen.DefaultRequestHeaders.Add("X-Test-Rolle", "Leser"); annen.DefaultRequestHeaders.Add("X-Test-Bruker", "annen-bruker");
+        var fabrikk = app.Services.GetRequiredService<IDbContextFactory<Aarshjul.Infrastructure.AppDbContext>>();
+        var bekreftelsespost = app.Services.GetRequiredService<KontrollertBekreftelsespost>();
+        var abonnement = new EpostabonnementTjeneste(fabrikk, new Epostklokke(), bekreftelsespost);
+        foreach (var id in new[] { "test-bruker", "annen-bruker" })
+        {
+            await abonnement.MeldPaaAsync(id, id + "@fin.dep.no", true, true, true, [2031], [Kategori.Budsjett]);
+            await abonnement.BekreftAsync(id, bekreftelsespost.Hent(id)!.Token);
+        }
+        var rett = new KontrollertMottakertilgang();
+        foreach (var id in new[] { "test-bruker", "annen-bruker" }) rett.Sett(id, new(MottakertilgangStatus.Aktiv, new Synlighetskontekst(true, [])));
+        await app.Services.GetRequiredService<IFristskriving>().OpprettAsync(new() { Tittel = "Avgrenset avmeldingsrett", Dato = new(2030, 11, 20), Budsjettaar = 2031, Synlighetskoder = ["FAG"] });
+        var post = new KontrollertOppsummeringspost();
+        await new DagligEpostoppsummering(fabrikk, new Epostklokke(), rett, post,
+            Options.Create(new DagligEpostOpsjoner { OffentligBasisadresse = "https://kalender.example.no" })).KjorAsync();
+        var melding = Assert.Single(post.Hent("test-bruker"));
+        var treff = System.Text.RegularExpressions.Regex.Match(melding.Tekst, @"https://[^\s]+/epostvarsling/avmeld#([0-9A-F]{64})");
+        Assert.True(treff.Success, "Faktisk oppsummering må ha en avmeldingslenke.");
+        var token = treff.Groups[1].Value;
+        Assert.True(melding.Html.Contains(treff.Value, StringComparison.Ordinal), "Begge meldingsformatene skal ha samme avmeldingsrett.");
+        var foer = await eier.GetStringAsync("/api/epostabonnement"); var annenFoer = await annen.GetStringAsync("/api/epostabonnement");
+        foreach (var metode in new[] { HttpMethod.Get, HttpMethod.Head })
+        {
+            using var svar = await anonym.SendAsync(new HttpRequestMessage(metode, "/epostvarsling/avmeld#" + token));
+            Assert.Equal(HttpStatusCode.OK, svar.StatusCode); Assert.True(svar.Headers.CacheControl?.NoStore);
+            Assert.False((await svar.Content.ReadAsStringAsync()).Contains(token, StringComparison.Ordinal), "GET/HEAD må aldri returnere avmeldingshemmeligheten.");
+        }
+        Assert.Equal(foer, await eier.GetStringAsync("/api/epostabonnement"));
+        var kvitteringer = new List<string>();
+        foreach (var verdi in new[] { token, token, "ugyldig", "", new string('A', 2000) })
+        {
+            using var svar = await anonym.PostAsJsonAsync("/api/epostabonnement/avmeldingslenke", new { token = verdi, brukerId = "annen-bruker", adresse = "angriper@jd.dep.no", nyeFrister = false, budsjettaar = new[] { 2040 } });
+            Assert.Equal(HttpStatusCode.OK, svar.StatusCode); Assert.True(svar.Headers.CacheControl?.NoStore);
+            var tekst = await svar.Content.ReadAsStringAsync();
+            Assert.False(tekst.Contains(token, StringComparison.Ordinal), "Avmeldingssvaret må aldri gjengi hemmeligheten.");
+            Assert.Equal(new[] { "melding" }, JsonNode.Parse(tekst)!.AsObject().Select(x => x.Key));
+            kvitteringer.Add(tekst);
+        }
+        Assert.All(kvitteringer, tekst => Assert.Equal(kvitteringer[0], tekst));
+        Assert.Equal("Avmeldt", (await abonnement.HentAsync("test-bruker")).Status);
+        Assert.Equal(annenFoer, await annen.GetStringAsync("/api/epostabonnement"));
+        var etter = await abonnement.HentAsync("test-bruker");
+        Assert.Equal("test-bruker@fin.dep.no", etter.Adresse); Assert.True(etter.NyeFrister); Assert.True(etter.VesentligeEndringer);
+        Assert.Equal(new[] { 2031 }, etter.Budsjettaar); Assert.Equal(new[] { Kategori.Budsjett }, etter.Kategorier);
+        anonym.DefaultRequestHeaders.Authorization = new("Bearer", token);
+        foreach (var sti in new[] { "/api/epostabonnement", "/api/frister", "/api/eksport/frister-json", "/api/eksport/maler-json", "/api/eksport/ics", "/api/eksport/word" })
+            Assert.Equal(HttpStatusCode.Unauthorized, (await anonym.GetAsync(sti)).StatusCode);
+        foreach (var sti in new[] { "/adresse", "/valg", "/bekreft", "/meld-av" })
+            Assert.Equal(HttpStatusCode.Unauthorized, (await anonym.PostAsJsonAsync("/api/epostabonnement" + sti, new { token, adresse = "angriper@jd.dep.no", egenadresseSamtykke = true, nyeFrister = true, versjon = etter.Versjon })).StatusCode);
+        using var eksport = app.CreateClient(); eksport.DefaultRequestHeaders.Add("X-Test-Rolle", "Administrator");
+        var eksporttekst = await eksport.GetStringAsync("/api/eksport/frister-json");
+        Assert.False(eksporttekst.Contains(token, StringComparison.Ordinal), "Fristeksport må ikke inneholde avmeldingsrett.");
+    }
+
+    [Theory]
+    [InlineData("{}", 200)]
+    [InlineData("null", 200)]
+    [InlineData("{\"token\":null}", 200)]
+    [InlineData("{\"token\":12}", 400)]
+    [InlineData("{", 400)]
+    public async Task Avmeldingsinngangen_har_generiske_svar_ogsaa_for_manglende_eller_ugyldig_JSON(string innhold, int kode)
+    {
+        using var app = new TestApplikasjon(); using var klient = app.CreateClient();
+        using var svar = await klient.PostAsync("/api/epostabonnement/avmeldingslenke", new StringContent(innhold, System.Text.Encoding.UTF8, "application/json"));
+        Assert.Equal(kode, (int)svar.StatusCode); Assert.True(svar.Headers.CacheControl?.NoStore);
+        var json = (await svar.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal(new[] { kode == 200 ? "melding" : "feil" }, json.Select(x => x.Key));
+        Assert.False(svar.Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    private sealed class Epostklokke : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(2030, 1, 1, 7, 0, 0, TimeSpan.Zero);
+    }
+
     [Theory]
     [InlineData("Leser")]
     [InlineData("Bidragsyter")]

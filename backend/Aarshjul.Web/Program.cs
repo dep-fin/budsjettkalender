@@ -223,6 +223,11 @@ public partial class Program
             if (http.Request.Path.StartsWithSegments("/api/epostabonnement")
                 && http.Features.Get<Microsoft.AspNetCore.Diagnostics.IStatusCodePagesFeature>() is { } status)
                 status.Enabled = false;
+            if (http.Request.Path == "/api/epostabonnement/avmeldingslenke")
+            {
+                http.Response.Headers.CacheControl = "no-store";
+                http.Response.Headers["Referrer-Policy"] = "no-referrer";
+            }
             await neste(http);
         });
         app.UseHttpsRedirection();

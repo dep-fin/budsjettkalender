@@ -163,8 +163,32 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
         rad.Status = "Avmeldt";
         rad.Endret = klokke.GetUtcNow();
         FjernBekreftelse(rad);
+        db.KoordinerEpostlagring();
         await LagreAsync(db, rad, ct);
         return TilDto(rad);
+    }
+
+    public async Task MeldAvMedLenkeAsync(string? token, CancellationToken ct = default)
+    {
+        if (token is not { Length: 64 } || token.Any(c => !char.IsAsciiHexDigit(c))) return;
+        var hash = Hash(token);
+        await using var db = await fabrikk.CreateDbContextAsync(ct);
+        var rett = await db.Epostoppsummeringer.AsNoTracking()
+            .Where(x => x.AvmeldingsHash == hash && x.Avmeldingssekvens != null)
+            .Select(x => new { x.BrukerId, x.Avmeldingssekvens }).SingleOrDefaultAsync(ct);
+        if (rett is null) return;
+        await using var grense = await Epostoverlevering.LaasAsync(db, rett.BrukerId, ct);
+        // Les etter låsen, også ved to POST-er eller samtidig ny aktivering.
+        // Rettigheten bindes aldri til valgversjonen eller UTC-klokken.
+        var rad = await db.Epostabonnementer.SingleOrDefaultAsync(x => x.BrukerId == rett.BrukerId, ct);
+        var sekvens = await db.Set<Epostaktivering>().AsNoTracking().Where(x => x.BrukerId == rett.BrukerId)
+            .Select(x => (long?)x.Livssyklussekvens).SingleOrDefaultAsync(ct) ?? 0;
+        if (rad?.Status != "Aktiv" || sekvens != rett.Avmeldingssekvens) return;
+        rad.Status = "Avmeldt";
+        rad.Endret = klokke.GetUtcNow();
+        FjernBekreftelse(rad);
+        await LagreAsync(db, rad, ct);
+        await grense.CommitAsync(ct);
     }
 
     private static void KontrollerSending(Epostabonnement rad, DateTimeOffset naa)

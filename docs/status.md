@@ -84,33 +84,47 @@ første CI-bevis; PR #143 er kilden til leveransens slutt-CI og livsløp.
 Slutt-[CI 40857856203](https://github.com/depmartin/Budsjettkalender/actions/runs/40857856203)
 bestod 1228 ordinære, 379 SQL Server- og 344 Chromium-tilfeller uten feil/hopp.
 
-EV08 ([#118](https://github.com/depmartin/Budsjettkalender/issues/118)) er merget i
-[PR #144](https://github.com/depmartin/Budsjettkalender/pull/144) som faktisk main
-`b6a85f2251831eaba1cd69d17249ec57e13578c3`. Eget adressebytte krever gjeldende
-versjon og egenadressesamtykke. Ny adresse venter varig på ny bekreftelse, med
-stanset fristvarsling, beholdte varselvalg og felles forsøksgrenser. Bekreftelsen
-setter nye databaseordnede type-, utvalgs- og livssyklusgrenser uten etterslep.
-Ingen egen modellendring eller migrasjon. [EV08-akseptansen](acceptance/2026-10-29-epost-ev08.md)
-bevarer datert byggbevis; PR #144 er kilden til leveransens livsløp.
+EV08 ([#118](https://github.com/depmartin/Budsjettkalender/issues/118)) er levert i
+[PR #144](https://github.com/depmartin/Budsjettkalender/pull/144), bekreftet merget som
+`b6a85f2251831eaba1cd69d17249ec57e13578c3`. Slutt-[CI 40868254126](https://github.com/depmartin/Budsjettkalender/actions/runs/40868254126)
+bestod 1288 ordinære, 432 ekte SQL Server- og 348 Chromium-tilfeller uten feil/hopp.
+Eget adressebytte krever gjeldende versjon og egenadressesamtykke. Ny adresse
+venter varig på ny bekreftelse med stanset fristvarsling, beholdte varselvalg og
+felles forsøksgrenser. Ny bekreftelse setter nye databaseordnede type-, utvalgs-
+og livssyklusgrenser uten etterslep. Ingen EV08-migrasjon.
+[EV08-akseptansen](acceptance/2026-10-29-epost-ev08.md) bevarer tidligere lokale byggbevis.
 
 [#140](https://github.com/depmartin/Budsjettkalender/issues/140), parent #136 punkt 4,
-er kandidat i [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142).
-Direkte administratoroppretting/redigering får valgfri manuell kildelenke med
-prioritet foran dokumentets lenke og forklaring ved tømming. Én serverregel
-gjelder skriving, JSON-import og lesing; proveniens og køjustering bevares.
-JSON v1 får et valgfritt felt. Lenkeendring følger eksisterende begrunnede
-vesentlighetsvalg. Additiv migrasjon/demo og innholdsøyeblikksbilder er avstemt
-med levert EV07; begge migrasjonene med timestamp 20261029092000 beholdes.
-Forrige kandidat på EV07-basen bestod alle tre faktiske porter i
-[CI 40868270127](https://github.com/depmartin/Budsjettkalender/actions/runs/40868270127):
-1242 ordinære, 389 SQL Server og 346 Chromium. Dette er historisk bevis for den
-gamle basen. Kandidaten er nå avstemt med levert EV08, og alle navn fra begge
-foreldre er bevart; samlet inventar er 1302/442/350. Lokal ordinærsuite består
-1302/1302, målrettet samspill 545/545 og relevante Edge/Kestrel-forløp 31/31,
-uten feil/hopp. SQL Server er bygget/oppdaget, ikke lokalt kjørt. Prøver og
-presise bevisgrenser står i [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md).
-Alle tre faktiske nye kandidat-CI-porter må være grønne. Ingen ny formell
-review/audit er utført i denne autoriserte CI-løkken. Ingen deploy inngår.
+er levert i [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142) som main
+`12d12601b0fe8d83d0a4a84b88cff589bd954572`. Direkte administratoroppretting/redigering
+har valgfri manuell kildelenke med prioritet foran dokumentets lenke og forklaring
+ved tømming. Én serverregel gjelder skriving, JSON-import og lesing; proveniens
+og køjustering bevares. JSON v1 har et valgfritt felt. Lenkeendring følger
+eksisterende begrunnede vesentlighetsvalg. Additiv migrasjon/demo og
+innholdsøyeblikksbilder er avstemt med levert EV07 og EV08; begge migrasjonene
+med timestamp 20261029092000 beholdes. Den daterte
+[kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md) bevarer tidligere
+bygg-/integrasjons-/CI-bevis; PR #142 er kilden til leveransens livsløp.
+
+EV09 ([#119](https://github.com/depmartin/Budsjettkalender/issues/119)) er en lokal
+kandidat med denne faktisk leverte hovedgrenen integrert før publisering. Hver
+tekst-/HTML-oppsummering får en egen snever
+avmeldingslenke. Anonym GET/HEAD endrer ingenting; uttrykkelig JSON-bekreftelse
+stanser bare den samme bekreftede livssyklusen. Eldre e-postlenker består gjennom
+filterendringer og senere oppsummeringer, og kan ikke stoppe ny aktivering.
+Siste abonnementslesing og synkront transportmottak deler en kort databaselås
+med avmelding; senere kvittering ventes uten låsen. Overlevert post kan ikke
+tilbakekalles, og UnderSending/Uavklart bevares. Additiv migrasjon og demooppgradering
+bevarer EV02–EV08 og manuelle kildelenker uten historisk flom. Oppdaget inventar
+er 1348 ordinære, 480 SQL Server- og 354 nettlesertilfeller. Hele foreldreunionen
+1347/479/354 er bevart ordinalt uten tap/dubletter, pluss én ny oppgraderingsprøve
+per lagringssuite. Lokalt består 1348 ordinære, 591 målrettede samspillstilfeller
+og 35 reelle Edge/Kestrel-forløp uten feil/hopp. SQL er bare bygget/oppdaget.
+[EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md) beskriver lokale bevis og grenser.
+Opprinnelig EV09 hadde Standards 0, Spec 0 og audit 0. Ny relevant samlet
+gjennomgang, separat sikkerhetsaudit og faktisk full kandidat-CI for den
+integrerte kandidaten gjenstår hos orkestratoren. Ingen produksjonsutsending
+eller utrulling inngår.
 
 ## UX18 – samlet akseptanse og publisering
 

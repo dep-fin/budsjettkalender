@@ -46,6 +46,9 @@ jobbadresse. Påmeldingen kan vente på adressebekreftelse, være aktiv eller v�
 **Adressebekreftelse**: Brukerens bekreftelse på at vedkommende disponerer den oppgitte
 jobbadressen. Bekreftelsen tildeler ingen funksjonsrolle eller synlighetsgruppe.
 
+**Avmeldingsrett**: En hemmelig lenke fra en oppsummering som bare gir rett til å
+stanse det aktuelle e-postabonnementets bekreftede påmeldingsperiode.
+
 **Adressebytte**: Brukerens uttrykkelige erstatning av egen jobbadresse i det samme
 e-postabonnementet. Varslingen er stanset frem til den nye adressen er bekreftet.
 
