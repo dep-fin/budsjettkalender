@@ -3,11 +3,37 @@ using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Aarshjul.Infrastructure.Epost;
 using Microsoft.Extensions.DependencyInjection;
+using Aarshjul.Application.Datautveksling;
+using System.Text.Json;
+using Aarshjul.Domain;
 
 namespace Aarshjul.Tests;
 
 public sealed class EpostabonnementHttpTester
 {
+    [Fact]
+    public async Task Faktisk_frist_eksport_inneholder_bare_v1_frister_etter_import_sletting_og_paamelding()
+    {
+        using var app = new TestApplikasjon(); using var admin = app.CreateClient();
+        admin.DefaultRequestHeaders.Add("X-Test-Rolle", "Administrator");
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/epostabonnement",
+            new { adresse = "eksportvern@fin.dep.no", godtarStandardvalg = true })).StatusCode);
+        var import = app.Services.GetRequiredService<IFristDatautveksling>();
+        await import.ImporterAsync(new() { Frister = [] });
+        await import.ImporterAsync(new() { Frister = [new() { Id = Guid.NewGuid(), Tittel = "Bare fristdata",
+            Dato = new(2030, 11, 20), Budsjettaar = 2031, Status = FristStatus.Godkjent, SynligFor = ["FAG"] }] });
+        var svar = await admin.GetAsync("/api/eksport/frister-json"); Assert.Equal(HttpStatusCode.OK, svar.StatusCode);
+        Assert.Equal("application/json", svar.Content.Headers.ContentType!.MediaType);
+        var json = await svar.Content.ReadAsStringAsync(); using var dokument = JsonDocument.Parse(json);
+        Assert.Equal(new[] { "versjon", "eksportertTid", "frister" }, dokument.RootElement.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(1, dokument.RootElement.GetProperty("versjon").GetInt32());
+        Assert.Equal("Bare fristdata", dokument.RootElement.GetProperty("frister")[0].GetProperty("tittel").GetString());
+        foreach (var hemmelig in new[] { "eksportvern@", "Bekreftelses", "HendelseId", "FoerJson", "Publiseringssekvens", "OppsummeringId" })
+            Assert.DoesNotContain(hemmelig, json, StringComparison.OrdinalIgnoreCase);
+        using var anonym = app.CreateClient(); Assert.Equal(HttpStatusCode.Unauthorized, (await anonym.GetAsync("/api/eksport/frister-json")).StatusCode);
+        using var leser = app.CreateClient(); leser.DefaultRequestHeaders.Add("X-Test-Rolle", "Leser");
+        Assert.Equal(HttpStatusCode.Forbidden, (await leser.GetAsync("/api/eksport/frister-json")).StatusCode);
+    }
     [Theory]
     [InlineData("Leser")]
     [InlineData("Bidragsyter")]

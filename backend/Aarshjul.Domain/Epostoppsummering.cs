@@ -13,6 +13,13 @@ public sealed class NyFristHendelse
     public string? Forklaring { get; set; }
 }
 
+/// <summary>Siste publiserte publikum ved eksplisitt sletting; uavhengig av dagens grupperegister.</summary>
+public sealed class FristHendelsessynlighet
+{
+    public Guid HendelseId { get; set; }
+    public required string GruppeKode { get; set; }
+}
+
 public sealed class Epostoppsummering
 {
     public Guid Id { get; set; } = Guid.NewGuid();

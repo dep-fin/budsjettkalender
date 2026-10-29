@@ -40,7 +40,7 @@ internal sealed class EpostrekkefolgeLagring : SaveChangesInterceptor
                 var nye = nyAktivering || rad.Entity.NyeFrister && !rad.Property(r => r.NyeFrister).OriginalValue;
                 var endringer = nyAktivering || rad.Entity.VesentligeEndringer && !rad.Property(r => r.VesentligeEndringer).OriginalValue;
                 var endret = await db.Database.ExecuteSqlInterpolatedAsync(
-                    $"UPDATE Epostaktiveringer SET Sekvens = CASE WHEN {nye} = 1 THEN {sekvens} ELSE Sekvens END, Endringssekvens = CASE WHEN {endringer} = 1 THEN {sekvens} ELSE Endringssekvens END WHERE BrukerId = {rad.Entity.BrukerId}", ct);
+                    $"UPDATE Epostaktiveringer SET Sekvens = CASE WHEN {nye} = 1 THEN {sekvens} ELSE Sekvens END, Endringssekvens = CASE WHEN {endringer} = 1 THEN {sekvens} ELSE Endringssekvens END, Livssyklussekvens = CASE WHEN {nyAktivering} = 1 THEN {sekvens} ELSE Livssyklussekvens END WHERE BrukerId = {rad.Entity.BrukerId}", ct);
                 if (endret == 0)
                 {
                     // Aktive EV02-abonnementer har implisitte grenser 0. En
@@ -48,7 +48,7 @@ internal sealed class EpostrekkefolgeLagring : SaveChangesInterceptor
                     var nyeGrense = nye ? sekvens : 0L;
                     var endringsgrense = endringer ? sekvens : 0L;
                     await db.Database.ExecuteSqlInterpolatedAsync(
-                        $"INSERT INTO Epostaktiveringer (BrukerId, Sekvens, Endringssekvens) VALUES ({rad.Entity.BrukerId}, {nyeGrense}, {endringsgrense})", ct);
+                        $"INSERT INTO Epostaktiveringer (BrukerId, Sekvens, Endringssekvens, Livssyklussekvens) VALUES ({rad.Entity.BrukerId}, {nyeGrense}, {endringsgrense}, { (nyAktivering ? sekvens : 0L) })", ct);
                 }
             }
             foreach (var rad in hendelser) rad.Entity.Publiseringssekvens = sekvens;

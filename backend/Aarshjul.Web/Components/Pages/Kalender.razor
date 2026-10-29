@@ -21,6 +21,10 @@
         <p class="menyoverskrift">Kalender</p>
         <h1>Kalender</h1>
         <p class="ingress">Se fristene i kalenderen, og behold oversikten over budsjettårene.</p>
+        @if (Fjernet == "1")
+        {
+            <p class="melding" role="status">Fristen er fjernet. Kalenderen viser det relevante utvalget med din vanlige tilgang.</p>
+        }
         @if (Tilstand.OverfoertFrist is { } overfoert)
         {
             <section class="kalenderovergang" aria-label="Overgang fra budsjettår">
@@ -108,6 +112,12 @@
 <Fristdialog @ref="_fristdialog" Startbudsjettaar="@(Tilstand.Budsjettaar.Count == 1 ? Tilstand.Budsjettaar.Single() : (int?)null)" />
 
 @code {
+    [SupplyParameterFromQuery(Name = "aar")] public string? Lenkeaar { get; set; }
+    [SupplyParameterFromQuery(Name = "kategori")] public string? Lenkekategori { get; set; }
+    [SupplyParameterFromQuery(Name = "dato")] public string? Lenkedato { get; set; }
+    [SupplyParameterFromQuery(Name = "fjernet")] public string? Fjernet { get; set; }
+    private string? _bruktLenke;
+    private int? _lenkeaar;
     private static readonly (Kalenderpresentasjon Visning, string Navn)[] Visninger =
         [(Kalenderpresentasjon.Maaned, "Måned"), (Kalenderpresentasjon.Uke, "Uke"), (Kalenderpresentasjon.Liste, "Liste")];
     private string Visningsnavn => Tilstand.Visning switch
@@ -133,6 +143,22 @@
         return LastInnAsync();
     }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        var nokkel = $"{Fjernet}|{Lenkeaar}|{Lenkekategori}|{Lenkedato}";
+        if (nokkel == _bruktLenke) return;
+        _bruktLenke = nokkel; _lenkeaar = null;
+        if (Fjernet != "1" || !int.TryParse(Lenkeaar, out var aar) || aar is < 1 or > 9999
+            || !int.TryParse(Lenkekategori, out var kategori) || !Enum.IsDefined((Kategori)kategori)
+            || !DateOnly.TryParseExact(Lenkedato, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var dato)) return;
+        _lenkeaar = aar; Tilstand.Budsjettaar.Clear(); Tilstand.Budsjettaar.Add(aar);
+        Tilstand.Kategorier.Clear(); Tilstand.Kategorier.Add((Kategori)kategori);
+        Tilstand.Soek = ""; Tilstand.ValgtDato = dato;
+        Tilstand.Periode = Kalenderperiode.Maaned;
+        await LastInnAsync();
+    }
+
     private async Task LastInnAsync()
     {
         var lasting = ++_lasting;
@@ -145,7 +171,7 @@
             // Årsvalgene omfatter hele det autoriserte, godkjente utvalget, også historikk.
             var aar = await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, inkluderHistorikk: true);
             if (_avsluttet || lasting != _lasting) return;
-            TilgjengeligeAar = aar;
+            TilgjengeligeAar = _lenkeaar is { } lenkeaar ? aar.Append(lenkeaar).Distinct().Order().ToArray() : aar;
             Tilstand.InitialiserAar(aar);
             IReadOnlyList<FristDto> frister = [];
             var (fra, til) = Kalendervisning.Periode(_valgtDato, Tilstand.Periode);

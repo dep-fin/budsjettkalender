@@ -25,7 +25,8 @@ public static class EpostoppgraderingBevis
     private sealed class HistoriskKontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
     {
         protected override void OnModelCreating(ModelBuilder b)
-        { base.OnModelCreating(b); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson); }
+        { base.OnModelCreating(b); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson);
+            b.Ignore<FristHendelsessynlighet>(); b.Entity("Aarshjul.Infrastructure.Epost.Epostaktivering").Ignore("Livssyklussekvens"); }
     }
     public sealed record EV03Plan(Guid Behandlet, Guid Ventende, Guid GammelPlan, Guid VentendePlan);
 

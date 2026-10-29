@@ -149,3 +149,59 @@ godkjenningen rulles tilbake uten feil førmetadata eller ekstra hendelse.
 EV05s hele før-eller-etter-utvalg, filtrering før gruppering og dagens synlighet
 med fersk mottakertilgang brukes uendret. Begge køinnganger prøves gjennom
 samme delte SQLite-/SQL Server-kontrakter og reell Kestrel-nettlesergrense.
+
+## EV07: logisk importdiff og historisk synlighet ved bortfall
+
+Importens tekniske slett/innsett beholdes for kompatibilitet, men publisert
+førtilstand med synlighet leses inne i samme transaksjon og sammenliknes per
+Frist.Id med godkjent ettertilstand. Ny er første publisering av identiteten;
+Endret bruker felles semantikk uten manuell tekstklassifisering fra en fristfil.
+Faktisk bortfall fra godkjent utvalg er Slettet. Hendelser, historiske grupper,
+begge saves og publiseringssekvens deler importtransaksjonen. En tildelt ID for
+en tom import-ID brukes både av den nye fristen og hendelsen. Forhåndsvisning
+tildeler ingen ID. V1-kontrakten og den fullstendige fristeksporten beholdes.
+
+Slettet lagrer bare FoerJson med siste publiserte tilstand, ingen EtterJson.
+Historiske gruppekoder ligger relasjonelt med hendelses-ID som fremmednøkkel,
+uten FK til dagens frist eller grupperegister. Dermed kan SQL filtrere historisk
+tilgang før metadata materialiseres, også etter at grupper fjernes. Mottakerens
+ferske egen rolle/grupper kombineres med denne siste synligheten ved begge
+innholdskontroller. Tom historisk synlighet gir bare administrator innsyn,
+etter den samme SerAlt-regelen som ordinære frister. Ny/Endret krever fortsatt
+dagens godkjente, synlige frist; manglende rad alene gir ingen historisk fallback.
+
+Slettet bruker Endringssekvens og Vesentlige endringer. År/kategori matcher hele
+siste publiserte tilstand. Endret matcher fortsatt hele før eller hele etter.
+Filtrering skjer før gruppering, begrunnelser og plankoblinger. En sletting tar
+derfor ikke med tidligere Endret-metadata som ville manglet dagens lesetilgang.
+Bare siste livsløpshendelse kan beskrive et bortfall, og aldri når identiteten
+er godkjent igjen. Begge sistekontroller verner også mot nytt bortfall eller
+gjeninnføring under planlagringen; sene hendelser blir igjen til neste forsøk.
+
+En egen Livssyklussekvens settes ved full adresseaktivering, uavhengig av
+Nye/Endret-valgene. Typevalg og filterutvidelser endrer ikke denne grensen.
+Ny etter denne grensen og etterfølgende bortfall utelates hvis mottakeren aldri
+har fått en bekreftet oppsummering av identiteten. Livssyklusoppslaget bruker
+hendelsesidentiteter og bekreftede plankoblinger uten å gjengi skjult historikk.
+Ny publisert før aktivering regnes som etablert; tidligere bekreftet Ny eller
+Endret lar en senere sletting varsles. Bare av/på-status for Nye eller fravær
+av en plan ville gitt feil resultat for abonnement på bare endringer.
+
+Oppgradering fra EV05 oppretter ingen hendelser eller historiske grupper og
+bevarer type-/utvalgsgrenser og planer. Eksisterende frister er installasjonens
+utgangspunkt: eksisterende aktiveringsrader får dagens koordinasjonssekvens som
+livssyklusgrense. Dette rekonstruerer ingen ukjent opprinnelig aktiveringsrekkefølge
+for eldre typevalg. Nye aktiveringer får en eksakt databaseordnet grense. Demoskjema
+oppgraderer EV02–EV05 atomisk og idempotent; historiske testmodeller beholder sitt
+autentiske skjema. Migrasjonens Designer og snapshot beskriver den nye modellen.
+
+Den livsvarige filtrerte Ny-indeksen beholdes. En eksplisitt gjeninnført identitet
+sammenliknes med siste bevarte publiserte tilstand og kan gi Endret, uten en ekstra
+Ny, ny identitet eller sletting av historikk. Dette virker også for eldre frister
+uten Ny, fordi det atomiske bortfallet har bevart siste publiserte tilstand.
+
+Slettingslenken er vanlig /kalender med validerbare år-, kategori- og datoparametre
+og en generell fjerningsmarkør. Ingen tittel, notat, identitet, adresse, JSON eller
+hemmelighet inngår i lenken. Siden krever vanlig innlogging og serverfiltrering,
+viser generell melding og beholder valgt år selv om årets siste frist er fjernet.
+Dette innfører ingen avlysningsmodul eller ny lese-/delingsrettighet.

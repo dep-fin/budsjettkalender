@@ -1,7 +1,7 @@
 # Gjeldende status
 
-Oppdatert 29. oktober 2026. Dette er samlet leveransestatus. [PR #134](https://github.com/depmartin/Budsjettkalender/pull/134), [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132)
-og kommentarene i [#75](https://github.com/depmartin/Budsjettkalender/issues/75) og
+Oppdatert 29. oktober 2026. Dette er samlet leveransestatus. [PR #135](https://github.com/depmartin/Budsjettkalender/pull/135), [PR #134](https://github.com/depmartin/Budsjettkalender/pull/134), [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132)
+og kommentarene i [#110](https://github.com/depmartin/Budsjettkalender/issues/110), [#75](https://github.com/depmartin/Budsjettkalender/issues/75) og
 [#93](https://github.com/depmartin/Budsjettkalender/issues/93) er kilden til siste
 publiserte head, faktisk CI, mergecommit, verifisert main og oppgavenes livsløp. Tidligere kandidatbeskrivelser og lokale
 testtall er bevart som [datert historikk](archive/status-foer-ux18-2026-10-28.md),
@@ -54,16 +54,33 @@ bestod 1063 ordinære, 216 ekte SQL Server- og 336 Chromium-tilfeller uten feil/
 [EV05-akseptansen](acceptance/2026-10-28-epost-ev05.md) skiller opprinnelige lokale
 bevis fra integrasjonsprøver og ny kandidat-CI. Ingen deploy inngår.
 
-EV06 ([#116](https://github.com/depmartin/Budsjettkalender/issues/116)) er en lokal
-kandidat fra denne mergede basen. Begge godkjenningsinnganger lagrer førstegangs-
+EV06 ([#116](https://github.com/depmartin/Budsjettkalender/issues/116)) er levert i
+[PR #135](https://github.com/depmartin/Budsjettkalender/pull/135), bekreftet merget som
+`28694c580141b91f9707c616a53ee95f05246e11`. Slutt-[CI 40843392655](https://github.com/depmartin/Budsjettkalender/actions/runs/40843392655)
+bestod 1157 ordinære, 310 ekte SQL Server- og 342 Chromium-tilfeller uten feil/hopp.
+Samlet Standards-/Spec-review og separat sikkerhetsaudit er avklart i PR-en.
+Begge godkjenningsinnganger lagrer førstegangs-
 eller vesentlig endringshendelse atomisk med forslag, frist og innboksmelding.
 Godkjennerens begrunnede innholdsendring følger samme regel som direkte redigering;
 endringsforslag beholder synlighet og direkte godkjenning bevarer målfristens tid.
 Innsending, generering/regenerering, avvisning og korrektur gir ingen fristpost.
 [EV06-akseptansen](acceptance/2026-10-29-epost-ev06.md) beskriver rød/grønn,
 konkurranseprøver og reelle brukerforløp. Oppdaget inventar er 1157 ordinære,
-310 SQL Server- og 342 nettlesertilfeller med hele basens navn bevart. Samlet
-review, separat sikkerhetsaudit og full kandidat-CI gjenstår før levering.
+310 SQL Server- og 342 nettlesertilfeller med hele basens navn bevart. Akseptansens
+beskrivelse av en lokal kandidat er datert byggbevis før denne leveringen.
+
+EV07 ([#117](https://github.com/depmartin/Budsjettkalender/issues/117)) er en lokal
+kandidat fra faktisk EV06-main. Fristimport beholder erstatt-alt og v1-formatet,
+men sammenlikner publisert innhold per identitet i samme transaksjon. Reelle Ny,
+Endret og Slettet lagres atomisk med import og publiseringssekvens; identisk
+gjenimport og korrektur varsler ikke. Sletting bruker siste publiserte metadata
+og relasjonelt bevart synlighet sammen med fersk mottakertilgang. Livssyklus
+utelater ny-og-fjernet før første oppsummering uavhengig av valgte varseltyper.
+Vanlige kalenderlenker viser et relevant utvalg og en generell fjerningsmelding.
+[EV07-akseptansen](acceptance/2026-10-29-epost-ev07.md) beskriver prøver, additiv
+oppgradering og bevisgrenser. Oppdaget inventar er 1228 ordinære, 379 SQL Server-
+og 344 nettlesertilfeller, med alle EV06-navn bevart. Samlet review, separat audit
+og faktisk kandidat-CI gjenstår hos orkestratoren. Ingen produksjonsutsending inngår.
 
 ## UX18 – samlet akseptanse og publisering
 

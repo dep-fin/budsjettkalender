@@ -14,7 +14,8 @@ public static class Demoskjema
         var tabeller = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM sqlite_master WHERE type = 'table'").ToListAsync(ct);
         var hendelseskolonner = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('NyFristHendelser')").ToListAsync(ct);
         var abonnementskolonner = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('Epostabonnementer')").ToListAsync(ct);
-        if (hendelseskolonner.Contains("Type") && abonnementskolonner.Contains("UtvalgJson")) return;
+        if (hendelseskolonner.Contains("Type") && abonnementskolonner.Contains("UtvalgJson")
+            && tabeller.Contains("FristHendelsessynlighet")) return;
         if (!tabeller.Contains("Epostabonnementer"))
             throw new InvalidOperationException("Demo-databasen er eldre enn EV02. Bruk en ny disponibel demo-database; eksisterende data er ikke endret.");
         await using var transaksjon = await db.Database.BeginTransactionAsync(ct);
@@ -23,6 +24,7 @@ public static class Demoskjema
         if (!tabeller.Contains("Epostrekkefolge")) migrasjoner.Add(new Migrations.OrdnetEpostaktivering());
         if (!hendelseskolonner.Contains("Type")) migrasjoner.Add(new Migrations.VarseltyperOgEndringer());
         if (!abonnementskolonner.Contains("UtvalgJson")) migrasjoner.Add(new Migrations.Abonnementsutvalg());
+        if (!tabeller.Contains("FristHendelsessynlighet")) migrasjoner.Add(new Migrations.HistoriskSlettingssynlighet());
         foreach (var migrasjon in migrasjoner)
         {
             // Migrasjonene genereres for produksjonens SQL Server. SQLite bruker

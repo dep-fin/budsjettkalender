@@ -76,6 +76,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Versjon).IsConcurrencyToken();
             e.HasIndex(x => new { x.BrukerId, x.LokalDato }).IsUnique();
         });
+        b.Entity<FristHendelsessynlighet>(e =>
+        {
+            e.ToTable("FristHendelsessynlighet");
+            e.HasKey(x => new { x.HendelseId, x.GruppeKode });
+            e.Property(x => x.GruppeKode).HasMaxLength(64);
+            e.HasOne<NyFristHendelse>().WithMany().HasForeignKey(x => x.HendelseId).OnDelete(DeleteBehavior.Cascade);
+        });
         b.Entity<Oppsummeringshendelse>(e =>
         {
             e.HasKey(x => new { x.OppsummeringId, x.HendelseId });
