@@ -124,3 +124,56 @@ alle identiske med inventaret før rettingen. Loggene er
 `TestResults/140/140-ci-sql-fix-inventory.txt`. SQL Server er fortsatt ikke
 kjørt lokalt: `AARSHJUL_TEST_SQLSERVER`, Docker og sqlcmd mangler.
 Grønt bevis for rettingen krever en ny faktisk kandidat-CI.
+
+## Datert nettleserretting 29. oktober 2026
+
+Neste publiserte head `2a1ed7fda80896f2a2d369d40faa9d0aec83e0d6` har samme
+tree `a350cb7fb2420400ee9c4070f0047027121bcec1` som lokal
+`1ad72ab2aa7162756ebe8a7e45405b97060f09e6`. Faktisk
+[CI 40857118722](https://github.com/depmartin/Budsjettkalender/actions/runs/40857118722)
+bestod **1167 ordinære og 316 SQL Server-tilfeller**, mens Chromium ga
+**342 beståtte, 2 feil og 0 hopp av 344**. Begge feilene gjelder
+`KildelenkeTester.Administrator_lagrer_endrer_fjerner_og_bevarer_manuell_kildelenke_etter_endringsforslag`,
+med `juster: False, bredde: 1440` og `juster: True, bredde: 390`.
+`TestResults/140/ci-40857118722/browser-job.log` og
+`actual-browser/browser.trx` under samme mappe bevarer dette røde beviset.
+
+Feilen oppstod etter klikk på «Liste»: den globale fristlokatoren kunne finne
+den gamle månedsvisningens `.kalenderhendelse` eller `.agenda-frist` før
+Blazor hadde rendret listevisningen. Enter ble sendt til den utgående knappen,
+og detaljdialogen åpnet aldri. Dermed feilet den uendrede href-forventningen
+på linje 84; beviset viste ikke en endret eller tapt lenke.
+Uendret C#-test reproduserte **1 feil av 2** lokalt i `diagnose-edge-1.trx`.
+Separat navigasjonsdiagnose med 75 ms forsinket Blazor-trafikk ga **9 feil av 9**
+med global lokator og **9 beståtte av 9** med lokator avgrenset til
+«Kalenderliste»: seks forsøk per variant på skrivebordsvisning og tre ved
+390 piksler. `diagnose-navigation.cjs` og `minimal-*/results.json` i samme
+CI-mappe bevarer tastaturmål og utfall. Forsinkelsen gjelder bare dette
+diagnostiske årsaksbeviset.
+
+Bare fristlokatoren umiddelbart etter «Liste» er nå avgrenset med
+`GetByRole(AriaRole.Region, new() { Name = "Kalenderliste", Exact = true })`.
+Playwright venter dermed på knappen i den valgte visningen før Enter.
+Alle 45 Assert-/Expect-kall, alle åtte Enter-handlinger, testnavn og testantall
+er bevart. Ingen produksjonskode, timeouter, ventepauser eller CI-vern er endret;
+ingen integrasjon fra #138 inngår.
+
+Fersk låst nettleser-restore med aktiv audit og full Release-rebuild av
+nettleserprosjektet og dets appreferanser bestod med SDK 10.0.402 og null
+advarsler/feil. Fem nye C#-kjøringer av begge tilfellene bestod **10/10**;
+deretter bestod alle tre `KildelenkeTester` **3/3**, uten feil/hopp. Dermed er
+begge bredder kjørt seks ganger hver etter rettingen. Disse faktiske
+Edge/Kestrel-forløpene bruker uendret testvert, egne disponible databaser/porter
+og ingen injisert trafikkforsinkelse. Fersk oppdagelse har **344 unike navn**,
+eksakt likt både tidligere lokalt inventar og denne CI-kjøringens 344 navn.
+
+Nye bevis ligger i `TestResults/140/ci-browser-fix/`: `restore.log`, `build.log`,
+`repeat-{1..5}.{log,trx}`, `kildelenke-all.{log,trx}`, `browser-inventory.txt`,
+`inventory-comparison.json` og `locator-change-check.json`. Manifestene og
+`verification.json` i samme mappe binder kildefiler, fersk runtime og prøver.
+Tidligere røde/grønne og faktiske CI-bevis er bevart.
+
+Dette er en avgrenset CI-retting av en testlokator. De 13 lokale utføringene
+erstatter ikke en ny full Chromium-kjøring eller de øvrige kandidat-CI-portene.
+Ingen ny samlet review, sikkerhetsaudit, commit, push, GitHub-endring eller
+deploy er utført i denne rettingsrunden.

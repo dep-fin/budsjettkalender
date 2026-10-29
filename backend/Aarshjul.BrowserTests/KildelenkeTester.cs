@@ -78,7 +78,8 @@ public sealed class KildelenkeTester
         await n.LoggInn("demo-fa"); await n.Side.SetViewportSizeAsync(bredde, 1000);
         await n.Gaa("/kalender"); await KalenderTester.VelgMaaned(n, "2030-11");
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Liste", Exact = true }).ClickAsync();
-        await n.Side.GetByRole(AriaRole.Button, new() { Name = tittel, Exact = true }).PressAsync("Enter");
+        await n.Side.GetByRole(AriaRole.Region, new() { Name = "Kalenderliste", Exact = true })
+            .GetByRole(AriaRole.Button, new() { Name = tittel, Exact = true }).PressAsync("Enter");
         var dialog = n.Side.GetByRole(AriaRole.Dialog, new() { Name = tittel, Exact = true });
         var lenke = dialog.GetByRole(AriaRole.Link, new() { Name = "Les rundskrivet på regjeringen.no (åpnes i ny fane)", Exact = true });
         await Expect(lenke).ToHaveAttributeAsync("href", Url);
