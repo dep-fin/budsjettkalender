@@ -13,6 +13,72 @@ namespace Aarshjul.Tests;
 public sealed class DagligEpostTester : DagligEpostKontrakt
 {
     [Fact]
+    public async Task EV10_demooppgradering_fra_EV09_bevarer_alt_uten_falske_stanser_eller_hendelser()
+    {
+        await using var database = new Sqlitedatabase(); await database.OpprettEV09SkjemaAsync();
+        var post = await EpostoppgraderingBevis.LeggTilAsync(database);
+        var plan = await EpostoppgraderingBevis.LeggTilEV08PlanAsync(database);
+        var foer = await EpostoppgraderingBevis.HentAsync(database);
+        var varsling = await EpostoppgraderingBevis.HentVarslingsdataAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext())
+        { await Demoskjema.SikreAsync(db); await Demoskjema.SikreAsync(db); Assert.Empty(await db.Epostadministratorstanser.ToListAsync()); }
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+        Assert.Equal(varsling, await EpostoppgraderingBevis.HentVarslingsdataAsync(database));
+        await EpostoppgraderingBevis.BekreftEV09PlanAsync(database, plan, post, avmeld: true);
+        await using var kontroll = database.Fabrikk().CreateDbContext(); Assert.Empty(await kontroll.Epostadministratorstanser.ToListAsync());
+        var abonnement = new EpostabonnementTjeneste(database.Fabrikk(), TimeProvider.System, post);
+        var ny = await abonnement.MeldPaaAsync("ev10-etter-oppgradering", "ny@fin.dep.no", true);
+        var admin = new Epostabonnentadministrasjon(database.Fabrikk(), TimeProvider.System);
+        await admin.StansAsync("ev10-etter-oppgradering", ny.Versjon, true, "admin");
+        Assert.Equal("admin", Assert.Single(await kontroll.Epostadministratorstanser.ToListAsync()).AktoerId);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task EV10_demo_med_ufullstendig_revisjonsskjema_avvises_uten_aa_roere_abonnement(bool feilNoekkel)
+    {
+        await using var database = new Sqlitedatabase(); await database.OpprettEV09SkjemaAsync();
+        await EpostoppgraderingBevis.LeggTilAsync(database); var foer = await EpostoppgraderingBevis.HentAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            await db.Database.ExecuteSqlRawAsync(feilNoekkel
+                ? "CREATE TABLE Epostadministratorstanser (Id TEXT PRIMARY KEY, BrukerId TEXT NOT NULL, AktoerId TEXT NOT NULL, Tidspunkt TEXT NOT NULL, Handling TEXT NOT NULL)"
+                : "CREATE TABLE Epostadministratorstanser (Id TEXT PRIMARY KEY)");
+            if (feilNoekkel) await db.Database.ExecuteSqlRawAsync("CREATE INDEX IX_Epostadministratorstanser_BrukerId_Tidspunkt ON Epostadministratorstanser (BrukerId, Tidspunkt)");
+            await Assert.ThrowsAsync<InvalidOperationException>(() => Demoskjema.SikreAsync(db));
+        }
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+    }
+
+    [Fact]
+    public async Task EV10_demooppgradering_ruller_hele_revisjonsskjemaet_tilbake_ved_feil_og_kan_gjentas()
+    {
+        await using var database = new Sqlitedatabase(); await database.OpprettEV09SkjemaAsync();
+        await EpostoppgraderingBevis.LeggTilAsync(database); var foer = await EpostoppgraderingBevis.HentAsync(database);
+        await using (var db = database.FabrikkMedKommando(new AvbrytAuditindeks()).CreateDbContext())
+            await Assert.ThrowsAsync<InvalidOperationException>(() => Demoskjema.SikreAsync(db));
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            Assert.DoesNotContain("Epostadministratorstanser", await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM sqlite_master WHERE type = 'table'").ToListAsync());
+            await Demoskjema.SikreAsync(db); await Demoskjema.SikreAsync(db);
+            Assert.Empty(await db.Epostadministratorstanser.ToListAsync());
+            await db.Database.ExecuteSqlRawAsync("DROP INDEX IX_Epostadministratorstanser_BrukerId_Tidspunkt");
+            await Assert.ThrowsAsync<InvalidOperationException>(() => Demoskjema.SikreAsync(db));
+        }
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+    }
+
+    private sealed class AvbrytAuditindeks : DbCommandInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(System.Data.Common.DbCommand command,
+            CommandEventData eventData, InterceptionResult<int> result, CancellationToken ct = default)
+        {
+            if (command.CommandText.Contains("CREATE INDEX \"IX_Epostadministratorstanser", StringComparison.Ordinal))
+                throw new InvalidOperationException("Kontrollert skjemafeil.");
+            return ValueTask.FromResult(result);
+        }
+    }
+    [Fact]
     public async Task EV09_demooppgradering_fra_levert_main140_bevarer_kildelenker_og_fullfoerer_med_snever_avmeldingsrett()
     {
         await using var database = new Sqlitedatabase(); await database.OpprettLevertMainSkjemaAsync();
@@ -189,6 +255,11 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
             await using var db = new TidligereKontekst(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_tilkobling).Options);
             await db.Database.EnsureCreatedAsync();
         }
+        public async Task OpprettEV09SkjemaAsync()
+        {
+            await using var db = new EV09Kontekst(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_tilkobling).Options);
+            await db.Database.EnsureCreatedAsync();
+        }
         public async Task OpprettEV03SkjemaAsync()
         {
             await using var db = new EV03Kontekst(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_tilkobling).Options);
@@ -237,6 +308,11 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
             b.Ignore("Aarshjul.Infrastructure.Epost.Epostrekkefolge");
             b.Ignore("Aarshjul.Infrastructure.Epost.Epostaktivering");
         }
+    }
+    private sealed class EV09Kontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
+    {
+        protected override void OnModelCreating(ModelBuilder b)
+        { base.OnModelCreating(b); b.Ignore<Epostadministratorstans>(); }
     }
     private sealed class EV03Kontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
     {

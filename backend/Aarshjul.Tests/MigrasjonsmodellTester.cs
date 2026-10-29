@@ -46,6 +46,19 @@ public sealed class MigrasjonsmodellTester
     public void EV09_maal_bevarer_tidligere_vern_og_samsvarer_med_siste_snapshot()
         => KontrollerMaal("20261029143000_Avmeldingslenke", true, true, true);
 
+    [Fact]
+    public void EV10_maal_er_additivt_uten_personinnhold_og_bevarer_hele_tidligere_modellen()
+    {
+        KontrollerMaal("20261029170000_Epostadministratorstans", true, true, true);
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlServer("Server=localhost;Database=KunModell;Integrated Security=True").Options);
+        var samling = db.GetService<IMigrationsAssembly>();
+        var migrasjon = samling.CreateMigration(samling.Migrations.Last().Value, db.Database.ProviderName!);
+        var tabell = Assert.IsType<CreateTableOperation>(migrasjon.UpOperations[0]);
+        Assert.Equal("Epostadministratorstanser", tabell.Name);
+        Assert.Equal(new[] { "AktoerId", "BrukerId", "Handling", "Id", "Tidspunkt" }, tabell.Columns.Select(c => c.Name).Order(StringComparer.Ordinal));
+        Assert.Empty(tabell.ForeignKeys); Assert.Empty(migrasjon.UpOperations.OfType<InsertDataOperation>());
+    }
+
     private static void KontrollerMaal(
         string migrasjonId, bool oppsummering, bool ordnet, bool endringer)
     {
@@ -88,7 +101,7 @@ public sealed class MigrasjonsmodellTester
             Assert.True(plan.FindProperty("Versjon")!.IsConcurrencyToken);
             Assert.Equal(ordnet, plan.FindProperty("Status")!.IsConcurrencyToken);
             Assert.Equal(ordnet, hendelse.FindProperty("Publiseringssekvens") is not null);
-            var avmelding = migrasjonId == "20261029143000_Avmeldingslenke";
+            var avmelding = string.CompareOrdinal(migrasjonId, "20261029143000_Avmeldingslenke") >= 0;
             Assert.Equal(avmelding, plan.FindProperty("AvmeldingsHash") is not null);
             Assert.Equal(avmelding, plan.FindProperty("Avmeldingssekvens") is not null);
             if (avmelding)

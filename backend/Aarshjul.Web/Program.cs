@@ -111,6 +111,8 @@ public partial class Program
         // Testing oppretter skjema etter vertsstart. Kontrollerte klokker kjører eksplisitt.
         if (!erTesting && !kontrollertEpost) builder.Services.AddHostedService<Aarshjul.Web.Epost.DagligEpostjobb>();
         builder.Services.AddScoped<IEpostabonnement, EpostabonnementTjeneste>();
+        builder.Services.AddScoped<IEpostabonnentadministrasjon, Epostabonnentadministrasjon>();
+        builder.Services.AddScoped<EpostabonnentadministrasjonKommando>();
         builder.Services.AddScoped<EpostabonnementKommando>();
         if (erDemo || erTesting)
         {
@@ -215,6 +217,13 @@ public partial class Program
         // antiforgery ved ny kjøring av POST og kan erstatte avvisningen med 400.
         app.Use(async (http, neste) =>
         {
+            if (http.Request.Path.StartsWithSegments("/api/admin/epostabonnenter")
+                || http.Request.Path.StartsWithSegments("/admin/innstillinger/epostvarsling"))
+            {
+                http.Response.Headers.CacheControl = "no-store";
+                if (http.Features.Get<Microsoft.AspNetCore.Diagnostics.IStatusCodePagesFeature>() is { } abonnentstatus)
+                    abonnentstatus.Enabled = false;
+            }
             if (http.Request.Path.StartsWithSegments("/epostvarsling") || http.Request.Path == "/demo/epostmottaker")
             {
                 http.Response.Headers.CacheControl = "no-store";
@@ -239,6 +248,7 @@ public partial class Program
         app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
         app.MapFristEndepunkter();
         app.MapEpostEndepunkter();
+        app.MapEpostabonnentEndepunkter();
         if (brukEntra)
         {
             app.MapControllers();

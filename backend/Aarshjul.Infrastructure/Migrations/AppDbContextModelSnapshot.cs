@@ -22,6 +22,19 @@ namespace Aarshjul.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Aarshjul.Domain.Epostadministratorstans", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("bigint");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    b.Property<string>("AktoerId").IsRequired().HasMaxLength(128).HasColumnType("nvarchar(128)");
+                    b.Property<string>("BrukerId").IsRequired().HasMaxLength(128).HasColumnType("nvarchar(128)");
+                    b.Property<string>("Handling").IsRequired().HasMaxLength(32).HasColumnType("nvarchar(32)");
+                    b.Property<DateTimeOffset>("Tidspunkt").HasColumnType("datetimeoffset");
+                    b.HasKey("Id");
+                    b.HasIndex("BrukerId", "Tidspunkt");
+                    b.ToTable("Epostadministratorstanser");
+                });
+
             modelBuilder.Entity("Aarshjul.Domain.BehandletDokument", b =>
                 {
                     b.Property<Guid>("Id")

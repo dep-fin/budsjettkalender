@@ -160,9 +160,7 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
         await using var db = await fabrikk.CreateDbContextAsync(ct);
         var rad = await db.Epostabonnementer.SingleOrDefaultAsync(x => x.BrukerId == brukerId, ct);
         if (rad is null || rad.Status == "Avmeldt") return TilDto(rad);
-        rad.Status = "Avmeldt";
-        rad.Endret = klokke.GetUtcNow();
-        FjernBekreftelse(rad);
+        EpostabonnementTilstand.Stans(rad, klokke.GetUtcNow());
         db.KoordinerEpostlagring();
         await LagreAsync(db, rad, ct);
         return TilDto(rad);
@@ -184,9 +182,7 @@ public sealed class EpostabonnementTjeneste(IDbContextFactory<AppDbContext> fabr
         var sekvens = await db.Set<Epostaktivering>().AsNoTracking().Where(x => x.BrukerId == rett.BrukerId)
             .Select(x => (long?)x.Livssyklussekvens).SingleOrDefaultAsync(ct) ?? 0;
         if (rad?.Status != "Aktiv" || sekvens != rett.Avmeldingssekvens) return;
-        rad.Status = "Avmeldt";
-        rad.Endret = klokke.GetUtcNow();
-        FjernBekreftelse(rad);
+        EpostabonnementTilstand.Stans(rad, klokke.GetUtcNow());
         await LagreAsync(db, rad, ct);
         await grense.CommitAsync(ct);
     }

@@ -1,0 +1,7 @@
+.abonnenter { display: grid; gap: 1rem; margin-top: 1.5rem; }
+article, .bekreftelse { border: 1px solid var(--border, #ccc); border-radius: .5rem; padding: 1rem; overflow-wrap: anywhere; }
+dl { display: grid; grid-template-columns: minmax(9rem, 1fr) 2fr; gap: .4rem 1rem; }
+dt { font-weight: 600; } dd { margin: 0; }
+.bekreftelse { margin-top: 1rem; background: var(--surface, #f5f7f8); }
+button { margin: .25rem .5rem .25rem 0; white-space: normal; }
+@media (max-width: 600px) { dl { grid-template-columns: 1fr; } dd { margin-bottom: .5rem; } }

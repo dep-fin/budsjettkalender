@@ -28,7 +28,7 @@ public static class FasedataBevis
     private sealed class HistoriskKontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
     {
         protected override void OnModelCreating(ModelBuilder b)
-        { base.OnModelCreating(b); b.Entity<Frist>().Ignore(x => x.ManuellKildeUrl); }
+        { base.OnModelCreating(b); b.Entity<Frist>().Ignore(x => x.ManuellKildeUrl); b.Ignore<Epostadministratorstans>(); }
     }
 
     public static async Task LeggTilHistorikkAsync(IDbContextFactory<AppDbContext> fabrikk)

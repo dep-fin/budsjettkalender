@@ -30,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<InnhentingsStatus> InnhentingsStatuser => Set<InnhentingsStatus>();
     public DbSet<Kalenderabonnement> Kalenderabonnementer => Set<Kalenderabonnement>();
     public DbSet<Epostabonnement> Epostabonnementer => Set<Epostabonnement>();
+    public DbSet<Epostadministratorstans> Epostadministratorstanser => Set<Epostadministratorstans>();
     public DbSet<NyFristHendelse> NyFristHendelser => Set<NyFristHendelse>();
     public DbSet<Epostoppsummering> Epostoppsummeringer => Set<Epostoppsummering>();
     public DbSet<Oppsummeringshendelse> Oppsummeringshendelser => Set<Oppsummeringshendelse>();
@@ -45,6 +46,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<Epostadministratorstans>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.BrukerId).HasMaxLength(128);
+            e.Property(x => x.AktoerId).HasMaxLength(128);
+            e.Property(x => x.Handling).HasMaxLength(32);
+            e.HasIndex(x => new { x.BrukerId, x.Tidspunkt });
+            // Ingen kaskade til bruker eller abonnement: revisjonssporet skal bevares.
+        });
         b.Entity<Epostrekkefolge>(e =>
         {
             e.ToTable("Epostrekkefolge", t => t.HasCheckConstraint("CK_Epostrekkefolge_EnRad", "[Id] = 1"));
