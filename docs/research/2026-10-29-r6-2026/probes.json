@@ -1,0 +1,59 @@
+{
+  "isolatedRows": [
+    {
+      "row": 1,
+      "input": "Frist for innsending av førsteutkast/skisse til omtale av strukturelle utfordringer og -tiltak 16. oktober 2026",
+      "date": "2026-10-16",
+      "title": "Frist for innsending av førsteutkast/skisse til omtale av strukturelle utfordringer og -tiltak"
+    },
+    {
+      "row": 2,
+      "input": "Frist for ferdigstillelse av omtalen av strukturelle utfordringer og -tiltak 18. desember 2026",
+      "date": "2026-12-18",
+      "title": "Frist for ferdigstillelse av omtalen av strukturelle utfordringer og -tiltak"
+    },
+    {
+      "row": 3,
+      "input": "Frist for spesifikasjon av driftspostene for 2027-budsjettet 4. januar 2027",
+      "date": "2027-01-04",
+      "title": "Frist for spesifikasjon av driftspostene for 2027-budsjettet"
+    },
+    {
+      "row": 4,
+      "input": "Frist for innsending av materiale til teknisk justering og flerårige budsjettkonsekvenser av gjeldende politikk 6. januar 2027",
+      "date": "2027-01-06",
+      "title": "Frist for innsending av materiale til teknisk justering og flerårige budsjettkonsekvenser av gjeldende politikk"
+    },
+    {
+      "row": 5,
+      "input": "Frist for innsending av mulige innsparingstiltak 15. januar 2027",
+      "date": "2027-01-15",
+      "title": "Frist for innsending av mulige innsparingstiltak"
+    },
+    {
+      "row": 6,
+      "input": "Frist for innsending av satsingsforslag 22. januar 2027",
+      "date": "2027-01-22",
+      "title": "Frist for innsending av satsingsforslag"
+    },
+    {
+      "row": 7,
+      "input": "Frist for tabeller for nettobudsjetterte virksomheter 26. februar 2027",
+      "date": "2027-02-26",
+      "title": "Frist for tabeller for nettobudsjetterte virksomheter"
+    },
+    {
+      "row": 8,
+      "input": "Regjeringens marskonferanse 9.–10. mars 2027",
+      "date": "2027-03-10",
+      "title": "Regjeringens marskonferanse 9.–"
+    },
+    {
+      "row": 9,
+      "input": "Utsending av Hovedbudsjettskriv Ultimo mars 2027",
+      "date": null,
+      "title": "Utsending av Hovedbudsjettskriv Ultimo mars 2027"
+    }
+  ],
+  "noYearWork2029": "2029-12-31"
+}

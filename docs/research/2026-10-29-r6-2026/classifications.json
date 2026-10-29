@@ -1,0 +1,66 @@
+[
+  {
+    "candidate": 1,
+    "classification": "referanse/forutsetning",
+    "dateSourcePage": 1,
+    "segmentPages": [
+      1,
+      2
+    ],
+    "source": "Brevhode, Dato; segmentet omfatter også innholdsfortegnelse og starten av side 2.",
+    "reason": "23. juni 2026 er dokumentdato, ikke innleveringsfrist."
+  },
+  {
+    "candidate": 2,
+    "classification": "reell frist",
+    "dateSourcePage": 3,
+    "segmentPages": [
+      3
+    ],
+    "source": "Punkt 2.1, hele tidsplanen og første setning etter tabellen.",
+    "reason": "16. oktober 2026 er reell dagsfrist for rad 1, men tittel og bevis er sammenslått med de øvrige åtte radene. Klassifiseringen innebærer ikke en korrekt radkobling."
+  },
+  {
+    "candidate": 3,
+    "classification": "referanse/forutsetning",
+    "dateSourcePage": 4,
+    "segmentPages": [
+      4
+    ],
+    "source": "Punkt 3.1, valutakurser.",
+    "reason": "15. desember 2026 angir valutakursgrunnlaget, ikke dato for innsending."
+  },
+  {
+    "candidate": 4,
+    "classification": "referanse/forutsetning",
+    "dateSourcePage": 5,
+    "segmentPages": [
+      5
+    ],
+    "source": "Punkt 3.3, prisnivå for kostnadsrammer.",
+    "reason": "01.07.2027 er prisnivådato for beløp, ikke en egen frist."
+  },
+  {
+    "candidate": 5,
+    "classification": "referanse/forutsetning",
+    "dateSourcePage": 5,
+    "segmentPages": [
+      5
+    ],
+    "source": "Punkt 3.4, Tabell 3 kontantbeholdninger pr. 31. desember.",
+    "reason": "Årsskiftestatus for regnskapstabell. Ingen eksplisitt kalenderår ved datoen; 2028 er appens reserve fra arbeidsår."
+  },
+  {
+    "candidate": 6,
+    "classification": "referanse/forutsetning",
+    "dateSourcePage": 16,
+    "segmentPages": [
+      15,
+      16,
+      17
+    ],
+    "source": "Vedleggslisten, Vedlegg 3-3 / Tabell 3 på side 16; segmentet begynner med signatur på side 15 og fortsetter til adresselisten side 17.",
+    "reason": "Gjentakelse av samme kontantbeholdningsdato som kandidat 5. Den blir dessuten borte fra lagret utdrag fordi det avkortes før datoen.",
+    "semanticDuplicateOf": 5
+  }
+]
