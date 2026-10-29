@@ -129,23 +129,31 @@ uten lås. Additiv migrasjon/demooppgradering og hemmelighetsvern er levert.
 [EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md) bevarer daterte lokale bevis.
 
 [#138](https://github.com/depmartin/Budsjettkalender/issues/138), parent #136 punkt 1,
-er publisert i [PR #145](https://github.com/depmartin/Budsjettkalender/pull/145),
-med kommende Liste, 25 per side, separat historikk og fersk detaljtilgang med
-tømming ved lukking. I CI-løkken er faktisk levert EV09-main nå integrert med
-lokal forelder `43a091e` / publisert `b92081d`, samme tre `25a8796`.
-Alle sju egne produktblobber fra gjennomgått `823d1530`, alle 16 detaljregresjoner
-og historikkprøvens presise tre forventningsinnsettinger er bevart.
-Inventar er nøyaktig foreldreunion **1349/480/378**, uten tap eller dubletter.
-Én ny ordinærsuite består **1349/1349** og relevante Edge/Kestrel-forløp
-**115/115**, null feil/hopp; begge TRX består mains hemmelighetskontroll.
-CI 40885826810s Chromium **373/374** er bevart som rødt bevis. Ny faktisk full
-kandidat-CI krever tre grønne jobber før brukerautorisert merge. Mains
-hemmelighets-/artefakt-/utfalls-/hopp-/audit-/tidsvern er uendret; bare faktisk
-browserunion er økt til 378. SQL Server er bare bygget/oppdaget lokalt.
+er levert i [PR #145](https://github.com/depmartin/Budsjettkalender/pull/145),
+bekreftet merget som `7b4cadf143937c52fceb91a775ef4416ab8ac571`.
+[Slutt-CI 40901062835](https://github.com/depmartin/Budsjettkalender/actions/runs/40901062835)
+bestod **1349 ordinære, 480 SQL Server og 378 Chromium**, alle tre jobber grønne.
+Kommende Liste har 25 per side, separat historikk og fersk detaljtilgang med
+tømming ved lukking. Lokal ren main er synkronisert ifølge
+[#136s leveransejournal](https://github.com/depmartin/Budsjettkalender/issues/136#issuecomment-6501625538).
 [EV09-avstemmingen](acceptance/2026-10-29-kommende-liste.md#nodvendig-ev09-mainintegrasjon-i-ci-lokken-29-oktober-2026)
-binder lokale prøver og det gamle avviket med nøyaktig tre SQLite-bevisfiler.
-Standards/Spec/separat audit på `823d1530` beholder sin revisjonsgrense og er
-ingen ny attest på dette treet. #136 er åpen; #139 avventer faktisk #145-merge.
+bevarer de tidligere lokale/revisjonsbundne prøvene, reviewgrensen, rødt CI-bevis
+og det gamle avviket med tre SQLite-bevisfiler.
+
+[#139](https://github.com/depmartin/Budsjettkalender/issues/139), parent #136 punkt 2,
+er lokal byggekandidat fra denne faktisk leverte main. «Søk i alle datoer»/Enter
+åpner egen treffliste med historikk innen eksplisitte år/kategorier og tilgang,
+25 per side, ferske detaljer og navigasjon til fristens ferske måned. Søk/side
+og opprinnelig kalenderkontekst bevares. Spec-reviewens P2-funn er rettet:
+årsavkryssing beholder fokus under venting og bortfalt år, mens gamle årsvalg
+fortsatt fjernes. Eksakt inventar er **1349/480/409**,
+med alle tidligere navn bevart og 31 nye nettlesertilfeller.
+Lokal rettet kandidat består **1349/1349 ordinære og 117/117 relevante
+Edge/Kestrel-tilfeller**, uten feil/hopp. SQL Server er bygget/oppdaget lokalt.
+[Søkeakseptansen](acceptance/2026-10-29-kalendersoek.md) beskriver lokale prøver
+og bevisgrenser i `TestResults/139-focusfix/`. Relevant Spec-/sikkerhetsverifikasjon
+etter rettingen, publisering og faktisk kandidat-CI følger hos orkestratoren.
+#136 forblir åpen. Ingen deploy inngår.
 
 ## UX18 – samlet akseptanse og publisering
 

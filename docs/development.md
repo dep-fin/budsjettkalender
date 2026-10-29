@@ -1,26 +1,33 @@
 # Utvikling
 
-PR #145 / #138 er 29. oktober 2026 avstemt med faktisk levert EV09 / PR #146
-på main `dd2a24c87aceb692c576eafa155d02ee0541b12b`. Lokal forelder er
-`43a091e333797216008e025a215287e7e0f042c9`; publisert `b92081d` har samme
-tre `25a8796ddd5702d517fd1d1914e4435758d2d702`. Alle sju egne produktblobber
-fra gjennomgått `823d1530` og alle backendblobber fra de to integrasjonsforeldrene
-er bevart. Historikkprøvens avtalte tre nye forventninger består: alle 71
-opprinnelige forventninger og handlinger er bevart, nå 74 forventninger.
-Fersk oppdagelse gir **1349 ordinære tester, 480 SQL Server-tilfeller og 378
-nettleserscenarioer**. Dette er nøyaktig unionen av foreldrenes 1303/442/374 og
-1348/480/354; alle hele navn er bevart tegnsensitivt uten dubletter.
-Én ny lokal ordinærsuite består **1349/1349** og ett samlet relevant
-Edge/Kestrel-utvalg **115/115**, alle tidligere 111 pluss fire EV09-forløp.
-Null feil/hopp; begge faktiske TRX består mains hemmelighetskontroll.
-CI krever nøyaktig **480 SQL- og 378 Chromium-resultater** uten feil/hopp.
-Mains hemmelighetssøk før TRX-opplasting, opplastingsvilkår, aktiv audit,
+#139 er lokal byggekandidat på faktisk levert #138 / PR #145, main
+`7b4cadf143937c52fceb91a775ef4416ab8ac571`. Kalenderens lokale tekstfilter
+beholdes; «Søk i alle datoer»/Enter åpner egen treffliste med historikk,
+eksplisitte år/kategorier, 25 per side, ferske detaljer og månedsnavigasjon.
+Søk/side og opprinnelig kalenderkontekst bevares. Ingen API eller migrasjon.
+[Søkeakseptansen](acceptance/2026-10-29-kalendersoek.md) beskriver atferd,
+rød/grønn, lokale sluttprøver og bevisgrenser.
+Etter Spec-reviewrettingen beholder årsavkryssing fokus gjennom venting og
+bortfalt år uten å beholde gamle årsvalg. Sluttprøvene består **1349/1349
+ordinære og 117/117 relevante Edge/Kestrel-tilfeller**, uten feil/hopp, med alle
+31 nye søketilfeller inkludert. Bevis: `TestResults/139-focusfix/`.
+Alle tre låste restore og Release-bygg består uten advarsler/feil med aktiv audit.
+
+Eksakt inventar er **1349 ordinære, 480 SQL Server og 409 nettlesertilfeller**,
+alle tidligere navn bevart uten dubletter, med 31 nye søketilfeller.
+CI krever nøyaktig **480 SQL- og 409 Chromium-resultater** uten feil/hopp.
+Hemmelighetssøk før TRX-opplasting, opplastingsvilkår, aktiv audit,
 utfalls-/hopp-/antallskontroller og tidsgrenser 15/20/45 minutter består.
-Se [EV09-avstemmingen](acceptance/2026-10-29-kommende-liste.md#nodvendig-ev09-mainintegrasjon-i-ci-lokken-29-oktober-2026)
-for nye lokale prøver, revisjonsbundet review og de tre historiske SQLite-
-filunntakene. CI 40885826810s 373/374 Chromium er bevart som rødt bevis;
-tre nye grønne kandidatjobber kreves før autorisert merge. SQL Server er bare
-bygget/oppdaget lokalt når `AARSHJUL_TEST_SQLSERVER` mangler. Ingen deploy inngår.
+SQL Server er bare bygget/oppdaget lokalt når `AARSHJUL_TEST_SQLSERVER` mangler.
+Relevant Spec-/sikkerhetsverifikasjon etter rettingen og faktisk kandidat-CI
+følger hos orkestratoren.
+
+Levert #138s [slutt-CI 40901062835](https://github.com/depmartin/Budsjettkalender/actions/runs/40901062835)
+bestod 1349 ordinære, 480 SQL Server og 378 Chromium før bekreftet merge.
+[EV09-avstemmingen](acceptance/2026-10-29-kommende-liste.md#nodvendig-ev09-mainintegrasjon-i-ci-lokken-29-oktober-2026)
+bevarer tidligere revisjonsbundne prøver, review, rødt CI-bevis og de tre
+historiske SQLite-filunntakene. Disse filene er ikke åpnet under #139.
+Ingen deploy inngår.
 
 EV08 bruker eksisterende abonnementslagring uten egen modellendring/migrasjon.
 Fra `/epostvarsling` kan Aktiv/Venter bytte egen adresse og Avmeldt uttrykkelig
@@ -361,16 +368,16 @@ grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gj
 
 ## Obligatorisk nettleserakseptanse
 
-Gjeldende integrerte #138-kandidat krever nøyaktig **378 beståtte Chromium-scenarioer**
+Gjeldende #139-kandidat krever nøyaktig **409 beståtte Chromium-scenarioer**
 uten hopp eller manglende TRX. **480 ekte SQL Server-tilfeller** kreves i den
 separate SQL-porten. De daterte kjøringene nedenfor viser tidligere kandidatgrunnlag.
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 378 scenarioer bruker disponible Kestrel-verter,
+eksisterende app eller database: 409 scenarioer bruker disponible Kestrel-verter,
 inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06,
 to fra EV07, fire fra EV08 og fire fra EV09,
 sju fra UX17, seks fra UX18, to fra #140, åtte fra #138s listeutvalg og 16 fra
-felles detaljretting. De siste revaliderer synlighet, grupper og autentisering,
+felles detaljretting, samt 31 fra #139s søk, treffnavigasjon og fokus ved årsvalg. Detaljprøvene revaliderer synlighet, grupper og autentisering,
 håndterer sletting, tømmer dialog-DOM ved Lukk/Escape og verner mot sene svar
 og JS-åpninger. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
@@ -449,7 +456,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 378 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 409 beståtte scenarioer uten hopp.
 EV05/UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -460,7 +467,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny integrert kandidat-CI må fullføre alle 378; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 409; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
