@@ -109,6 +109,7 @@ public sealed class KalendersoekKapploepTester
         await p.Side.GetByLabel("2031", new() { Exact = true }).PressAsync("Space");
         await steg.Startet.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await Expect(aarsvalg).ToBeFocusedAsync();
+        await Expect(aarsvalg.GetByRole(AriaRole.Checkbox)).ToHaveCountAsync(0);
         await p.Side.Keyboard.PressAsync("Tab");
         var neste = aarsvalg.GetByRole(AriaRole.Button, new() { Name = "Velg alle", Exact = true });
         await Expect(neste).ToBeFocusedAsync();

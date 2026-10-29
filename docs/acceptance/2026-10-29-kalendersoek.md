@@ -175,6 +175,56 @@ og testfiler er uendret fra reviewgrunnlaget. Faktisk SQL Server og hele den
 låste Chromium-suiten må fortsatt bestå i kandidat-CI; review og lokale
 Edge-prøver er ikke fullført kandidat-CI.
 
+## CI-retting 29. oktober 2026
+
+Første publiserte kandidat i [PR #148](https://github.com/depmartin/Budsjettkalender/pull/148),
+head `0210814826805aaf3dc5c4dadbb3663ae1e58661`, bestod 1349 ordinære og
+480 ekte SQL Server-tilfeller i [CI 40919516114](https://github.com/depmartin/Budsjettkalender/actions/runs/40919516114).
+Nettleserjobben hadde **408/409 bestått**, ingen hopp. Bare
+`Aarsvalg_stjeler_ikke_fokus_nar_brukeren_gaar_videre_under_ventingen`
+feilet, ved den første fokusforventningen før `Fortsett.TrySetResult`.
+Dette var ikke den senere forventningen etter at det forsinkede svaret var frigitt.
+
+Diagnosen i `TestResults/139-ci-diagnosis-1/diagnosis.txt` skiller serverens
+`Startet`-signal fra den synlige lasterenderingen. Fokus på årsgruppen beviser
+heller ikke at de gamle avkrysningsboksene er fjernet. En umiddelbar Tab kunne
+derfor nå det gamle 2028-valget, som deretter ble fjernet og etterlot BODY
+med fokus. Den uendrede testen feilet også i rettingsrundens egen `baseline.trx`
+på samme opprinnelige linje 114.
+
+Den avgrensede rettingen venter på **null avkrysningsbokser i årsgruppen**
+før Tab. Alle eksisterende handlinger, fokusforventninger, resultatkrav,
+tidsgrenser og scenarioer er beholdt. Ingen produktkode eller CI-kontroll
+endres. Startgrunnlaget er lokal HEAD `0ca3988afdb13aa3c2e13429fa8162d36b9e7f58`,
+tree `826612d5a49d790ef3115a41213b8e49ea4d0472`, identisk med den publiserte
+kandidatens tree. Nye bevis ligger bare i `TestResults/139-ci-fix-1/`.
+
+Den rettede prøven består **10/10 gjentatte kjøringer**. Samlet består
+**63/63 Edge/Kestrel-tilfeller**: alle 31 søketilfeller, 16 felles
+detaljregresjoner og 16 navigasjonsregresjoner. Hele den ordinære suiten
+består **1349/1349**, uten feil/hopp. Alle tre låste restore og Release-bygg
+bruker SDK `10.0.402`, null advarsler/feil og audit `true/all/low`.
+Oppdagede navn er eksakt bevart: **1349/480/409**. SQL Server er bygget og
+oppdaget lokalt, ikke kjørt i denne rettingsrunden.
+
+`verified-results.json` binder TRX-navnene og hashkontrollen. Alle 460
+kilde-/CI-filer og 1368 runtimefiler er uendret gjennom prøvene. Mot
+startgrunnlaget er bare den ene testlinjen endret i kildefilene; hvis linjen
+fjernes, er testfilens bytes identiske med startgrunnlaget. De nødvendige
+Release-byggene regenererte 44 egne DLL/PDB-filer. Dette er journalført i
+`runtime-build-changes.json`; generert assemblymetadata angir lokal HEAD.
+`source-initial.json`/`runtime-initial.json` bevarer de tidligere runtime-
+og kildehashene. `candidate-files.json` binder de to endrede filene.
+Repoets uendrede hemmelighetskontroll består alle nye TRX-filer. Tidligere
+bevis og databaser er bevart.
+
+Prøven dekker at videre Tab beholder fokus når lastetilstanden er rendret.
+Den korte overgangen før denne renderingen er ikke dekket av ventingen;
+rettingen beviser ikke at en umiddelbar Tab i dette intervallet beholder
+fokus. Det er ikke gjort eller prøvd noen produktendring for dette intervallet.
+CI-løkken har ingen ny individuell review eller sikkerhetsaudit. Ny kandidat-CI
+må bestå alle tre faktiske porter før autorisert merge; ingen deploy inngår.
+
 ## Bevisgrense
 
 SQL Server er bare bygget og oppdaget lokalt; `AARSHJUL_TEST_SQLSERVER` er ikke
