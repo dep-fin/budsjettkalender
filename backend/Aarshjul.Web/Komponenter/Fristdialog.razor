@@ -3,9 +3,12 @@
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthState
 @inject IAuthorizationService Autorisering
+@inject IFristlesing Lesing
+@inject Synlighetskontekstkilde Kontekstkilde
+@inject ILogger<Fristdialog> Logg
 
 @{ _vistForslagsfeil = _forslagsfeil; }
-<dialog @ref="_dialog" class="fristdialog" aria-labelledby="fristdialog-tittel" data-visning="@_visning"
+<dialog @ref="_dialog" class="fristdialog" aria-labelledby="fristdialog-tittel" data-visning="@_visning" data-aapning="@_aapning"
         data-tilbake="@((_forslag || (!_sendt && _frist is not null && _agendadato is not null)) ? "true" : "false")"
         data-sender="@(_sender ? "true" : "false")">
     <div class="dialogtopp">
@@ -34,6 +37,13 @@
                 <a class="knapp knapp-primær" href="/forslag/mine">Mine forslag</a>
                 <button class="knapp" @onclick="TilbakeEtterForslagAsync">@(_agendadato is not null ? "Tilbake til dagsagenda" : "Tilbake til fristen")</button>
             </div>
+        </div>
+    }
+    else if (_detaljmelding is not null)
+    {
+        <div class="dialoginnhold" role="status">
+            <h2 id="fristdialog-tittel" tabindex="-1">@(_detaljLaster ? "Henter fristdetaljer" : "Frist utilgjengelig")</h2>
+            <p>@_detaljmelding</p>
         </div>
     }
     else if (_frist is { } frist)
@@ -139,6 +149,7 @@
     [Parameter] public EventCallback<FristDto> VisIKalenderen { get; set; }
     [Parameter] public int? Startbudsjettaar { get; set; }
     [Parameter] public bool Lesemodus { get; set; }
+    [Parameter] public string? Innsynsgruppe { get; set; }
     private ElementReference _dialog;
     private IJSObjectReference? _modul;
     private DotNetObjectReference<Fristdialog>? _referanse;
@@ -158,9 +169,17 @@
     private bool _sendt;
     private bool _sender;
     private int _registrering;
+    private readonly CancellationTokenSource _levetid = new();
+    private long _detalj;
+    private string? _detaljmelding;
+    private bool _detaljLaster;
+    private long _aapning;
 
     public Task VisAgendaAsync(DateOnly dato, IReadOnlyList<FristDto> frister)
     {
+        _detalj++;
+        _aapning++;
+        _detaljmelding = null;
         _agendadato = dato;
         _dagsfrister = frister;
         _frist = null;
@@ -173,23 +192,62 @@
     public Task VisFristAsync(FristDto frist)
     {
         _agendadato = null;
-        _frist = frist;
-        BeOmVisning();
-        _fokusFrist = null;
         NullstillForslag();
-        return InvokeAsync(StateHasChanged);
+        return HentFristAsync(frist.Id);
     }
 
-    private Task VisFraAgendaAsync(FristDto frist)
+    private Task VisFraAgendaAsync(FristDto frist) => HentFristAsync(frist.Id);
+
+    private async Task HentFristAsync(Guid id)
     {
-        _frist = frist;
+        var detalj = ++_detalj;
+        _aapning++;
+        _frist = null;
+        _detaljLaster = true;
+        _detaljmelding = "Henter fristdetaljer …";
         BeOmVisning();
         _fokusFrist = null;
-        return Task.CompletedTask;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            if ((await AuthState.GetAuthenticationStateAsync()).User.Identity?.IsAuthenticated != true)
+                throw new UnauthorizedAccessException();
+            var ctx = await Kontekstkilde.HentAsync();
+            if (_avsluttet || detalj != _detalj) return;
+            // Innsyn beholder valgt gruppes lesefilter, også for en administrator.
+            if (Lesemodus)
+            {
+                if (!ctx.SerAlt || string.IsNullOrEmpty(Innsynsgruppe)) throw new UnauthorizedAccessException();
+                ctx = Synlighetskontekst.ForGruppe(Innsynsgruppe);
+            }
+            var frist = await Lesing.HentEnAsync(ctx, id, _levetid.Token);
+            if (_avsluttet || detalj != _detalj) return;
+            _frist = frist;
+            _detaljmelding = frist is null ? "Fristen er ikke lenger tilgjengelig." : null;
+            if (frist is null) _dagsfrister = _dagsfrister.Where(f => f.Id != id).ToArray();
+        }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (Exception e)
+        {
+            if (_avsluttet || detalj != _detalj) return;
+            if (e is not UnauthorizedAccessException) Logg.LogError(e, "Kunne ikke hente fristdetaljer.");
+            _detaljmelding = "Fristen er ikke lenger tilgjengelig.";
+        }
+        finally
+        {
+            if (!_avsluttet && detalj == _detalj)
+            {
+                _detaljLaster = false;
+                BeOmVisning();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
     }
 
     private Task TilbakeAsync()
     {
+        _detalj++;
+        _detaljmelding = null;
         _fokusFrist = _frist?.Id.ToString();
         _frist = null;
         BeOmVisning();
@@ -213,7 +271,33 @@
     private async Task LukkAsync()
     {
         if (_sender) return;
+        ToemDialog();
         if (_modul is not null) await _modul.InvokeVoidAsync("lukk", _dialog);
+    }
+
+    [JSInvokable]
+    public Task LukketAsync(long aapning)
+    {
+        // Native Escape kan kvitteres etter at en ny dialog allerede er åpnet.
+        if (!_avsluttet && aapning == _aapning)
+        {
+            ToemDialog();
+            return InvokeAsync(StateHasChanged);
+        }
+        return Task.CompletedTask;
+    }
+
+    private void ToemDialog()
+    {
+        _detalj++; _aapning++;
+        _vis = false;
+        _frist = null;
+        _agendadato = null;
+        _dagsfrister = [];
+        _detaljmelding = null;
+        _detaljLaster = false;
+        _fokusFrist = null;
+        NullstillForslag();
     }
 
     private void NullstillForslag()
@@ -299,6 +383,7 @@
         if (!_vis || _avsluttet) return;
         _vis = false;
         var visning = _visning;
+        var aapning = _aapning;
         var fokusFrist = _fokusFrist;
         var fokusHandling = _fokusHandling;
         if (_modul is null)
@@ -312,7 +397,14 @@
             }
             else _modul = modul;
         }
-        if (_avsluttet) return;
+        if (_avsluttet || aapning != _aapning) return;
+        if (visning != _visning)
+        {
+            // Det ferske lesesvaret kan ha blitt rendret mens JS-importen ventet.
+            _vis = true;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
         _referanse ??= DotNetObjectReference.Create(this);
         await _modul!.InvokeVoidAsync("vis", _dialog, fokusFrist, visning, _referanse, fokusHandling);
     }
@@ -320,6 +412,9 @@
     public async ValueTask DisposeAsync()
     {
         _avsluttet = true;
+        _detalj++;
+        _levetid.Cancel();
+        _levetid.Dispose();
         _referanse?.Dispose();
         if (_modul is null) return;
         try { await _modul.DisposeAsync(); }

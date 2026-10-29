@@ -37,7 +37,8 @@ public sealed class KalenderperspektivTester
         await Expect(Utvalg(n)).ToContainTextAsync("Uke 46, 2030 · 11. november 2030–17. november 2030");
         await Expect(Ukekalender(n)).ToContainTextAsync("2 frister i uken");
         await Bytt(n, "Liste");
-        await Expect(Liste(n)).ToContainTextAsync("Liste for uke 46, 2030");
+        await Expect(Liste(n)).ToContainTextAsync("Kommende frister");
+        await Expect(Liste(n)).ToContainTextAsync("UX79 annen uke");
         foreach (var aar in new[] { 2026, 2028 })
         {
             var frist = Liste(n).GetByRole(AriaRole.Button, new() { Name = "UX79 valgt " + aar, Exact = true });
@@ -49,13 +50,13 @@ public sealed class KalenderperspektivTester
             await n.Side.Keyboard.PressAsync("Escape");
             await Expect(frist).ToBeFocusedAsync();
         }
-        foreach (var tittel in new[] { "UX79 utelatt 2027", "UX79 annen uke", "UX79 annen kategori", "UX79 annet søk" })
+        foreach (var tittel in new[] { "UX79 utelatt 2027", "UX79 annen kategori", "UX79 annet søk" })
             await Expect(Liste(n)).Not.ToContainTextAsync(tittel);
         await Bytt(n, "Måned");
         await Expect(Maanedskalender(n)).ToContainTextAsync("3 frister i måneden");
         await Expect(mini).ToHaveAttributeAsync("aria-pressed", "true");
         await Bytt(n, "Liste");
-        await Expect(Liste(n)).ToContainTextAsync("Liste for november 2030");
+        await Expect(Liste(n)).ToContainTextAsync("Kommende frister");
         await Expect(Liste(n)).ToContainTextAsync("UX79 annen uke");
         await Expect(n.Side.GetByRole(AriaRole.Searchbox)).ToHaveValueAsync("søkeord");
         await Expect(n.Side.GetByLabel("2027", new() { Exact = true })).Not.ToBeCheckedAsync();
@@ -65,7 +66,7 @@ public sealed class KalenderperspektivTester
         await BudsjettaarTester.VelgKompatibilitet(n);
         await Expect(n.Side.GetByLabel("Vis historikk", new() { Exact = true })).Not.ToBeCheckedAsync();
         await meny.GetByRole(AriaRole.Link, new() { Name = "Kalender", Exact = true }).ClickAsync();
-        await Expect(Liste(n)).ToContainTextAsync("Liste for november 2030");
+        await Expect(Liste(n)).ToContainTextAsync("Kommende frister");
         await Expect(mini).ToHaveAttributeAsync("aria-pressed", "true");
         n.BekreftIngenKretsfeil();
     });
@@ -120,14 +121,8 @@ public sealed class KalenderperspektivTester
             await Expect(Ukekalender(n).GetByRole(AriaRole.Region, new() { Name = dag, Exact = true })).Not.ToContainTextAsync("UX79 tentativ");
         await Bytt(n, "Liste");
         foreach (var tittel in titler) await Expect(Liste(n).GetByRole(AriaRole.Button, new() { Name = tittel, Exact = true })).ToBeVisibleAsync();
-        foreach (var tittel in new[] { "UX79 før uken", "UX79 etter uken" }) await Expect(Liste(n)).Not.ToContainTextAsync(tittel);
-        await Liste(n).GetByRole(AriaRole.Button, new() { Name = "Neste uke", Exact = true }).ClickAsync();
-        await Expect(Liste(n)).ToContainTextAsync("Liste for uke 49, 2030 · 2. desember 2030–8. desember 2030");
-        await Expect(Liste(n)).ToContainTextAsync("UX79 etter uken");
-        await Expect(Liste(n)).ToContainTextAsync("UX79 tentativ desember");
-        await Expect(Liste(n)).Not.ToContainTextAsync("UX79 tentativ november");
-        await Liste(n).GetByRole(AriaRole.Button, new() { Name = "Forrige uke", Exact = true }).ClickAsync();
-        await Expect(Liste(n)).ToContainTextAsync("9 frister i uken");
+        foreach (var tittel in new[] { "UX79 før uken", "UX79 etter uken" }) await Expect(Liste(n)).ToContainTextAsync(tittel);
+        await Expect(Liste(n)).ToContainTextAsync("Kommende frister");
         await n.Side.SetViewportSizeAsync(390, 844);
         await Bytt(n, "Uke");
         foreach (var tittel in titler)
@@ -142,7 +137,7 @@ public sealed class KalenderperspektivTester
         Assert.True(await n.Side.EvaluateAsync<bool>("document.documentElement.scrollWidth <= window.innerWidth"));
         await n.Side.ScreenshotAsync(new() { Path = Path.Combine(n.Mappe, "ux79-week-mobile.png"), FullPage = true });
         await Bytt(n, "Liste");
-        var tastaturrekkefolge = new[] { "UX79 tentativ november", "UX79 tentativ desember", "UX79 mandag", "UX79 heldag", "UX79 tidlig", "UX79 samtidig A", "UX79 samtidig B", "UX79 sent", "UX79 søndag" };
+        var tastaturrekkefolge = new[] { "UX79 tentativ november", "UX79 før uken", "UX79 mandag", "UX79 heldag", "UX79 tidlig", "UX79 samtidig A", "UX79 samtidig B", "UX79 sent", "UX79 søndag", "UX79 etter uken", "UX79 tentativ desember" };
         await Liste(n).GetByRole(AriaRole.Button, new() { Name = tastaturrekkefolge[0], Exact = true }).FocusAsync();
         foreach (var tittel in tastaturrekkefolge)
         {
@@ -171,18 +166,21 @@ public sealed class KalenderperspektivTester
         await Expect(Utvalg(n)).ToContainTextAsync("Uke 53, 2020 · 28. desember 2020–3. januar 2021");
         foreach (var tittel in new[] { "UX79 gammelt kalenderår", "UX79 nytt kalenderår" }) await Expect(Ukekalender(n)).ToContainTextAsync(tittel);
         await Bytt(n, "Liste");
+        await Liste(n).GetByRole(AriaRole.Button, new() { Name = "Vis tidligere hendelser", Exact = true }).ClickAsync();
         await Expect(Liste(n)).ToContainTextAsync("UX79 gammelt kalenderår");
-        await Liste(n).GetByRole(AriaRole.Button, new() { Name = "Neste uke", Exact = true }).ClickAsync();
-        await Expect(Liste(n)).ToContainTextAsync("Liste for uke 1, 2021 · 4. januar 2021–10. januar 2021");
-        await Expect(Liste(n)).ToContainTextAsync("0 frister i uken");
+        await Expect(Liste(n)).ToContainTextAsync("UX79 nytt kalenderår");
+        await Bytt(n, "Uke");
+        await Ukekalender(n).GetByRole(AriaRole.Button, new() { Name = "Neste uke", Exact = true }).ClickAsync();
+        await Expect(Ukekalender(n)).ToContainTextAsync("Uke 1, 2021 · 4. januar 2021–10. januar 2021");
+        await Expect(Ukekalender(n)).ToContainTextAsync("0 frister i uken");
         await n.Side.GetByLabel("Vis måned", new() { Exact = true }).FillAsync("2028-02");
         await Expect(Utvalg(n)).ToContainTextAsync("Uke 5, 2028");
         await Minikalender(n).GetByRole(AriaRole.Button, new() { Name = "Velg 29. februar 2028, 1 frist", Exact = true }).ClickAsync();
-        await Expect(Liste(n)).ToContainTextAsync("28. februar 2028–5. mars 2028");
-        await Expect(Liste(n)).ToContainTextAsync("UX79 skuddag");
+        await Expect(Ukekalender(n)).ToContainTextAsync("28. februar 2028–5. mars 2028");
+        await Expect(Ukekalender(n)).ToContainTextAsync("UX79 skuddag");
         await n.Side.GetByLabel("Vis måned", new() { Exact = true }).FillAsync("0001-01");
-        await Expect(Liste(n)).ToContainTextAsync("1. januar 0001–7. januar 0001");
-        await Expect(Liste(n).GetByRole(AriaRole.Button, new() { Name = "Forrige uke", Exact = true })).ToBeDisabledAsync();
+        await Expect(Ukekalender(n)).ToContainTextAsync("1. januar 0001–7. januar 0001");
+        await Expect(Ukekalender(n).GetByRole(AriaRole.Button, new() { Name = "Forrige uke", Exact = true })).ToBeDisabledAsync();
         await Bytt(n, "Uke");
         await Expect(Ukekalender(n).GetByRole(AriaRole.Button, new() { NameRegex = new("^Åpne dagsagenda for") })).ToHaveCountAsync(7);
         await n.Side.GetByLabel("Vis måned", new() { Exact = true }).FillAsync("9999-12");
@@ -197,9 +195,9 @@ public sealed class KalenderperspektivTester
         await Expect(tom).ToContainTextAsync("Ingen frister denne dagen");
         await n.Side.Keyboard.PressAsync("Escape");
         await Bytt(n, "Liste");
-        await Expect(Liste(n).GetByRole(AriaRole.Button, new() { Name = "Neste uke", Exact = true })).ToBeDisabledAsync();
+        await Expect(Liste(n)).ToContainTextAsync("Tidligere hendelser");
         var idag = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Europe/Oslo"));
-        await Liste(n).GetByRole(AriaRole.Button, new() { Name = "I dag", Exact = true }).ClickAsync();
+        await Minikalender(n).GetByRole(AriaRole.Button, new() { Name = "I dag", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByLabel("Vis måned", new() { Exact = true })).ToHaveValueAsync(idag.ToString("yyyy-MM"));
         await Expect(Minikalender(n).GetByRole(AriaRole.Button, new() { NameRegex = new("^Velg " + idag.ToString("d. MMMM yyyy", CultureInfo.GetCultureInfo("nb-NO"))) })).ToHaveAttributeAsync("aria-current", "date");
         n.BekreftIngenKretsfeil();
@@ -246,6 +244,7 @@ public sealed class KalenderperspektivTester
             await n.LoggInn(persona);
             await n.Gaa("/kalender");
             await VelgMaaned(n, "2030-11");
+            await n.Side.GetByRole(AriaRole.Searchbox).FillAsync("UX79");
             var maanedsfarge = await Maanedskalender(n).GetByRole(AriaRole.Button, new() { Name = tittel, Exact = true })
                 .EvaluateAsync<string>("el => getComputedStyle(el).borderLeftColor");
             await Minikalender(n).GetByRole(AriaRole.Button, new() { NameRegex = new("^Velg 15\\. november 2030,") }).ClickAsync();
@@ -281,7 +280,7 @@ public sealed class KalenderperspektivTester
                     foreach (var skjult in new[] { "UX79 skjult POL", skjultId, "UX79 upublisert", "UX79-dokumentnokkel", "UX79-dokumenttittel" })
                         Assert.DoesNotContain(skjult, dom, StringComparison.OrdinalIgnoreCase);
                     await Expect(n.Side.GetByRole(AriaRole.Group, new() { Name = "Budsjettår", Exact = true }).GetByRole(AriaRole.Checkbox, new() { Name = "2042", Exact = true })).ToHaveCountAsync(0);
-                    await Expect(flate).ToContainTextAsync("2 frister i uken");
+                    await Expect(flate).ToContainTextAsync(visning == "Uke" ? "2 frister i uken" : "Side 1 av 1 · 2 frister");
                 }
             }
             if (persona != "demo-admin")
@@ -319,7 +318,7 @@ public sealed class KalenderperspektivTester
         await FlyttTabell(false);
         try
         {
-            await Liste(n).GetByRole(AriaRole.Button, new() { Name = "Neste måned", Exact = true }).ClickAsync();
+            await Liste(n).GetByRole(AriaRole.Button, new() { Name = "Vis tidligere hendelser", Exact = true }).ClickAsync();
             await Expect(Liste(n).GetByRole(AriaRole.Alert)).ToContainTextAsync("Kunne ikke laste frister akkurat nå. Prøv igjen.");
             await Bytt(n, "Uke");
             await Expect(Ukekalender(n).GetByRole(AriaRole.Alert)).ToContainTextAsync("Kunne ikke laste frister akkurat nå. Prøv igjen.");
@@ -332,6 +331,7 @@ public sealed class KalenderperspektivTester
         await Bytt(n, "Måned");
         await VelgMaaned(n, "2030-11");
         await Bytt(n, "Liste");
+        await Liste(n).GetByRole(AriaRole.Button, new() { Name = "Tilbake til kommende frister", Exact = true }).ClickAsync();
         await Expect(Liste(n)).ToContainTextAsync("UX79 gjenopprettet");
         await Expect(n.Side.GetByRole(AriaRole.Searchbox)).ToHaveValueAsync("gjenopprettet");
         n.BekreftIngenKretsfeil();
