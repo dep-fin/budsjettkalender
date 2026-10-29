@@ -13,6 +13,224 @@ namespace Aarshjul.Testkontrakter;
 /// <summary>Samme offentlige påmeldingskontrakt mot SQLite og ekte SQL Server.</summary>
 public abstract class EpostabonnementKontrakt
 {
+    [Fact]
+    public async Task Adressebytte_bevarer_en_rad_opprettelsestid_kvote_og_grenser_til_ny_full_aktivering()
+    {
+        await using var database = await OpprettAsync(); var p = new Proeve(database); await p.MeldPaa();
+        var status = await p.Tjeneste.BekreftAsync("a", p.Token);
+        status = await p.Tjeneste.EndreValgAsync("a", true, true, status.Versjon, [2031], [Kategori.Budsjett]);
+        status = await p.Tjeneste.EndreValgAsync("a", true, true, status.Versjon, [2031, 2032], [Kategori.Budsjett]);
+        await using var db = database.Fabrikk().CreateDbContext();
+        var foer = await db.Epostabonnementer.AsNoTracking().SingleAsync();
+        async Task<long[]> Grenser() => [
+            await db.Database.SqlQueryRaw<long>("SELECT Sekvens AS Value FROM Epostaktiveringer WHERE BrukerId = 'a'").SingleAsync(),
+            await db.Database.SqlQueryRaw<long>("SELECT Endringssekvens AS Value FROM Epostaktiveringer WHERE BrukerId = 'a'").SingleAsync(),
+            await db.Database.SqlQueryRaw<long>("SELECT Livssyklussekvens AS Value FROM Epostaktiveringer WHERE BrukerId = 'a'").SingleAsync()];
+        var gamleGrenser = await Grenser(); p.Klokke.Flytt(TimeSpan.FromMinutes(2));
+        await p.Tjeneste.EndreAdresseAsync("a", "ny@jd.dep.no", true, status.Versjon);
+        var venter = await db.Epostabonnementer.AsNoTracking().SingleAsync();
+        Assert.Equal("ny@jd.dep.no", venter.Adresse); Assert.Equal(foer.Opprettet, venter.Opprettet);
+        Assert.Equal(foer.SendevinduStart, venter.SendevinduStart); Assert.Equal(2, venter.AntallSendt);
+        Assert.Equal(foer.UtvalgJson, venter.UtvalgJson); Assert.Equal(gamleGrenser, await Grenser());
+        await p.Tjeneste.BekreftAsync("a", p.Token); var nyeGrenser = await Grenser();
+        Assert.True(nyeGrenser[0] > gamleGrenser.Max()); Assert.Equal(nyeGrenser[0], nyeGrenser[1]); Assert.Equal(nyeGrenser[0], nyeGrenser[2]);
+        var aktiv = await db.Epostabonnementer.AsNoTracking().SingleAsync();
+        Assert.Equal(foer.Opprettet, aktiv.Opprettet); Assert.Equal(2, aktiv.AntallSendt);
+        using var utvalg = System.Text.Json.JsonDocument.Parse(aktiv.UtvalgJson!);
+        var klausul = Assert.Single(utvalg.RootElement.GetProperty("Grenser").EnumerateArray());
+        Assert.Equal(nyeGrenser[0], klausul.GetProperty("Sekvens").GetInt64());
+        Assert.Equal(new[] { 2031, 2032 }, klausul.GetProperty("Budsjettaar").EnumerateArray().Select(x => x.GetInt32()));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Samme_normaliserte_adresse_beholder_status_versjon_og_bekreftelse_uten_post(bool aktiv)
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db); var status = await p.MeldPaa();
+        if (aktiv) status = await p.Tjeneste.BekreftAsync("a", p.Token);
+        var uendret = await p.Tjeneste.EndreAdresseAsync("a", "egen@FIN.DEP.NO", true, status.Versjon);
+        Assert.Equal(status, uendret); Assert.Single(p.Post.Meldinger);
+        await Assert.ThrowsAsync<EpostabonnementKonflikt>(() => p.Tjeneste.EndreAdresseAsync("a", "egen@fin.dep.no", true, Guid.Empty));
+        if (!aktiv) Assert.Equal("Aktiv", (await p.Tjeneste.BekreftAsync("a", p.Token)).Status);
+    }
+
+    [Theory]
+    [InlineData("ny@dep.no", true)]
+    [InlineData("ny@fin.dep.no.example.org", true)]
+    [InlineData("a@fin.dep.no,b@jd.dep.no", true)]
+    [InlineData("ny@fin.dep.no\r\nBcc:x@jd.dep.no", true)]
+    [InlineData("ny@jd.dep.no", false)]
+    public async Task Ugyldig_adressebytte_eller_manglende_egenadresse_samtykke_endrer_ingenting(string adresse, bool samtykke)
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db); await p.MeldPaa();
+        var aktiv = await p.Tjeneste.BekreftAsync("a", p.Token); p.Klokke.Flytt(TimeSpan.FromMinutes(2));
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.EndreAdresseAsync("a", adresse, samtykke, aktiv.Versjon));
+        Assert.Equal(aktiv, await p.NyTjeneste().HentAsync("a")); Assert.Single(p.Post.Meldinger);
+    }
+
+    [Fact]
+    public async Task Adressebytte_krever_eksisterende_eget_abonnement_og_tilgjengelig_bekreftelsestransport()
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.EndreAdresseAsync("a", "ny@jd.dep.no", true, Guid.Empty));
+        await p.MeldPaa(); var aktiv = await p.Tjeneste.BekreftAsync("a", p.Token);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.EndreAdresseAsync("annen", "ny@jd.dep.no", true, aktiv.Versjon));
+        p.Klokke.Flytt(TimeSpan.FromMinutes(2));
+        IEpostabonnement stengt = new EpostabonnementTjeneste(db.Fabrikk(), p.Klokke, new UtilgjengeligBekreftelsespost());
+        await Assert.ThrowsAsync<Valideringsfeil>(() => stengt.EndreAdresseAsync("a", "ny@jd.dep.no", true, aktiv.Versjon));
+        Assert.Equal(aktiv, await p.NyTjeneste().HentAsync("a")); Assert.Single(p.Post.Meldinger);
+    }
+
+    [Fact]
+    public async Task Adressebytte_bevarer_minuttpause_og_felles_timekvote_gjennom_flere_adresser_og_nyutsending()
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db); var status = await p.MeldPaa();
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.EndreAdresseAsync("a", "ny@jd.dep.no", true, status.Versjon));
+        for (var i = 0; i < 4; i++)
+        {
+            p.Klokke.Flytt(TimeSpan.FromMinutes(1));
+            status = await p.Tjeneste.EndreAdresseAsync("a", $"ny{i}@jd.dep.no", true, status.Versjon);
+        }
+        p.Klokke.Flytt(TimeSpan.FromMinutes(1));
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.NyTjeneste().EndreAdresseAsync("a", "stopp@jd.dep.no", true, status.Versjon));
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.NyTjeneste().SendNyAsync("a"));
+        Assert.Equal(5, p.Post.Meldinger.Count); Assert.Equal(status, await p.Tjeneste.HentAsync("a"));
+        p.Klokke.Flytt(TimeSpan.FromMinutes(55));
+        await p.Tjeneste.EndreAdresseAsync("a", "siste@jd.dep.no", true, status.Versjon);
+        Assert.Equal(6, p.Post.Meldinger.Count);
+        p.Klokke.Flytt(TimeSpan.FromMinutes(15));
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.BekreftAsync("a", p.Token));
+        await p.NyTjeneste().SendNyAsync("a"); Assert.Equal("Aktiv", (await p.Tjeneste.BekreftAsync("a", p.Token)).Status);
+    }
+
+    [Fact]
+    public async Task Sendefeil_etter_adressebytte_bevarer_ny_ventende_uten_gammel_aktiv_adresse()
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db); await p.MeldPaa();
+        var aktiv = await p.Tjeneste.BekreftAsync("a", p.Token); var gammel = p.Token;
+        p.Klokke.Flytt(TimeSpan.FromMinutes(1)); p.Post.Feil = true;
+        var feil = await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.EndreAdresseAsync("a", "ny@jd.dep.no", true, aktiv.Versjon));
+        Assert.Equal("Bekreftelsesmeldingen kunne ikke sendes. Vent ett minutt og be om en ny lenke.", feil.Message);
+        var venter = await p.NyTjeneste().HentAsync("a");
+        Assert.Equal("VenterPaaBekreftelse", venter.Status); Assert.Null(venter.Aktivert); Assert.Equal("ny@jd.dep.no", venter.Adresse);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.BekreftAsync("a", gammel));
+        p.Post.Feil = false;
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.SendNyAsync("a"));
+        p.Klokke.Flytt(TimeSpan.FromMinutes(1)); await p.Tjeneste.SendNyAsync("a");
+        Assert.Equal("ny@jd.dep.no", (await p.Tjeneste.BekreftAsync("a", p.Token)).Adresse);
+    }
+
+    [Theory]
+    [InlineData("adresse")]
+    [InlineData("ny-lenke")]
+    [InlineData("valg")]
+    [InlineData("bekreft")]
+    [InlineData("avmelding")]
+    public async Task Eldre_adressebytte_kan_ikke_overskrive_samtidig_vinner_eller_gjenopplive_avmelding(string operasjon)
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db); var status = await p.MeldPaa();
+        p.Klokke.Flytt(TimeSpan.FromMinutes(2));
+        using var port = new Lagringsport(1, manuell: true);
+        var gammel = p.NyTjeneste(port).EndreAdresseAsync("a", "taper@jd.dep.no", true, status.Versjon);
+        try
+        {
+            await port.Mottatt.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            var vinner = await Vinn(p, operasjon, status);
+            var antall = p.Post.Meldinger.Count;
+            port.Fortsett.TrySetResult(); await Assert.ThrowsAsync<EpostabonnementKonflikt>(() => gammel);
+            Assert.Equal(vinner, await p.NyTjeneste().HentAsync("a")); Assert.Equal(antall, p.Post.Meldinger.Count);
+            await Assert.ThrowsAsync<EpostabonnementKonflikt>(() => p.Tjeneste.EndreAdresseAsync("a", "stale@jd.dep.no", true, status.Versjon));
+        }
+        finally { port.Fortsett.TrySetResult(); try { await gammel; } catch (EpostabonnementKonflikt) { } }
+    }
+
+    [Theory]
+    [InlineData("ny-lenke")]
+    [InlineData("valg")]
+    [InlineData("bekreft")]
+    [InlineData("avmelding")]
+    public async Task Adressebytte_vinner_over_eldre_bekreftelse_nyutsending_valg_eller_avmelding(string operasjon)
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db); var status = await p.MeldPaa(); var token = p.Token;
+        p.Klokke.Flytt(TimeSpan.FromMinutes(2)); using var port = new Lagringsport(1, manuell: true);
+        var gammel = Vinn(p, operasjon, status, p.NyTjeneste(port));
+        try
+        {
+            await port.Mottatt.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            var vinner = await p.Tjeneste.EndreAdresseAsync("a", "vinner@jd.dep.no", true, status.Versjon);
+            port.Fortsett.TrySetResult(); await Assert.ThrowsAsync<EpostabonnementKonflikt>(() => gammel);
+            Assert.Equal(vinner, await p.NyTjeneste().HentAsync("a")); Assert.Equal(2, p.Post.Meldinger.Count);
+            await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.BekreftAsync("a", token));
+            Assert.Equal("Aktiv", (await p.Tjeneste.BekreftAsync("a", p.Token)).Status);
+        }
+        finally { port.Fortsett.TrySetResult(); try { await gammel; } catch (EpostabonnementKonflikt) { } }
+    }
+
+    [Theory]
+    [InlineData("adresse")]
+    [InlineData("ny-lenke")]
+    [InlineData("valg")]
+    [InlineData("bekreft")]
+    [InlineData("avmelding")]
+    public async Task Forsinket_transportsvar_fra_adressebytte_returnerer_faktisk_vinnerstatus(string operasjon)
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db); var status = await p.MeldPaa();
+        p.Klokke.Flytt(TimeSpan.FromMinutes(2));
+        var mottatt = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fortsett = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); var antall = 0;
+        p.Post.EtterOverlevering = async ct =>
+        {
+            if (Interlocked.Increment(ref antall) != 1) return;
+            mottatt.TrySetResult(); await fortsett.Task.WaitAsync(TimeSpan.FromSeconds(15), ct);
+        };
+        var bytte = p.Tjeneste.EndreAdresseAsync("a", "mellom@jd.dep.no", true, status.Versjon);
+        try
+        {
+            await mottatt.Task.WaitAsync(TimeSpan.FromSeconds(15)); p.Klokke.Flytt(TimeSpan.FromMinutes(1));
+            var vinner = await Vinn(p, operasjon, await p.Tjeneste.HentAsync("a"));
+            fortsett.TrySetResult(); Assert.Equal(vinner, await bytte); Assert.Equal(vinner, await p.NyTjeneste().HentAsync("a"));
+        }
+        finally { fortsett.TrySetResult(); }
+    }
+
+    private static Task<EpostabonnementDto> Vinn(Proeve p, string operasjon, EpostabonnementDto status, IEpostabonnement? tjeneste = null)
+        => operasjon switch
+        {
+            "adresse" => (tjeneste ?? p.Tjeneste).EndreAdresseAsync("a", "vinner@jd.dep.no", true, status.Versjon),
+            "ny-lenke" => (tjeneste ?? p.Tjeneste).SendNyAsync("a"),
+            "valg" => (tjeneste ?? p.Tjeneste).EndreValgAsync("a", false, true, status.Versjon),
+            "bekreft" => (tjeneste ?? p.Tjeneste).BekreftAsync("a", p.Token),
+            _ => (tjeneste ?? p.Tjeneste).MeldAvAsync("a")
+        };
+
+    [Theory]
+    [InlineData("Aktiv")]
+    [InlineData("VenterPaaBekreftelse")]
+    [InlineData("Avmeldt")]
+    public async Task Adressebytte_stanser_varsling_og_bevarer_egne_valg_varig_til_ny_engangsbekreftelse(string startstatus)
+    {
+        await using var db = await OpprettAsync(); var p = new Proeve(db);
+        var status = await p.Tjeneste.MeldPaaAsync("a", "egen@fin.dep.no", true, false, true, [2031, 2032], [Kategori.Regnskap]);
+        var gammel = p.Token;
+        if (startstatus == "Aktiv") status = await p.Tjeneste.BekreftAsync("a", gammel);
+        if (startstatus == "Avmeldt") status = await p.Tjeneste.MeldAvAsync("a");
+        p.Klokke.Flytt(TimeSpan.FromMinutes(2));
+        status = await p.NyTjeneste().EndreAdresseAsync("a", "ny@JD.DEP.NO", true, status.Versjon);
+        Assert.Equal("VenterPaaBekreftelse", status.Status); Assert.Null(status.Aktivert);
+        Assert.Equal("ny@jd.dep.no", status.Adresse); Assert.False(status.NyeFrister); Assert.True(status.VesentligeEndringer);
+        Assert.Equal(new[] { 2031, 2032 }, status.Budsjettaar); Assert.Equal(new[] { Kategori.Regnskap }, status.Kategorier);
+        var lagret = await p.NyTjeneste().HentAsync("a");
+        Assert.Equal(status.Versjon, lagret.Versjon); Assert.Equal(status.Status, lagret.Status); Assert.Equal(status.Adresse, lagret.Adresse);
+        Assert.Equal(2, p.Post.Meldinger.Count);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.BekreftAsync("a", gammel));
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.BekreftAsync("annen", p.Token));
+        var aktiv = await p.NyTjeneste().BekreftAsync("a", p.Token);
+        Assert.Equal("Aktiv", aktiv.Status); Assert.Equal(p.Klokke.GetUtcNow(), aktiv.Aktivert);
+        Assert.Equal("ny@jd.dep.no", aktiv.Adresse); Assert.Equal(new[] { 2031, 2032 }, aktiv.Budsjettaar);
+        await Assert.ThrowsAsync<Valideringsfeil>(() => p.Tjeneste.BekreftAsync("a", p.Token));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -1,6 +1,6 @@
 # Gjeldende status
 
-Oppdatert 29. oktober 2026. Dette er samlet leveransestatus. [PR #143](https://github.com/depmartin/Budsjettkalender/pull/143), [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142),
+Oppdatert 29. oktober 2026. Dette er samlet leveransestatus. [PR #144](https://github.com/depmartin/Budsjettkalender/pull/144), [PR #143](https://github.com/depmartin/Budsjettkalender/pull/143), [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142),
 [PR #135](https://github.com/depmartin/Budsjettkalender/pull/135), [PR #134](https://github.com/depmartin/Budsjettkalender/pull/134), [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132)
 og kommentarene i [#140](https://github.com/depmartin/Budsjettkalender/issues/140),
 [#110](https://github.com/depmartin/Budsjettkalender/issues/110), [#75](https://github.com/depmartin/Budsjettkalender/issues/75) og
@@ -81,6 +81,17 @@ Livssyklus utelater ny-og-fjernet før første oppsummering uavhengig av varselt
 Vanlige kalenderlenker viser relevant utvalg og generell fjerningsmelding.
 [EV07-akseptansen](acceptance/2026-10-29-epost-ev07.md) bevarer daterte lokale og
 første CI-bevis; PR #143 er kilden til leveransens slutt-CI og livsløp.
+Slutt-[CI 40857856203](https://github.com/depmartin/Budsjettkalender/actions/runs/40857856203)
+bestod 1228 ordinære, 379 SQL Server- og 344 Chromium-tilfeller uten feil/hopp.
+
+EV08 ([#118](https://github.com/depmartin/Budsjettkalender/issues/118)) er merget i
+[PR #144](https://github.com/depmartin/Budsjettkalender/pull/144) som faktisk main
+`b6a85f2251831eaba1cd69d17249ec57e13578c3`. Eget adressebytte krever gjeldende
+versjon og egenadressesamtykke. Ny adresse venter varig på ny bekreftelse, med
+stanset fristvarsling, beholdte varselvalg og felles forsøksgrenser. Bekreftelsen
+setter nye databaseordnede type-, utvalgs- og livssyklusgrenser uten etterslep.
+Ingen egen modellendring eller migrasjon. [EV08-akseptansen](acceptance/2026-10-29-epost-ev08.md)
+bevarer datert byggbevis; PR #144 er kilden til leveransens livsløp.
 
 [#140](https://github.com/depmartin/Budsjettkalender/issues/140), parent #136 punkt 4,
 er kandidat i [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142).
@@ -89,14 +100,17 @@ prioritet foran dokumentets lenke og forklaring ved tømming. Én serverregel
 gjelder skriving, JSON-import og lesing; proveniens og køjustering bevares.
 JSON v1 får et valgfritt felt. Lenkeendring følger eksisterende begrunnede
 vesentlighetsvalg. Additiv migrasjon/demo og innholdsøyeblikksbilder er avstemt
-med levert EV07. Begge migrasjonene med timestamp 20261029092000 beholdes.
-Etter nødvendig main-integrasjon består lokal ordinærsuite 1242/1242; oppdaget
-SQL-/nettleserinventar er 389/346, med alle navn fra begge foreldre bevart.
-89/89 relevante Edge/Kestrel-forløp består uten feil/hopp. SQL Server er bygget/oppdaget, ikke lokalt kjørt. [Kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md)
-skiller historiske kandidater, CI-rettinger og integrerte funksjonsprøver.
-Den integrerte kandidaten trenger alle tre faktiske nye CI-porter. Ingen ny
-formell review/audit er utført i den autoriserte CI-løkken; tidligere slike
-kontroller gjelder den kandidaten de ble kjørt på. Ingen deploy inngår.
+med levert EV07; begge migrasjonene med timestamp 20261029092000 beholdes.
+Forrige kandidat på EV07-basen bestod alle tre faktiske porter i
+[CI 40868270127](https://github.com/depmartin/Budsjettkalender/actions/runs/40868270127):
+1242 ordinære, 389 SQL Server og 346 Chromium. Dette er historisk bevis for den
+gamle basen. Kandidaten er nå avstemt med levert EV08, og alle navn fra begge
+foreldre er bevart; samlet inventar er 1302/442/350. Lokal ordinærsuite består
+1302/1302, målrettet samspill 545/545 og relevante Edge/Kestrel-forløp 31/31,
+uten feil/hopp. SQL Server er bygget/oppdaget, ikke lokalt kjørt. Prøver og
+presise bevisgrenser står i [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md).
+Alle tre faktiske nye kandidat-CI-porter må være grønne. Ingen ny formell
+review/audit er utført i denne autoriserte CI-løkken. Ingen deploy inngår.
 
 ## UX18 – samlet akseptanse og publisering
 

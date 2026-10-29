@@ -24,6 +24,8 @@ public sealed class EpostabonnementKommando(AuthenticationStateProvider tilstand
         => KjorAsync(id => abonnement.EndreValgAsync(id, nye, endringer, versjon, aar, kategorier, ct), ct);
     public Task<EpostabonnementDto> SendNyAsync(CancellationToken ct = default)
         => KjorAsync(id => abonnement.SendNyAsync(id, ct), ct);
+    public Task<EpostabonnementDto> EndreAdresseAsync(string adresse, bool egenadresseSamtykke, Guid versjon, CancellationToken ct = default)
+        => KjorAsync(id => abonnement.EndreAdresseAsync(id, adresse, egenadresseSamtykke, versjon, ct), ct);
     public Task<EpostabonnementDto> BekreftAsync(string token, CancellationToken ct = default)
         => KjorAsync(id => abonnement.BekreftAsync(id, token, ct), ct);
     public Task<EpostabonnementDto> MeldAvAsync(CancellationToken ct = default)

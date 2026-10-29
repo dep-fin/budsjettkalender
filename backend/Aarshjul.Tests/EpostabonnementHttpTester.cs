@@ -11,6 +11,57 @@ namespace Aarshjul.Tests;
 
 public sealed class EpostabonnementHttpTester
 {
+    [Theory]
+    [InlineData("Leser")]
+    [InlineData("Bidragsyter")]
+    [InlineData("Administrator")]
+    public async Task Adressebytte_serverbinder_eier_bevarer_valg_og_returnerer_trygg_versjonert_status(string rolle)
+    {
+        using var app = new TestApplikasjon(); using var klient = app.CreateClient();
+        klient.DefaultRequestHeaders.Add("X-Test-Rolle", rolle);
+        var fabrikk = app.Services.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Aarshjul.Infrastructure.AppDbContext>>();
+        var post = app.Services.GetRequiredService<KontrollertBekreftelsespost>();
+        var tjeneste = new Aarshjul.Infrastructure.Epost.EpostabonnementTjeneste(fabrikk, new TidligereKlokke(), post);
+        var status = await tjeneste.MeldPaaAsync("test-bruker", "gammel@fin.dep.no", true, false, true, [2031], [Aarshjul.Domain.Kategori.Regnskap]);
+        var token = post.Hent("test-bruker")!.Token;
+        using var annen = app.CreateClient(); annen.DefaultRequestHeaders.Add("X-Test-Rolle", "Administrator"); annen.DefaultRequestHeaders.Add("X-Test-Bruker", "annen");
+        Assert.Equal(HttpStatusCode.BadRequest, (await annen.PostAsJsonAsync("/api/epostabonnement/adresse", new { adresse = "ny@jd.dep.no", egenadresseSamtykke = true, status.Versjon, brukerId = "test-bruker" })).StatusCode);
+        using var svar = await klient.PostAsJsonAsync("/api/epostabonnement/adresse", new { adresse = "ny@JD.DEP.NO", egenadresseSamtykke = true, status.Versjon, brukerId = "annen", nyeFrister = true, vesentligeEndringer = false, budsjettaar = new[] { 2040 } });
+        Assert.Equal(HttpStatusCode.OK, svar.StatusCode); Assert.True(svar.Headers.CacheControl?.NoStore);
+        var json = await svar.Content.ReadFromJsonAsync<JsonObject>();
+        Assert.Equal("VenterPaaBekreftelse", (string?)json!["status"]); Assert.Equal("ny@jd.dep.no", (string?)json["adresse"]);
+        Assert.False((bool)json["nyeFrister"]!); Assert.True((bool)json["vesentligeEndringer"]!); Assert.Null(json["aktivert"]);
+        Assert.Equal(2031, (int)json["budsjettaar"]![0]!); Assert.Equal((int)Aarshjul.Domain.Kategori.Regnskap, (int)json["kategorier"]![0]!);
+        var tekst = await svar.Content.ReadAsStringAsync();
+        Assert.False(tekst.Contains(token, StringComparison.Ordinal), "Status må ikke inneholde hemmelig bekreftelse.");
+        Assert.DoesNotContain("Hash", tekst, StringComparison.OrdinalIgnoreCase); Assert.DoesNotContain("token", tekst, StringComparison.OrdinalIgnoreCase);
+        using var stale = await klient.PostAsJsonAsync("/api/epostabonnement/adresse", new { adresse = "annen@jd.dep.no", egenadresseSamtykke = true, status.Versjon });
+        Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode); Assert.True(stale.Headers.CacheControl?.NoStore);
+        Assert.Equal(HttpStatusCode.BadRequest, (await klient.PostAsJsonAsync("/api/epostabonnement/bekreft", new { token })).StatusCode);
+        var nyToken = post.Hent("test-bruker")!.Token;
+        Assert.Equal(HttpStatusCode.OK, (await klient.PostAsJsonAsync("/api/epostabonnement/bekreft", new { token = nyToken })).StatusCode);
+        Assert.Equal("IkkePaameldt", (string?)(await annen.GetFromJsonAsync<JsonObject>("/api/epostabonnement"))!["status"]);
+    }
+
+    [Theory]
+    [InlineData("ny@dep.no", true)]
+    [InlineData("ny@jd.dep.no", false)]
+    public async Task Adressebytte_avviser_ugyldig_inndata_uten_mutasjon_eller_ny_post(string adresse, bool samtykke)
+    {
+        using var app = new TestApplikasjon(); using var klient = app.CreateClient(); klient.DefaultRequestHeaders.Add("X-Test-Rolle", "Leser");
+        var status = await (await klient.PostAsJsonAsync("/api/epostabonnement", new { adresse = "egen@fin.dep.no", godtarStandardvalg = true })).Content.ReadFromJsonAsync<JsonObject>();
+        var post = app.Services.GetRequiredService<KontrollertBekreftelsespost>(); var token = post.Hent("test-bruker")!.Token;
+        using var svar = await klient.PostAsJsonAsync("/api/epostabonnement/adresse", new { adresse, egenadresseSamtykke = samtykke, versjon = (string)status!["versjon"]! });
+        Assert.Equal(HttpStatusCode.BadRequest, svar.StatusCode); Assert.True(svar.Headers.CacheControl?.NoStore);
+        Assert.Equal((string)status["versjon"]!, (string)(await klient.GetFromJsonAsync<JsonObject>("/api/epostabonnement"))!["versjon"]!);
+        Assert.True(post.Hent("test-bruker")!.Token == token, "Ugyldig adressebytte må ikke sende ny bekreftelse.");
+    }
+
+    private sealed class TidligereKlokke : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => DateTimeOffset.UtcNow.AddMinutes(-2);
+    }
+
     [Fact]
     public async Task Faktisk_frist_eksport_inneholder_bare_v1_frister_etter_import_sletting_og_paamelding()
     {
@@ -187,6 +238,7 @@ public sealed class EpostabonnementHttpTester
     [InlineData("/ny-lenke")]
     [InlineData("/meld-av")]
     [InlineData("/valg")]
+    [InlineData("/adresse")]
     public async Task Anonyme_skrivekall_avvises(string sti)
     {
         using var app = new TestApplikasjon(); using var klient = app.CreateClient();
@@ -199,6 +251,7 @@ public sealed class EpostabonnementHttpTester
     [InlineData("/ny-lenke")]
     [InlineData("/meld-av")]
     [InlineData("/valg")]
+    [InlineData("/adresse")]
     public async Task Enkel_HTML_form_POST_kan_ikke_endre_et_eget_abonnement(string sti)
     {
         using var app = new TestApplikasjon(); using var klient = app.CreateClient();

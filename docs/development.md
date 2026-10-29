@@ -1,17 +1,25 @@
 # Utvikling
 
-#140 / PR #142 er avstemt med faktisk merget EV07 / PR #143 på main
-`d3bec41e7a42106e6f2b8bee80de0916c3f65b60` 29. oktober 2026. Oppdaget inventar er
-**1242 ordinære tester, 389 SQL Server-tilfeller og 346 nettleserscenarioer**.
-Alle navn fra EV07-main (1228/379/344) og den tidligere #140-kandidaten
-(1167/316/344) er bevart eksakt, tegnsensitivt og uten dubletter. Fire nye
-integrasjonstilfeller i hver databaseport prøver begge oppgraderingsstier,
-lenkeinnholdets øyeblikksbilder, vesentlighet og avvisning før sletting/hendelser.
-CI krever nøyaktig **389 SQL- og 346 Chromium-resultater** uten feil/hopp.
-Tidsgrenser 15/20/45 minutter, aktiv audit og bare TRX-artefakter består.
+#140 / PR #142 er avstemt med faktisk merget EV08 / PR #144 på main
+`b6a85f2251831eaba1cd69d17249ec57e13578c3` 29. oktober 2026. Oppdaget inventar er
+**1302 ordinære tester, 442 SQL Server-tilfeller og 350 nettleserscenarioer**.
+Alle navn fra EV08-main (1288/432/348) og tidligere #140 (1242/389/346) er bevart
+eksakt, tegnsensitivt og uten dubletter. CI krever nøyaktig **442 SQL- og 350
+Chromium-resultater** uten feil/hopp. Tidsgrenser 15/20/45 minutter, aktiv audit
+og bare TRX-artefakter består. De daterte tallene nedenfor er historiske.
 Se den daterte [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md)
-for integrerte lokale prøver og skillet mellom disse og ny faktisk kandidat-CI.
-De tidligere EV02–EV07-/UX18-tallene nedenfor og i egne akseptanser er historiske.
+for integrerte prøver og den presise grensen mot ny faktisk kandidat-CI.
+
+EV08 bruker eksisterende abonnementslagring uten egen modellendring/migrasjon.
+Fra `/epostvarsling` kan Aktiv/Venter bytte egen adresse og Avmeldt uttrykkelig
+bytte og melde seg på igjen med beholdte varselvalg. Samme adresse er uendret.
+JSON-POST `/api/epostabonnement/adresse` tar `adresse`, `egenadresseSamtykke` og
+`versjon`; eieren hentes fra innlogging. Ingen type-/filtervalg skrives samtidig.
+Ett minutts pause og høyst fem bekreftelser per time gjelder på tvers av bytter.
+Fristvarslingen stanser frem til ny bekreftelse erstatter type-, utvalgs- og
+livssyklusgrenser. Sendefeil bevarer ny ventende adresse. Fersk adresse, versjon
+og tilgang kontrolleres før overlevering; UnderSending/Uavklart ryddes ikke.
+Se [EV08-akseptansen](acceptance/2026-10-29-epost-ev08.md) og ADR-0010.
 
 `20261029092000_ManuellKildelenke` legger bare til nullable `Frister.ManuellKildeUrl`,
 uten tilbakefylling. Kolonnen inngår i fristens eksisterende konkurransekontroll.
@@ -336,13 +344,13 @@ grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gj
 
 ## Obligatorisk nettleserakseptanse
 
-Gjeldende integrerte #140-kandidat krever nøyaktig **346 beståtte Chromium-scenarioer**
-uten hopp eller manglende TRX. **389 ekte SQL Server-tilfeller** kreves i den
+Gjeldende integrerte #140-kandidat krever nøyaktig **350 beståtte Chromium-scenarioer**
+uten hopp eller manglende TRX. **442 ekte SQL Server-tilfeller** kreves i den
 separate SQL-porten. De daterte kjøringene nedenfor viser tidligere kandidatgrunnlag.
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 346 scenarioer bruker disponible Kestrel-verter,
-inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06 og to fra EV07,
+eksisterende app eller database: 350 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06 og to fra EV07 og fire fra EV08,
 sju fra UX17, seks fra UX18 og to fra #140. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
@@ -420,7 +428,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 346 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 350 beståtte scenarioer uten hopp.
 EV05/UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -431,7 +439,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 346; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 350; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -531,7 +539,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 389 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 442 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.

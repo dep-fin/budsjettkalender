@@ -297,3 +297,88 @@ kandidatene; ingen ny formell review eller sikkerhetsaudit er utført i denne
 autoriserte CI-løkken. Lokal demo/SQLite/kontrollert post beviser ikke Entra,
 Azure SQL, M365 eller ekstern levering. Ingen commit, push, GitHub-mutasjon,
 produksjonsutsending, ekstern tilgangsendring eller deploy er utført her.
+
+## Datert EV08-main-avstemming 29. oktober 2026
+
+Denne nødvendige avstemmingen i PR #142s CI-løkke har fast lokal forelder
+`f80e46a3846fe6620166f60de95e4b919aad7c42` og levert EV08-main
+`b6a85f2251831eaba1cd69d17249ec57e13578c3`, mergecommit for PR #144 / #118.
+Forrige publiserte head `e1f6d72027dd858d4460ac851f888d75c4bb7a2e` og lokal
+forelder har begge tree `3d9f7a1befbb9831865fc64549828ee5ca267b7f`.
+Faktisk [CI 40868270127](https://github.com/depmartin/Budsjettkalender/actions/runs/40868270127)
+er lest på nytt: alle tre jobbene er grønne, med **1242 ordinære, 389 SQL Server-
+og 346 Chromium-tilfeller**, null feil/hopp. Jobbloggene bekrefter PR-testmerge
+`34113d5` mot gammel EV07-main `d3bec41`. Dette er historisk grønt bevis for
+forrige kandidat og base; det attesterer ikke denne EV08-avstemmingen.
+
+`git merge --no-commit origin/main` ga nøyaktig tre tekstkonflikter:
+`.github/workflows/ci.yml`, `docs/development.md` og `docs/status.md`. CI beholder
+hele leverte main-arbeidsflyten med bare faktisk antall endret fra 432/348 til
+442/350. Dokumentasjonen beholder begge leveransene, skiller historiske bevis
+fra dagens kandidat og registrerer EV08 som merget. Ingen umerget gren,
+#138-/liste-/søkeendring eller nytt funksjonsvalg inngår.
+
+EV08 endrer ikke AppDbContext, FristDatautveksling, migrasjoner, demaskjema eller
+den daglige senderen. Alle **300 produktfiler** er eksakte Git-blobber fra én
+levert forelder: **295 er uendret fra forrige #140-kandidat**, og de fem øvrige
+er eksakt EV08-main (abonnementsgrense/-tjeneste, HTTP, kretskommando og skjema).
+Manuell URL, før-/etter-/slettingsøyeblikksbilder, importvalidering før sletting,
+EV07s atomiske hendelser, historiske publikum og legacy-planer er derfor bevart.
+Begge migrasjoners ID, Up/Down, Designer og siste snapshot er uendret; alle
+35 migrasjonsfiler er eksakt forrige forelder. Begge minimale CI-testrettinger
+er også bevart som samme blob. De gamle kildefunnene og tidligere bevis er bevart.
+
+Den automatisk flettede DagligEpostKontrakt er kontrollert som eksakt tidligere
+fil pluss hele EV08s uendrede testblokk. EpostabonnementKontrakt er eksakt levert
+EV08. Dermed prøves både URL-innholdets ferskhetskontroll og adressebyttets
+stans under begge sistekontroller, ny bekreftelse, fersk mottakeradresse,
+commitrekkefølge for Ny/Endret/Slettet, beholdte utvalg og UnderSending/Uavklart.
+Det er ingen ny runtimekonflikt eller lokal produktendring utover levert main.
+
+Fersk lokal verifikasjon bruker SDK 10.0.402 og ligger under
+`TestResults/140/ev08-integration/`:
+
+| Kontroll på denne integrasjonen | Faktisk resultat | Bevis |
+| --- | --- | --- |
+| Tre låste restore med aktiv audit | Bestått, 0 advarsler/feil; true/all/low, ingen suppressions | `restore-{ordinary,sql,browser}.log`, `audit-properties-*.json` |
+| Tre Release-bygg | Bestått, 0 advarsler/feil | `build-{ordinary,sql,browser}.log` |
+| Målrettet funksjonelt samspill | **545/545**, 0 feil/hopp | `integration-targeted.trx`, `integration-filter.txt` |
+| Hele ordinærsuiten, kjørt én gang | **1302/1302**, 0 feil/hopp | `ordinary-final.trx` |
+| Reelle Edge/Kestrel-forløp | **31/31**, 0 feil/hopp, omtrent 4 minutter 22 sekunder | `browser-final.trx`, `browser-filter.txt`, `browser-selected-names.txt` |
+| Faktisk testoppdagelse | **1302 ordinære / 442 SQL Server / 350 nettleser** | `inventory-comparison.json`, `*-names.txt` |
+| Kilde-/runtimebinding | **445 backendfiler / 1518 runtimefiler**, 0 hashdrift under prøvene | `backend-stability.json`, `runtime-stability.json` |
+
+De 31 nettleserforløpene omfatter alle 23 DagligEpostTester (inklusive EV07s
+faktisk nedlastede/gjenimporterte manuelle URL, endring/sletting, feil/rollback/retry,
+EV06s køinnganger og EV08s fire adressebytter), fem EpostabonnementTester og tre
+KildelenkeTester. Hvert scenario bruker egen disponibel database/loopback-port.
+Utvalget følger den faktiske e-post-/adresseavhengigheten; brede, urelaterte
+kalender-/liste-/søke-/fasemalflater er ikke gjentatt. De øvrige tilfellene hører
+til full ny Chromium-CI. Eksisterende forventninger, timeouter og testnavn er uendret.
+
+Et rent arkiv av fast EV08-main er låst gjenopprettet, Release-bygget og oppdaget
+separat inne i denne checkoutens TestResults. Ordinal og tegnsensitiv sammenlikning
+viser at alle **1288/432/348** navn fra main og alle **1242/389/346** navn fra
+forrige kandidat er bevart eksakt. Samlet inventar er nøyaktig unionen av begge
+foreldre, uten manglende navn, dubletter eller nye tilfeller utover unionen.
+CI beholder 15/20/45 minutter, audit, krav om faktisk utføring uten hopp,
+TRX-kontroll og bare TRX som opplastet artefakt. `ci-invariants.json` krever at
+hele resten av arbeidsflyten er identisk med levert main etter linjeskiftnormalisering.
+De tre tidligere bevismanifestenes **21 + 33 + 217 filer** har null hashdrift.
+
+`candidate-files.json`, `merge-candidate.json`, `verification.json` og
+`evidence-files.json` binder staged tree, alle Git-blobber, arbeidsfilenes bytes,
+runtime, faktisk inventar og prøver. `product-scope-preservation.json`,
+`preserved-sourceblobs.json` og `shared-contract-preservation.json` binder
+foreldrebevaringen. Historisk grønn CI er bevart i `historical-ci.json` og
+`historical-ci-40868270127/`. `git write-tree` lager ingen commit.
+
+SQL Server er bygget og alle 442 tilfeller oppdaget, **ikke lokalt kjørt**;
+ingen AARSHJUL_TEST_SQLSERVER er konfigurert. 31 lokale Edge-forløp erstatter
+ikke full Chromium med 350 tilfeller. Orkestratoren må committe og publisere
+eksakt staged tree og innhente alle tre nye faktiske grønne CI-jobber på dette
+grunnlaget. Ingen ny formell review eller sikkerhetsaudit er utført, heller
+ikke indirekte via implement. Andre checkouts, prosesser og databaser er urørt.
+Ingen commit, push, GitHub-mutasjon, produksjonsutsending, ekstern tilgangsendring
+eller deploy er utført. Lokal SQLite/Edge/kontrollert post beviser ikke
+Entra, Azure SQL, M365 eller ekstern levering.

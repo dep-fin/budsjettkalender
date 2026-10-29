@@ -15,6 +15,8 @@ public interface IEpostabonnement
     Task<EpostabonnementDto> EndreValgAsync(string brukerId, bool nyeFrister, bool vesentligeEndringer, Guid versjon,
         IReadOnlyCollection<int>? budsjettaar, IReadOnlyCollection<Kategori>? kategorier, CancellationToken ct = default);
     Task<EpostabonnementDto> SendNyAsync(string brukerId, CancellationToken ct = default);
+    /// <summary>Bytter egen adresse og stanser varslingen til ny bekreftelse. Bevarer varselvalg og krever sist leste versjon.</summary>
+    Task<EpostabonnementDto> EndreAdresseAsync(string brukerId, string adresse, bool egenadresseSamtykke, Guid versjon, CancellationToken ct = default);
     Task<EpostabonnementDto> BekreftAsync(string brukerId, string token, CancellationToken ct = default);
     Task<EpostabonnementDto> MeldAvAsync(string brukerId, CancellationToken ct = default);
 }
