@@ -100,3 +100,27 @@ samlet Standards-/Spec-review og separat sikkerhetsaudit gjenstår.
 Lokal SQLite/demo er ikke bevis for Entra, Azure SQL, Key Vault, M365 eller
 ekstern e-postlevering. Lenken gir ingen tilgang til dokumentet og attesterer
 ikke lenkemålets tilgjengelighet. Ingen deploy inngår.
+
+## Datert CI-retting 29. oktober 2026
+
+Første publiserte kandidat `87459d77a0c3a9bc5d29a331b6c5bba69f847661`
+har samme tree `45e2a5a2f0e9fdf92dd4aa63e1f5921e2c9b6d3d` som lokal
+`a3bb71088dedfc3cb19858ef4506eb224ec98a86`. Faktisk
+[CI 40855047644](https://github.com/depmartin/Budsjettkalender/actions/runs/40855047644)
+ga **315 beståtte, 1 feil og 0 hopp av 316 SQL Server-tilfeller**.
+`TestResults/140/ci-40855047644/sql-job.log` bevarer det røde beviset:
+fasemalens oppgraderingsprøve leste `ManuellKildeUrl` før kolonnen fantes.
+
+Bare førlesingen av det historiske datagrunnlaget bruker nå den eksisterende
+`HistoriskFristFabrikk`. Migrasjonsmålet er fortsatt
+`20261020135232_ForslagVersjonKonkurransekontroll`; begge etterlesinger bruker
+dagens fabrikk etter `MigrateAsync`. Migrasjon, runtimekode, testantall og
+CI-vern er uendret.
+
+Ny låst SQL-restore med aktiv audit og Release-bygg består med SDK 10.0.402,
+null advarsler og null feil. Ny oppdagelse har **316 unike SQL-testnavn**,
+alle identiske med inventaret før rettingen. Loggene er
+`TestResults/140/140-ci-sql-fix-{restore,build}.log` og
+`TestResults/140/140-ci-sql-fix-inventory.txt`. SQL Server er fortsatt ikke
+kjørt lokalt: `AARSHJUL_TEST_SQLSERVER`, Docker og sqlcmd mangler.
+Grønt bevis for rettingen krever en ny faktisk kandidat-CI.
