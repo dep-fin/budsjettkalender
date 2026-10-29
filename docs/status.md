@@ -274,3 +274,32 @@ er ikke attestert. Ingen produksjonsgodkjenning eller deploy inngår.
 en portabel lokal demo med ny database på 5093, bevisgrenser, grener/worktrees og
 kopierbar oppstart for en ny chat. Arbeidet stopper etter #93. Tidligere demoer,
 andre uferdige checkouter, PR #65 og plan-/prototypegrener er bevart.
+
+## EV11 / #121 – lokal kandidat
+
+Lokal sluttprøve etter rettingen: 1449/1449 ordinære og 4/4 berørte
+Edge/Kestrel/SQLite-forløp, null feil/hopp. Uavhengig lokal/invariant discovery
+bevarer hele basen og gir 1449 ordinære / 539 SQL Server / 418 browser.
+CI krever 539 SQL- og 418 Chromium-resultater. SQL er bygget/oppdaget lokalt;
+ny ekte SQL-/full Chromium-CI på den rettede kandidaten gjenstår. Tidligere
+kandidattall og bevis er bevart som historikk i akseptansen.
+
+EV10/#120 er faktisk levert i PR #147 som
+`461edae60a2ad335e9376612a636e16dbd85b395`, med tree
+`645297ac57c75f97f3cb4cb66b150df6f09b308e` og slutt-CI 40939501402
+(1404 ordinære / 510 ekte SQL Server / 414 Chromium).
+EV11-kandidaten bygger på denne main i egen isolert arbeidsflate.
+
+Kandidaten gir varig felles driftsstans med beskyttet HTTP/Blazor-status,
+versjonsstyrt stans/gjenopptakelse, varig forsøksjournal og grenser for retry,
+oppslag og kvitteringsventing. Mulig mottak bevares konservativt som Uavklart;
+Bekreftet betyr transportaksept. Retensjon rydder begrensede atomiske batcher
+med eksplisitte unntak for ubehandlet, sikkert feilet og uavklart, siste nødvendige
+historiske tilstand, gjeldende avmeldingslenker og varige behandlingsmarkører.
+Se [EV11-akseptansen](acceptance/2026-10-29-epost-ev11.md) og ADR-0010.
+
+Samlet review og separat sikkerhetsaudit er gjennomført. Ny ekte SQL Server-/full
+Chromium-CI og publisering/merge gjenstår. #110/#136 og D1–D5 beholdes åpne.
+Ingen produksjonsutrulling, ekstern prøvepost, tilgangsendring eller reell
+Entra/M365-aksept inngår. #111 følger først etter faktisk EV11-merge; EV12–EV14
+inngår ikke i denne kandidaten.

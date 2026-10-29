@@ -16,11 +16,13 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
 {
     public async Task<Oppsummeringsresultat> KjorAsync(CancellationToken ct = default)
     {
+        if (!opsjoner.Value.Gyldig()) throw new InvalidOperationException("Ugyldige grenser for e-postdrift.");
         var dato = Datohjelp.Idag(klokke);
         if (klokke.GetUtcNow() < Oppsummeringstid.Sendetid(dato, opsjoner.Value.Klokkeslett))
             return new(dato, true, []);
         var lenke = Kalenderlenke(opsjoner.Value.OffentligBasisadresse);
         await using var db = await fabrikk.CreateDbContextAsync(ct);
+        if (await db.Epostdrift.AsNoTracking().AnyAsync(x => x.Stanset, ct)) return new(dato, false, []);
         var abonnenter = await db.Epostabonnementer.AsNoTracking().Where(x => x.Status == "Aktiv" && (x.NyeFrister || x.VesentligeEndringer)).ToListAsync(ct);
         var resultater = new List<Mottakerresultat>();
         foreach (var abonnent in abonnenter.Where(x => x.Aktivert is not null))
@@ -37,13 +39,37 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         // Et avbrudd etter vinnende overgang kan ha overlevert innhold. Aldri blind retry.
         var uavklart = await db.Epostoppsummeringer.AsNoTracking().FirstOrDefaultAsync(x => x.BrukerId == id
             && (x.Status == "UnderSending" || x.Status == "Uavklart"), ct);
-        if (uavklart is not null) return new(id, uavklart.Id, "Uavklart");
-        var plan = await db.Epostoppsummeringer.SingleOrDefaultAsync(x => x.BrukerId == id && x.LokalDato == dato, ct);
+        if (uavklart is not null)
+        {
+            // En foreldreløs claim uten kjent starttid kan ha passert mottaket.
+            if (uavklart.Status == "UnderSending" && (uavklart.ForsoekStartetUtcTicks is null
+                || uavklart.ForsoekStartetUtcTicks <= (klokke.GetUtcNow() - opsjoner.Value.Kvitteringsfrist).UtcTicks))
+            {
+                db.Attach(uavklart); uavklart.Status = "Uavklart"; uavklart.Versjon = Guid.NewGuid();
+                var forladt = await db.Epostsendeforsoek.SingleOrDefaultAsync(x => x.OppsummeringId == uavklart.Id
+                    && x.Nummer == uavklart.AntallForsoek && x.Status == "UnderSending", ct);
+                if (forladt is not null) { forladt.Status = "Uavklart"; forladt.AvsluttetUtcTicks = klokke.GetUtcNow().UtcTicks; }
+                try { await db.SaveChangesAsync(ct); } catch (DbUpdateConcurrencyException) { db.Entry(uavklart).State = EntityState.Detached; }
+            }
+            return new(id, uavklart.Id, "Uavklart");
+        }
+        var plan = await db.Epostoppsummeringer.Include(x => x.Hendelser).SingleOrDefaultAsync(x => x.BrukerId == id && x.LokalDato == dato, ct);
         if (plan?.Status == "Bekreftet") return new(id, plan.Id, "Bekreftet");
+        if (await db.Epostoppsummeringer.AsNoTracking().AnyAsync(x => x.BrukerId == id && x.Status == "Planlagt"
+            && x.NesteOppslagUtcTicks > klokke.GetUtcNow().UtcTicks, ct)) return new(id, plan?.Id, "VenterPaaOppslag");
+        // Samme forsøksbudsjett følger den eldste sikre feilen over omstart og dagsskifte.
+        plan ??= await db.Epostoppsummeringer.Include(x => x.Hendelser).Where(x => x.BrukerId == id && x.Status == "Feilet").OrderBy(x => x.LokalDato).FirstOrDefaultAsync(ct);
+        if (plan?.Status == "Feilet")
+        {
+            if (plan.AntallForsoek >= opsjoner.Value.MaksSendeforsoek) return new(id, plan.Id, "ForsoekUttomt");
+            if (plan.NesteForsoekUtcTicks > klokke.GetUtcNow().UtcTicks) return new(id, plan.Id, "VenterPaaRetry");
+        }
+        // Også manglende adgang/transport begrenser eksterne oppslag; dette teller ikke som transportforsøk.
+        if (plan?.NesteOppslagUtcTicks > klokke.GetUtcNow().UtcTicks) return new(id, plan.Id, "VenterPaaOppslag");
         // Planen kan ha blitt overtatt etter oppslaget over. Bare en faktisk
         // innlest Planlagt-status, med samme versjon ved UPDATE, er sendbar.
         if (plan?.Status is "UnderSending" or "Uavklart") return new(id, plan.Id, "Uavklart");
-        if (plan is not null && plan.Status != "Planlagt") return new(id, plan.Id, "SamtidigKjoring");
+        if (plan is not null && plan.Status is not ("Planlagt" or "Feilet")) return new(id, plan.Id, "SamtidigKjoring");
         var start = abonnent.Aktivert!.Value.UtcTicks;
         // EV02-abonnenter har ingen aktiveringsrad. Grense 0 inkluderer bare
         // nye hendelser; migrasjonen tilbakefyller ingen tidligere frister.
@@ -71,7 +97,10 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         if (!post.Tilgjengelig) return await UtsettAsync(db, plan, "UtilgjengeligTransport", ct);
         if (Datohjelp.Idag(klokke) != dato) return await UtsettAsync(db, plan, "Dagsskifte", ct);
         plan.AktivertUtcTicks = start;
+        plan.LokalDato = dato;
         plan.Status = "UnderSending";
+        plan.NesteOppslagUtcTicks = null;
+        plan.ForsoekStartetUtcTicks = klokke.GetUtcNow().UtcTicks;
         plan.Utsettelsesgrunn = null;
         plan.Versjon = Guid.NewGuid();
         try { await db.SaveChangesAsync(ct); }
@@ -92,8 +121,11 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
 
         // Lagre nøyaktige hendelser før overlevering; sene commits forblir ubehandlet.
         var synlige = frister.Select(x => x.Id).ToHashSet();
-        foreach (var hendelse in hendelser.Where(x => synlige.Contains(x.FristId)))
-            plan.Hendelser.Add(new() { HendelseId = hendelse.Id });
+        var aktuelle = hendelser.Where(x => synlige.Contains(x.FristId)).Select(x => x.Id).ToHashSet();
+        foreach (var gammel in plan.Hendelser.Where(x => !aktuelle.Contains(x.HendelseId)).ToArray())
+        { db.Oppsummeringshendelser.Remove(gammel); plan.Hendelser.Remove(gammel); }
+        foreach (var hendelse in aktuelle.Where(x => !plan.Hendelser.Any(k => k.HendelseId == x)))
+            plan.Hendelser.Add(new() { HendelseId = hendelse });
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         plan.AvmeldingsHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
         plan.Avmeldingssekvens = grenser?.Livssyklussekvens ?? 0;
@@ -105,37 +137,90 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         var (sisteFrister, sisteHendelser) = await HentInnholdAsync(db, id, hendelseIder, rett.Synlighet,
             utvalg, grenser?.Livssyklussekvens ?? 0, ct);
         Task overlevering;
+        Epostsendeforsoek forsoek;
         await using (var grense = await Epostoverlevering.LaasAsync(db, id, ct))
         {
             var sisteAbonnement = await db.Epostabonnementer.AsNoTracking().SingleOrDefaultAsync(x => x.BrukerId == id, ct);
             if (sisteAbonnement?.Versjon != gjeldende.Versjon || sisteAbonnement.Status != "Aktiv"
                 || !frister.SequenceEqual(sisteFrister)
                 || !hendelser.Select(h => h.Id).SequenceEqual(sisteHendelser.Select(h => h.Id))
-                || !post.Tilgjengelig || Datohjelp.Idag(klokke) != dato)
+                || !post.Tilgjengelig || Datohjelp.Idag(klokke) != dato
+                || await db.Epostdrift.AsNoTracking().AnyAsync(x => x.Stanset, ct))
             {
                 await grense.DisposeAsync();
                 return await UtsettAsync(db, plan, "EndretFoerOverlevering", ct);
             }
             var avmeldingslenke = new Uri(lenke, "/epostvarsling/avmeld#" + token);
             var melding = LagMelding(plan.Id, id, gjeldende.Adresse, frister, hendelser, lenke, avmeldingslenke);
+            plan.AntallForsoek++;
+            forsoek = new() { OppsummeringId = plan.Id, Nummer = plan.AntallForsoek, StartetUtcTicks = klokke.GetUtcNow().UtcTicks };
+            db.Epostsendeforsoek.Add(forsoek);
+            await db.SaveChangesAsync(ct);
             // Transporten tar eierskap synkront. Bare kvitteringen kan vente.
             // Ingen avmelding kan committe mellom denne lesingen og mottaket.
             try { overlevering = post.StartOverlevering(melding, ct).Utfall; }
+            catch (SikkertUsendtException) { overlevering = Task.FromException(new SikkertUsendtException()); }
             catch (Exception) { overlevering = Task.FromException(new InvalidOperationException("Uavklart overlevering.")); }
             await grense.CommitAsync(CancellationToken.None);
         }
-        try { await overlevering; }
+        try { await overlevering.WaitAsync(opsjoner.Value.Kvitteringsfrist, klokke, ct); }
+        catch (SikkertUsendtException)
+        {
+            // Bare adapterens uttrykkelige garanti gir retry. Gamle koblinger/hash er sikkert usendte.
+            var nummer = forsoek.Nummer;
+            while (true)
+            {
+                plan.Status = "Feilet"; plan.Utsettelsesgrunn = "SikkertUsendt";
+                plan.NesteForsoekUtcTicks = (klokke.GetUtcNow() + opsjoner.Value.Retrypause).UtcTicks;
+                // Feilet-koblingene bevarer ubehandlet historikk gjennom opprydding.
+                // Ved retry velges innhold på nytt; bare faktisk sendte hendelser blir Bekreftet.
+                plan.AvmeldingsHash = null; plan.Avmeldingssekvens = null;
+                forsoek.Status = "Feilet"; forsoek.AvsluttetUtcTicks = klokke.GetUtcNow().UtcTicks;
+                plan.Versjon = Guid.NewGuid();
+                try { await db.SaveChangesAsync(CancellationToken.None); return new(id, plan.Id, "Feilet"); }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Observasjonen kan ha utløpt fra claim-start mens dette forsøket
+                    // fortsatt ventet på transportens eget, entydig sikkert-usendte utfall.
+                    await db.Entry(plan).ReloadAsync(CancellationToken.None);
+                    await db.Entry(forsoek).ReloadAsync(CancellationToken.None);
+                    if (db.Entry(plan).State == EntityState.Detached || db.Entry(forsoek).State == EntityState.Detached
+                        || plan.AntallForsoek != nummer || forsoek.Nummer != nummer || forsoek.OppsummeringId != plan.Id
+                        || plan.Status != "Uavklart" || forsoek.Status != "Uavklart")
+                        return new(id, plan.Id, plan.Status == "Bekreftet" ? "Bekreftet" : "Uavklart");
+                    // Bare samme lagrede plan og forsøksidentitet kan avklares.
+                    // Reload beholder primærnøklene; aksept eller et nyere forsøk overskrives aldri.
+                }
+            }
+        }
         catch (Exception)
         {
+            _ = overlevering.ContinueWith(t => { _ = t.Exception; }, CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             // Også avbrudd kan skje etter overlevering. Behold ingen leverandørtekst/innhold i status.
             plan.Status = "Uavklart"; plan.Versjon = Guid.NewGuid();
-            await db.SaveChangesAsync(CancellationToken.None);
+            forsoek.Status = "Uavklart"; forsoek.AvsluttetUtcTicks = klokke.GetUtcNow().UtcTicks;
+            try { await db.SaveChangesAsync(CancellationToken.None); }
+            catch (DbUpdateConcurrencyException) { /* En annen instans har allerede bevart Uavklart. */ }
             return new(id, plan.Id, "Uavklart");
         }
         plan.Status = "Bekreftet";
+        plan.NesteForsoekUtcTicks = null;
+        forsoek.Status = "Bekreftet"; forsoek.AvsluttetUtcTicks = klokke.GetUtcNow().UtcTicks;
         plan.BekreftetUtcTicks = klokke.GetUtcNow().UtcTicks;
         plan.Versjon = Guid.NewGuid();
-        await db.SaveChangesAsync(ct);
+        try { await db.SaveChangesAsync(CancellationToken.None); }
+        catch (DbUpdateConcurrencyException)
+        {
+            // En konservativ omstartsobservasjon kan ha markert samme forsøk uavklart.
+            // En positiv kvittering for nettopp dette forsøket kan avklare det senere.
+            await db.Entry(plan).ReloadAsync(CancellationToken.None);
+            if (plan.Status != "Uavklart" || plan.AntallForsoek != forsoek.Nummer) return new(id, plan.Id, "Uavklart");
+            await db.Entry(forsoek).ReloadAsync(CancellationToken.None);
+            forsoek.Status = "Bekreftet"; forsoek.AvsluttetUtcTicks = klokke.GetUtcNow().UtcTicks;
+            plan.Status = "Bekreftet"; plan.BekreftetUtcTicks = klokke.GetUtcNow().UtcTicks; plan.Versjon = Guid.NewGuid();
+            await db.SaveChangesAsync(CancellationToken.None);
+        }
         return new(id, plan.Id, "Bekreftet", frister.Count);
     }
 
@@ -200,15 +285,25 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
 
     private async Task<Mottakertilgang> HentTilgangAsync(string id, CancellationToken ct)
     {
-        try { return await tilgang.HentAsync(id, ct); }
+        using var avbrudd = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        try { return await tilgang.HentAsync(id, avbrudd.Token).WaitAsync(opsjoner.Value.Tilgangsfrist, klokke, ct); }
+        catch (TimeoutException) { avbrudd.Cancel(); return new(MottakertilgangStatus.Uavklart); }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return new(MottakertilgangStatus.Uavklart); }
         catch (Exception feil) when (feil is not OperationCanceledException) { return new(MottakertilgangStatus.Uavklart); }
     }
 
-    private static async Task<Mottakerresultat> UtsettAsync(AppDbContext db, Epostoppsummering plan, string grunn, CancellationToken ct)
+    private async Task<Mottakerresultat> UtsettAsync(AppDbContext db, Epostoppsummering plan, string grunn, CancellationToken ct)
     {
-        db.Oppsummeringshendelser.RemoveRange(plan.Hendelser);
-        plan.Hendelser.Clear();
+        if (plan.AntallForsoek == 0)
+        {
+            db.Oppsummeringshendelser.RemoveRange(plan.Hendelser);
+            plan.Hendelser.Clear();
+        }
         plan.Status = "Planlagt"; plan.Utsettelsesgrunn = grunn; plan.Versjon = Guid.NewGuid();
+        // En utsatt retry beholder både budsjettet og den sikre feilen over nye dager.
+        if (plan.AntallForsoek > 0) plan.Status = "Feilet";
+        plan.ForsoekStartetUtcTicks = null;
+        plan.NesteOppslagUtcTicks = (klokke.GetUtcNow() + opsjoner.Value.Oppslagspause).UtcTicks;
         try { await db.SaveChangesAsync(ct); }
         catch (DbUpdateConcurrencyException) { db.Entry(plan).State = EntityState.Detached; return new(plan.BrukerId, plan.Id, "SamtidigKjoring"); }
         return new(plan.BrukerId, plan.Id, grunn);

@@ -1,5 +1,22 @@
 # Utvikling
 
+EV11 / #121 er en lokal kandidat fra faktisk EV10-merge
+`461edae60a2ad335e9376612a636e16dbd85b395`. Driftsstatus og felles stans/gjenopptakelse
+finnes under administrator-innstillinger → E-postdrift. ADR-0010 og
+[EV11-akseptansen](acceptance/2026-10-29-epost-ev11.md) beskriver validerte forsøks-/
+ventegrenser, den konservative Uavklart-tilstanden og retensjonsunntak.
+Samlet review og separat sikkerhetsaudit er gjennomført. Ekte SQL Server og full
+Chromium på den rettede kandidaten gjenstår i CI før publisering/merge.
+Ingen produksjonsadapter eller miljøaksept inngår.
+Uavhengig lokal/invariant discovery etter rettingen gir **1449 ordinære / 539 SQL
+Server / 418 browser**, med hele basens 1404/510/414 navn bevart. CI krever
+539 SQL- og 418 Chromium-resultater; alle andre vern beholdes.
+Sluttprøvene etter rettingen består lokalt med 1449/1449 ordinære og 4/4 berørte
+reelle Edge/Kestrel/SQLite-forløp, null feil/hopp. SQL er bygget/oppdaget, men ikke
+kjørt lokalt. Tidligere kandidattall og bevis er bevart som historikk i akseptansen.
+
+## Historisk EV10-integrasjon
+
 EV10 / #120 videreføres i eksisterende [PR #147](https://github.com/depmartin/Budsjettkalender/pull/147)
 med levert main `ce439c2ee55d6d79095d0b488768b13823f36531` integrert.
 Den tidligere EV10-kandidaten bestod 1403/510/359 i
@@ -14,6 +31,10 @@ beskrevet sammen med etterprøvingen i
 CI krever nøyaktig **510 SQL- og 414 Chromium-resultater** uten feil/hopp.
 Hemmelighetssøk før TRX-opplasting, opplastingsvilkår, aktiv audit og
 tidsgrenser 15/20/45 minutter består. Ny full kandidat-CI gjenstår.
+
+EV10-integrasjonen ovenfor ble deretter levert i PR #147 med faktisk CI
+40939501402: 1404 ordinære / 510 ekte SQL Server / 414 Chromium, uten feil/hopp.
+Disse resultatene gjelder EV10-basen og erstatter ikke EV11s nye porter.
 
 #139 er levert i [PR #148](https://github.com/depmartin/Budsjettkalender/pull/148)
 som denne main. Kalenderens lokale tekstfilter beholdes; «Søk i alle datoer»/Enter
@@ -667,3 +688,35 @@ python .github/scripts/kontroller-hemmeligheter.py TestResults/120/final
 Bruk [akseptansen](acceptance/2026-10-29-epost-ev10.md) for konkret kandidatgrunnlag,
 rød/grønn, faktisk inventar og lokale resultater. Ingen produksjonsadapter eller
 eksterne sender-/Entra-rettigheter aktiveres av denne leveransen.
+
+## EV11 – lokale driftsprøver
+
+Bruk en ny disponibel demo-database. I kontrollert demo kan «Avvis sikkert før
+mottak» og «Vent med kontrollert kvittering» på `/demo/epostkjoring` demonstrere
+henholdsvis Feilet med retry og UnderSending/Uavklart ved omstart. Kontrollene
+registreres bare i Demo/Testing. Sett kontrollert UTC-tid før/ved retryfristen;
+stans/gjenopptakelse gjøres på `/admin/innstillinger/epostdrift`. En global stans
+stanser daglige oppsummeringer, mens kalender og publisering fortsetter.
+
+Standardene er maks tre transportforsøk, fem minutters retrypause, ett minutts
+oppslagspause, 15 sekunders tilgangsfrist, 30 sekunders kvitteringsfrist, 30 dager
+for gamle aksepterte forsøksdetaljer, 90 dager for trygt overflødig hendelsesinnhold
+og høyst 100 endringer per ryddebatch. `DagligEpost`-opsjonene er beskrevet i
+akseptansen. Ubehandlet/Feilet/Uavklart, nødvendige markører/siste tilstand og
+gjeldende påmeldingsperiodes avmeldingshash beholdes uansett alder. Ikke slett
+planer eller koblinger for å «frigjøre» retry; det kan sende gammel post på nytt.
+Null oppslagspause er bare et kontrollvalg i Demo/Testing.
+
+```powershell
+dotnet restore backend/Aarshjul.slnx --locked-mode
+dotnet build backend/Aarshjul.slnx -c Release --no-restore
+dotnet test backend/Aarshjul.slnx -c Release --no-build
+dotnet test backend/Aarshjul.SqlServerTests -c Release --filter FullyQualifiedName~EV11
+dotnet test backend/Aarshjul.BrowserTests -c Release --filter FullyQualifiedName~EV11
+```
+
+De nye delte kontraktene er linket til begge databasesuitene. SQL-tester krever
+`AARSHJUL_TEST_SQLSERVER` mot master på en disponibel SQL Server; manglende
+konfigurasjon er ingen hoppet eller bestått prøve. Lokal Edge/SQLite er en egen
+bevisgrense. De eksisterende eksakte CI-inventarportene og 15/20/45 minutter,
+aktiv pakkeaudit, hemmelighetssøk og bare-TRX-opplasting beholdes.

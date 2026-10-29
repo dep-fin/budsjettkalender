@@ -33,6 +33,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Epostadministratorstans> Epostadministratorstanser => Set<Epostadministratorstans>();
     public DbSet<NyFristHendelse> NyFristHendelser => Set<NyFristHendelse>();
     public DbSet<Epostoppsummering> Epostoppsummeringer => Set<Epostoppsummering>();
+    public DbSet<Epostdriftstilstand> Epostdrift => Set<Epostdriftstilstand>();
+    public DbSet<Epostsendeforsoek> Epostsendeforsoek => Set<Epostsendeforsoek>();
     public DbSet<Oppsummeringshendelse> Oppsummeringshendelser => Set<Oppsummeringshendelse>();
     internal DbSet<FasemalRad> Fasemaler => Set<FasemalRad>();
 
@@ -46,6 +48,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<Epostdriftstilstand>(e =>
+        {
+            e.ToTable("Epostdrift", t => t.HasCheckConstraint("CK_Epostdrift_EnRad", "[Id] = 1"));
+            e.HasKey(x => x.Id); e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.AktoerId).HasMaxLength(128);
+            e.Property(x => x.Versjon).IsConcurrencyToken();
+            e.HasData(new Epostdriftstilstand { Id = 1, Versjon = new("e3110000-0000-0000-0000-000000000001") });
+        });
+        b.Entity<Epostsendeforsoek>(e =>
+        {
+            e.HasKey(x => x.Id); e.Property(x => x.Status).HasMaxLength(32).IsConcurrencyToken();
+            e.HasIndex(x => new { x.OppsummeringId, x.Nummer }).IsUnique();
+            e.HasOne<Epostoppsummering>().WithMany().HasForeignKey(x => x.OppsummeringId).OnDelete(DeleteBehavior.Restrict);
+        });
         b.Entity<Epostadministratorstans>(e =>
         {
             e.HasKey(x => x.Id);

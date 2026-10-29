@@ -1,0 +1,80 @@
+@page "/admin/innstillinger/epostdrift"
+@attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+@using Aarshjul.Application.Epost
+@inject EpostdriftKommando Kommando
+@implements IDisposable
+
+<PageTitle>E-postdrift</PageTitle>
+<a href="/admin/innstillinger">Til administrator-innstillinger</a>
+<h1>E-postdrift</h1>
+<p>Stans gjelder daglige oppsummeringer. Kalenderen og publisering virker fortsatt.
+    Akseptert betyr at transporten har tatt imot meldingen; faktisk levering i postkassen er ikke bekreftet.</p>
+<button type="button" class="knapp sekundar" disabled="@_opptatt" @onclick="LastAsync">Oppdater driftsstatus</button>
+@if (_feil is not null) { <p role="alert">@_feil</p> }
+@if (_melding is not null) { <p role="status" tabindex="-1" @ref="_kvittering">@_melding</p> }
+@if (_drift is { } d)
+{
+    <p><strong>@(d.Stanset ? "Daglig utsending er stanset" : "Daglig utsending er aktiv")</strong></p>
+    <p>Sist endret av: @(d.EndretAv ?? "Ingen"). Tidspunkt: @Tid(d.EndretUtcTicks).</p>
+    <button type="button" class="knapp" disabled="@_opptatt" @onclick="Velg">@(d.Stanset ? "Gjenoppta daglig utsending" : "Stans daglig utsending")</button>
+    @if (_bekreft)
+    {
+        <section role="region" aria-labelledby="drift-bekreft" tabindex="-1" @ref="_region">
+            <h2 id="drift-bekreft">Bekreft driftsendring</h2>
+            <p>@(d.Stanset ? "Ventende hendelser behandles ved neste kjøring. Aksepterte eller uavklarte meldinger gjentas ikke." : "Nye overleveringer stanses. Allerede overlevert post kan ikke tilbakekalles.")</p>
+            <button type="button" class="knapp" disabled="@_opptatt" @onclick="LagreAsync">Bekreft driftsendring</button>
+            <button type="button" class="knapp sekundar" @onclick="() => _bekreft = false">Avbryt</button>
+        </section>
+    }
+    <h2>Planer</h2>
+    @foreach (var s in d.Statuser) { <p>@(s.Status == "Bekreftet" ? "Akseptert av transport" : s.Status): @s.Antall</p> }
+    @foreach (var p in d.UavsluttedePlaner)
+    {
+        <p style="overflow-wrap:anywhere">Plan @p.Id – @p.LokalDato.ToString("dd.MM.yyyy") – @p.Status – @p.Utsettelsesgrunn.
+            Transportforsøk: @p.AntallForsoek. Tidligste nye forsøk: @Tid(p.NesteForsoekUtcTicks).
+            Tidligste utsatte oppslag: @Tid(p.NesteOppslagUtcTicks).</p>
+    }
+    <h2>Siste transportforsøk</h2>
+    <p>Høyst 100 forsøk. Sikkert feilede forsøk har begrenset retry. Uavklart utfall krever avklaring før eventuell senere operatørhåndtering.</p>
+    @foreach (var f in d.SisteForsoek)
+    {
+        <article style="overflow-wrap:anywhere"><p>Plan @f.OppsummeringId – forsøk @f.Nummer – @(f.Status == "Bekreftet" ? "Akseptert av transport" : f.Status).</p><p>@Tid(f.StartetUtcTicks) – @Tid(f.AvsluttetUtcTicks)</p></article>
+    }
+}
+@code {
+    private readonly CancellationTokenSource _levetid = new();
+    private EpostdriftDto? _drift;
+    private string? _feil, _melding;
+    private bool _opptatt, _bekreft, _fokus, _kvitteringsfokus;
+    private ElementReference _region, _kvittering;
+    protected override Task OnInitializedAsync() => LastAsync();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_fokus) { _fokus = false; await _region.FocusAsync(); }
+        if (_kvitteringsfokus) { _kvitteringsfokus = false; await _kvittering.FocusAsync(); }
+    }
+    private void Velg() { _bekreft = true; _fokus = true; _melding = _feil = null; }
+    private async Task LastAsync()
+    {
+        _opptatt = true; _drift = null; _bekreft = false; _feil = _melding = null;
+        try { _drift = await Kommando.HentAsync(_levetid.Token); }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (Exception) { _feil = "Driftsstatus kunne ikke lastes. Kontroller tilgangen og prøv igjen."; }
+        finally { _opptatt = false; }
+    }
+    private async Task LagreAsync()
+    {
+        if (_opptatt || _drift is not { } d) return;
+        _opptatt = true; _bekreft = false;
+        try
+        {
+            await Kommando.SettStansAsync(!d.Stanset, d.Versjon, true, _levetid.Token);
+            await LastAsync(); if (_feil is null) { _melding = "Driftsinnstillingen er lagret."; _kvitteringsfokus = true; }
+        }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (Exception) { _drift = null; _feil = "Handlingen kunne ikke bekreftes. Oppdater driftsstatus og bekreft på nytt."; }
+        finally { _opptatt = false; }
+    }
+    private static string Tid(long? ticks) => ticks is { } t ? new DateTimeOffset(t, TimeSpan.Zero).ToString("dd.MM.yyyy HH:mm 'UTC'") : "Ikke registrert";
+    public void Dispose() { _levetid.Cancel(); _levetid.Dispose(); }
+}

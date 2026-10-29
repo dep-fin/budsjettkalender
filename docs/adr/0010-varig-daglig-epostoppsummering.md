@@ -327,3 +327,78 @@ post kan ikke tilbakekalles. Planer, UnderSending/Uavklart og koblinger bevares.
 Ny uttrykkelig påmelding og bekreftelse setter friske grenser uten etterslep.
 Demooppgradering er atomisk og idempotent; SQL Server bruker vanlig migrasjonskjede.
 Ingen historiske abonnementer eller revisjonshendelser tilbakefylles.
+
+## EV11: varig driftsstans, avgrensede forsøk og oppbevaring
+
+Epostdrift er én seedet rad med stans, siste aktør/tid og optimistisk versjon.
+HTTP og Blazor krever administrator, stabil serverbundet identitet, sist leste
+versjon og uttrykkelig bekreftelse. Hver kretsoperasjon autoriseres på nytt.
+Inngangene har no-store og JSON-mutasjon uten CORS. FA alene gir ingen rett.
+Stans serialiseres med EV09s globale overleveringslås. Senderen kontrollerer
+driftsraden både ved oppstart og igjen under låsen umiddelbart før synkront
+transportmottak. Gjenopptakelse endrer ingen planer eller abonnementsgrenser.
+Kalender, publisering og transaksjonell adressebekreftelse fortsetter.
+
+Planlagt og sikkert Feilet kan sendes etter nye kontroller. UnderSending har
+starttid; manglende eller utløpt starttid blir konservativt Uavklart ved neste
+jobbobservasjon. Eksisterende nullverdier får ingen oppdiktet historisk starttid.
+Bekreftet betyr fortsatt positiv transportaksept. En sen positiv kvittering for
+samme forsøk kan avklare en annen instans' konservative Uavklart-observasjon.
+Det er ingen garanti for faktisk levering i postkasse eller nøyaktig én ekstern
+e-post ved alle feil. Generisk feil, kansellering og timeout etter mulig mottak
+bevarer koblinger/hash som Uavklart og utløser ingen automatisk retry.
+
+Bare SikkertUsendtException er adapterens uttrykkelige garanti om intet mottak
+eller videreoverlevering. Da journalføres Feilet og neste retryfrist, og sikkert
+usendt avmeldingsrett fjernes. Feilet-planens hendelseskoblinger bevares for
+retensjonsvernet; ved retry velges faktisk innhold og koblinger på nytt før mottaket.
+En konkurrerende instans kan ha markert Uavklart fra planens claim-start mens
+senderen fortsatt venter innen transportens egen kvitteringsfrist. Ved
+versjonskonflikt etter et uttrykkelig sikkert-usendt-utfall leses samme plan og
+forsøksrad på nytt. Bare Uavklart med samme forsøksnummer og primærnøkler kan
+avklares til Feilet. Bekreftet, manglende forsøk eller et nyere forsøksnummer
+overskrives ikke. En slik observasjonskonflikt avbryter ikke resten av dagsjobben.
+Hvert faktisk transportkall får et
+varig forsøksnummer under overleveringslåsen. Telleren blir på planen selv om
+gamle aksepterte forsøksdetaljer ryddes. Eldste Feilet-plan følger mottakeren
+over nye jobbinstanser og lokale dager. Ved dagens retry flyttes dens dagsnøkkel
+til faktisk lokal sendingsdag; unike dagsnøkler og versjonsvern består. Uttømt
+budsjett beholder hendelsene og blokkerer flere automatiske transportforsøk.
+Det finnes ingen generell reset eller manuell frigivelse av Uavklart.
+
+Tekniske, konfigurerbare testadapterstandarder er høyst tre transportforsøk,
+minst fem minutters retrypause, ett minutts pause etter utsatt tilgang/transport,
+15 sekunder per autoritativt tilgangsoppslag og 30 sekunders kvitteringsventing.
+Et nytt forsøk kontrollerer gjeldende tilgang, kontoaktivitet, abonnement,
+adresse, synlighet, utvalg, avmelding og begge typer administratorstans igjen.
+Utsatte oppslag teller ikke som transportforsøk. Oppslagspausen lagres varig,
+også over et lokalt dagsskifte. Hver kjøring gjør høyst tre tilgangsoppslag per
+mottaker; hver venting styres av TimeProvider. Adapterens synkrone mottak må
+fortsatt være kort og uten asynkron venting. Utsatt kvittering holder ingen DB-lås.
+Null oppslagspause tillates bare i kontrollerte demo-/Testing-oppsett; eldre
+kontrakters umiddelbare adapterbytter bruker den, mens egne EV11-prøver bruker
+standardpausen. Verdier valideres ved vertsstart og ved dagskjøring.
+
+Jobboppstart og deretter hver time rydder høyst 100 endringer i én transaksjon
+under samme globale lås. Demoens manuelle kjøring bruker samme ryddeoperasjon.
+Utløpt bekreftelsesmateriale fjernes uten å endre kvoter, forsøksantall, status
+eller aktiveringsgrenser. Gamle aksepterte forsøksdetaljer og foreldede
+avmeldingshasher kan fjernes etter 30 dager; en avmeldingshash i gjeldende
+påmeldingsperiode beholdes uansett alder. Overflødig hendelsesinnhold kan tømmes
+etter 90 dager når en nyere tilstand finnes og ingen aktiv abonnent kan ha
+hendelsen ubehandlet. Det brukes et konservativt utvalg før tømming: manglende
+tilgang eller dagens filtre er ingen begrunnelse for å slette ventende innhold.
+Siste nødvendige historiske før/ettertilstand, slettingssynlighet, første Ny,
+hendelses-ID, sekvens, plan, dagsnøkkel og behandlingskoblinger beholdes.
+Feilet/UnderSending/Uavklart og deres koblede innhold/forsøksdetaljer beholdes
+uansett alder. Disse funksjonelle unntakene hindrer gjenutsending, feil ved
+gjeninnføring og tap av slettingsvarsel. Bekreftelseskandidater strømmes fordi
+SQLite ikke kan sammenligne DateTimeOffset; skrivebatchen er begrenset, men et
+oppslag kan skanne flere kandidater. Konkurransefeil ruller hele batchen tilbake.
+Det gjøres ingen naiv sletting av gamle planer eller hendelsesrader.
+
+Migrasjonen Epostdriftsvern er additiv, med Designer og snapshot. Demo oppgraderer
+atomisk/idempotent og avviser delvise driftsskjemaer. Historiske migrasjoner og
+målmodeller beholdes. Standardene er tekniske valg for kontrollerte adaptere;
+D1–D5, reell Entra/M365, overvåkingsansvar og produksjonspolicy er fortsatt åpne
+porter i EV12–EV14.

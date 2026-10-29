@@ -53,9 +53,18 @@ public static class EpostoppgraderingBevis
     }
     public static void IgnorerEV09(ModelBuilder b)
     {
+        IgnorerEV11(b);
         b.Ignore<Epostadministratorstans>();
         b.Entity<Epostoppsummering>().Ignore("AvmeldingsHash");
         b.Entity<Epostoppsummering>().Ignore("Avmeldingssekvens");
+    }
+    public static void IgnorerEV11(ModelBuilder b)
+    {
+        b.Ignore<Epostdriftstilstand>(); b.Ignore<Epostsendeforsoek>();
+        b.Entity<Epostoppsummering>().Ignore(x => x.AntallForsoek);
+        b.Entity<Epostoppsummering>().Ignore(x => x.ForsoekStartetUtcTicks);
+        b.Entity<Epostoppsummering>().Ignore(x => x.NesteForsoekUtcTicks);
+        b.Entity<Epostoppsummering>().Ignore(x => x.NesteOppslagUtcTicks);
     }
     public sealed record EV03Plan(Guid Behandlet, Guid Ventende, Guid GammelPlan, Guid VentendePlan);
 

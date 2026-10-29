@@ -23,10 +23,20 @@ public static class Demoskjema
             && (new[] { "Id", "BrukerId", "AktoerId", "Tidspunkt", "Handling" }.Except(stanskolonner).Any()
                 || !stansindekser.Contains("IX_Epostadministratorstanser_BrukerId_Tidspunkt") || stansnoekkel != 1))
             throw new InvalidOperationException("Demo-databasens revisjonsskjema er ufullstendig. Eksisterende data er ikke endret.");
+        var driftskolonner = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('Epostdrift')").ToListAsync(ct);
+        var forsoekskolonner = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('Epostsendeforsoek')").ToListAsync(ct);
+        var forsoeksindekser = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_index_list('Epostsendeforsoek')").ToListAsync(ct);
+        var harEV11 = tabeller.Contains("Epostdrift") || tabeller.Contains("Epostsendeforsoek") || plankolonner.Contains("AntallForsoek");
+        if (harEV11 && (new[] { "Id", "Stanset", "AktoerId", "EndretUtcTicks", "Versjon" }.Except(driftskolonner).Any()
+            || new[] { "Id", "OppsummeringId", "Nummer", "StartetUtcTicks", "AvsluttetUtcTicks", "Status" }.Except(forsoekskolonner).Any()
+            || new[] { "AntallForsoek", "ForsoekStartetUtcTicks", "NesteForsoekUtcTicks", "NesteOppslagUtcTicks" }.Except(plankolonner).Any()
+            || !forsoeksindekser.Contains("IX_Epostsendeforsoek_OppsummeringId_Nummer")))
+            throw new InvalidOperationException("Demo-databasens driftsskjema er ufullstendig. Eksisterende data er ikke endret.");
         if (hendelseskolonner.Contains("Type") && abonnementskolonner.Contains("UtvalgJson")
             && tabeller.Contains("FristHendelsessynlighet") && fristkolonner.Contains("ManuellKildeUrl")
             && plankolonner.Contains("AvmeldingsHash") && plankolonner.Contains("Avmeldingssekvens")
-            && tabeller.Contains("Epostadministratorstanser")) return;
+            && tabeller.Contains("Epostadministratorstanser") && tabeller.Contains("Epostdrift")
+            && tabeller.Contains("Epostsendeforsoek") && plankolonner.Contains("AntallForsoek")) return;
         if (!tabeller.Contains("Epostabonnementer"))
             throw new InvalidOperationException("Demo-databasen er eldre enn EV02. Bruk en ny disponibel demo-database; eksisterende data er ikke endret.");
         await using var transaksjon = await db.Database.BeginTransactionAsync(ct);
@@ -39,6 +49,7 @@ public static class Demoskjema
         if (!fristkolonner.Contains("ManuellKildeUrl")) migrasjoner.Add(new Migrations.ManuellKildelenke());
         if (!plankolonner.Contains("AvmeldingsHash") || !plankolonner.Contains("Avmeldingssekvens")) migrasjoner.Add(new Migrations.Avmeldingslenke());
         if (!tabeller.Contains("Epostadministratorstanser")) migrasjoner.Add(new Migrations.Epostadministratorstans());
+        if (!tabeller.Contains("Epostdrift")) migrasjoner.Add(new Migrations.Epostdriftsvern());
         foreach (var migrasjon in migrasjoner)
         {
             // SQLite krever INTEGER PRIMARY KEY for databasegenerert revisjons-ID.

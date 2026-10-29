@@ -52,11 +52,20 @@ public sealed class MigrasjonsmodellTester
         KontrollerMaal("20261029170000_Epostadministratorstans", true, true, true);
         using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlServer("Server=localhost;Database=KunModell;Integrated Security=True").Options);
         var samling = db.GetService<IMigrationsAssembly>();
-        var migrasjon = samling.CreateMigration(samling.Migrations.Last().Value, db.Database.ProviderName!);
+        var migrasjon = samling.CreateMigration(samling.Migrations["20261029170000_Epostadministratorstans"], db.Database.ProviderName!);
         var tabell = Assert.IsType<CreateTableOperation>(migrasjon.UpOperations[0]);
         Assert.Equal("Epostadministratorstanser", tabell.Name);
         Assert.Equal(new[] { "AktoerId", "BrukerId", "Handling", "Id", "Tidspunkt" }, tabell.Columns.Select(c => c.Name).Order(StringComparer.Ordinal));
         Assert.Empty(tabell.ForeignKeys); Assert.Empty(migrasjon.UpOperations.OfType<InsertDataOperation>());
+    }
+
+    [Fact]
+    public void EV11_maal_bevarer_tidligere_modell_og_har_unikt_forsoeksnummer_og_seedet_versjonsvern()
+    {
+        KontrollerMaal("20261029201600_Epostdriftsvern", true, true, true);
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlServer("Server=localhost;Database=KunModell;Integrated Security=True").Options);
+        Assert.True(db.Model.FindEntityType(typeof(Epostdriftstilstand))!.FindProperty("Versjon")!.IsConcurrencyToken);
+        Assert.Contains(db.Model.FindEntityType(typeof(Epostsendeforsoek))!.GetIndexes(), x => x.IsUnique);
     }
 
     private static void KontrollerMaal(

@@ -66,6 +66,9 @@ internal sealed class Nettleser
         start.Environment["Demo"] = "true";
         start.Environment["DagligEpost__OffentligBasisadresse"] = adresse;
         if (kontrollertEpost) start.Environment["DagligEpost__KontrollertKjoring"] = "true";
+        // Eksisterende kontrollflyter bytter adaptertilstand uten å flytte klokken.
+        // EV11 prøver produksjonsstandarden for oppslagspause ved Application-grensen.
+        if (kontrollertEpost) start.Environment["DagligEpost__Oppslagspause"] = "00:00:00";
         start.Environment["ConnectionStrings__Aarshjul"] = $"Data Source={Path.Combine(mappe, "demo.db")}";
         // Ikke skriv bearer-URL-er fra feed-forespørsler til CI-loggen.
         start.Environment["Logging__LogLevel__Default"] = "Warning";

@@ -31,6 +31,10 @@ public sealed class Overleveringskvittering(Task utfall)
     public Task Utfall { get; } = utfall;
 }
 
+/// <summary>Adapteren garanterer at meldingen aldri ble mottatt eller overlatt til noen transport.
+/// Generiske feil, kansellering og timeout oppfyller aldri denne kontrakten.</summary>
+public sealed class SikkertUsendtException : Exception;
+
 // Ingen automatisk ToString med adresse eller fristinnhold.
 public sealed class Oppsummeringsmelding(Guid id, string brukerId, string adresse, string tekst, string html)
 {
@@ -71,13 +75,16 @@ public sealed class KontrollertOppsummeringspost : IOppsummeringspost
 {
     private readonly ConcurrentQueue<Oppsummeringsmelding> _meldinger = new();
     public bool Stanset { get; set; }
+    public bool AvvisSikkert { get; set; }
+    public bool VentPaaKvittering { get; set; }
     public bool Tilgjengelig => !Stanset;
     public IReadOnlyList<Oppsummeringsmelding> Hent(string brukerId) => _meldinger.Where(x => x.BrukerId == brukerId).ToList();
     public Overleveringskvittering StartOverlevering(Oppsummeringsmelding melding, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
         if (Stanset) throw new InvalidOperationException("Kontrollert transport er stanset.");
+        if (AvvisSikkert) throw new SikkertUsendtException();
         _meldinger.Enqueue(melding);
-        return new(Task.CompletedTask);
+        return new(VentPaaKvittering ? new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously).Task : Task.CompletedTask);
     }
 }

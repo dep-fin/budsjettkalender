@@ -71,6 +71,12 @@ meldingen; det bekrefter ikke at en ekstern postkasse har mottatt den.
 publisert frist, med siste publiserte metadata og synlighet. Den tilhører Vesentlige
 endringer, også når en frist fjernes fra godkjent utvalg ved import.
 
+**Driftsstans**: Administratorens felles stans av nye daglige e-postoverleveringer.
+Ventende hendelser beholdes til gjenopptakelse. Kalender og publisering fortsetter.
+
+**Sikkert usendt**: Transporten bekrefter at den ikke har mottatt eller overlatt meldingen
+videre. Dette skiller seg fra et uavklart utfall etter mulig overlevering.
+
 ## Internkalender
 
 **Internrunde**: SBRs arbeidsrunde for en rundetype og et år, med egne interne gjøremål.
