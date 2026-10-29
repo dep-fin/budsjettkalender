@@ -3,6 +3,8 @@ using Aarshjul.Application.Brukerforslag;
 using Aarshjul.Application.Datautveksling;
 using Aarshjul.Application.Datouttrekk;
 using Aarshjul.Application.Frister;
+using Aarshjul.Application.Epost;
+using Aarshjul.Infrastructure.Epost;
 using Aarshjul.Application.Faser;
 using Aarshjul.Application.Generering;
 using Aarshjul.Application.Godkjenningsko;
@@ -95,6 +97,50 @@ public partial class Program
 
         // --- Tjenester ---
         builder.Services.AddSingleton(TimeProvider.System);
+        var kontrollertEpost = (erDemo || erTesting) && builder.Configuration.GetValue<bool>("DagligEpost:KontrollertKjoring");
+        if (kontrollertEpost)
+        {
+            builder.Services.AddSingleton<KontrollertEpostklokke>();
+            builder.Services.AddSingleton<TimeProvider>(s => s.GetRequiredService<KontrollertEpostklokke>());
+        }
+        builder.Services.AddOptions<DagligEpostOpsjoner>().Bind(builder.Configuration.GetSection("DagligEpost"))
+            .Validate(o => o.Gyldig(), "Ugyldige forsøks-, vente- eller oppbevaringsgrenser for e-postdrift.").ValidateOnStart()
+            .Validate(o => erDemo || erTesting || o.Oppslagspause >= TimeSpan.FromMinutes(1), "Produksjon krever minst ett minutt mellom utsatte oppslag.")
+            .Validate(o => Uri.TryCreate(o.OffentligBasisadresse, UriKind.Absolute, out var uri)
+                && (uri.Scheme == "https" || (erDemo || erTesting) && uri.Scheme == "http" && uri.IsLoopback),
+                "DagligEpost:OffentligBasisadresse må være HTTPS, eller lokal loopback i demo/Testing.");
+        builder.Services.AddScoped<IDagligEpostoppsummering, DagligEpostoppsummering>();
+        // Testing oppretter skjema etter vertsstart. Kontrollerte klokker kjører eksplisitt.
+        if (!erTesting && !kontrollertEpost) builder.Services.AddHostedService<Aarshjul.Web.Epost.DagligEpostjobb>();
+        builder.Services.AddScoped<IEpostabonnement, EpostabonnementTjeneste>();
+        builder.Services.AddScoped<IEpostabonnentadministrasjon, Epostabonnentadministrasjon>();
+        builder.Services.AddScoped<IEpostdrift, Aarshjul.Infrastructure.Epost.Epostdrift>();
+        builder.Services.AddScoped<EpostdriftKommando>();
+        builder.Services.AddScoped<EpostabonnentadministrasjonKommando>();
+        builder.Services.AddScoped<EpostabonnementKommando>();
+        if (erDemo || erTesting)
+        {
+            builder.Services.AddSingleton<KontrollertBekreftelsespost>();
+            builder.Services.AddSingleton<IBekreftelsespost>(s => s.GetRequiredService<KontrollertBekreftelsespost>());
+            builder.Services.AddSingleton<KontrollertOppsummeringspost>();
+            builder.Services.AddSingleton<IOppsummeringspost>(s => s.GetRequiredService<KontrollertOppsummeringspost>());
+            builder.Services.AddSingleton<KontrollertMottakertilgang>(s =>
+            {
+                var kilde = new KontrollertMottakertilgang();
+                if (erDemo)
+                    foreach (var p in Demodata.Personaer)
+                        kilde.Sett(p.Id, new(MottakertilgangStatus.Aktiv,
+                            new Synlighetskontekst(p.Rolle == Aarshjul.Domain.Funksjonsrolle.Administrator || p.Id == "demo-sbr", p.Grupper)));
+                return kilde;
+            });
+            builder.Services.AddSingleton<IMottakertilgangskilde>(s => s.GetRequiredService<KontrollertMottakertilgang>());
+        }
+        else
+        {
+            builder.Services.AddSingleton<IBekreftelsespost, UtilgjengeligBekreftelsespost>();
+            builder.Services.AddSingleton<IOppsummeringspost, UtilgjengeligOppsummeringspost>();
+            builder.Services.AddSingleton<IMottakertilgangskilde, UtilgjengeligMottakertilgang>();
+        }
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<IFristlesing, FristTjeneste>();
         builder.Services.AddScoped<IFasemal, FasemalTjeneste>();
@@ -120,12 +166,16 @@ public partial class Program
         // Internkalender for SBR (SBR-intern arbeidsliste).
         builder.Services.AddScoped<IInternkalender, InternkalenderTjeneste>();
         builder.Services.AddScoped<IGjoeremaalRegler, GjoeremaalRegelTjeneste>();
+        builder.Services.AddScoped<InternkalenderKommando>();
+        builder.Services.AddScoped<InternkalenderRetur>();
         // Datouttrekk + manuell dokumentopplasting (samme uttrekksledd som automatisk innhenting).
         // Heuristisk (offline) uttrekk nå; Claude-API-implementasjonen plugges inn bak IDatouttrekk (Steg E).
         builder.Services.AddSingleton<IPdftekst, PdftekstLeser>();
         builder.Services.AddSingleton<IDatouttrekk, HeuristiskDatouttrekk>();
         builder.Services.AddScoped<IDokumentopplasting, OpplastingsTjeneste>();
         builder.Services.AddScoped<IBrukeroppslag, BrukeroppslagTjeneste>();
+        builder.Services.AddScoped<IAdministratoroversikt, AdministratoroversiktTjeneste>();
+        builder.Services.AddScoped<AdministratoroversiktKommando>();
         builder.Services.AddScoped<ISynlighetskontekst, HttpSynlighetskontekst>();
         builder.Services.AddScoped<IClaimsTransformation, BrukerClaimsTransformation>();
         builder.Services.AddScoped<Synlighetskontekstkilde>();
@@ -167,6 +217,34 @@ public partial class Program
             app.UseHsts();
         }
         app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+        // En avvist JSON-POST skal beholde 401/403. HTML-feilsiden krever ellers
+        // antiforgery ved ny kjøring av POST og kan erstatte avvisningen med 400.
+        app.Use(async (http, neste) =>
+        {
+            if (http.Request.Path.StartsWithSegments("/api/admin/epostdrift")
+                || http.Request.Path.StartsWithSegments("/admin/innstillinger/epostdrift")
+                || http.Request.Path.StartsWithSegments("/api/admin/epostabonnenter")
+                || http.Request.Path.StartsWithSegments("/admin/innstillinger/epostvarsling"))
+            {
+                http.Response.Headers.CacheControl = "no-store";
+                if (http.Features.Get<Microsoft.AspNetCore.Diagnostics.IStatusCodePagesFeature>() is { } abonnentstatus)
+                    abonnentstatus.Enabled = false;
+            }
+            if (http.Request.Path.StartsWithSegments("/epostvarsling") || http.Request.Path == "/demo/epostmottaker")
+            {
+                http.Response.Headers.CacheControl = "no-store";
+                http.Response.Headers["Referrer-Policy"] = "no-referrer";
+            }
+            if (http.Request.Path.StartsWithSegments("/api/epostabonnement")
+                && http.Features.Get<Microsoft.AspNetCore.Diagnostics.IStatusCodePagesFeature>() is { } status)
+                status.Enabled = false;
+            if (http.Request.Path == "/api/epostabonnement/avmeldingslenke")
+            {
+                http.Response.Headers.CacheControl = "no-store";
+                http.Response.Headers["Referrer-Policy"] = "no-referrer";
+            }
+            await neste(http);
+        });
         app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();
@@ -175,6 +253,9 @@ public partial class Program
         app.MapStaticAssets();
         app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
         app.MapFristEndepunkter();
+        app.MapEpostEndepunkter();
+        app.MapEpostabonnentEndepunkter();
+        app.MapEpostdriftEndepunkter();
         if (brukEntra)
         {
             app.MapControllers();
@@ -189,8 +270,8 @@ public partial class Program
         {
             using var scope = app.Services.CreateScope();
             await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContextAsync();
-            // SQLite-skjema fra modellen (EF-migrasjonene er SqlServer-spesifikke).
-            db.Database.EnsureCreated();
+            // Ny SQLite-demo fra modellen; eksisterende EV02-demo oppgraderes additivt.
+            await Demoskjema.SikreAsync(db);
             var opsjoner = scope.ServiceProvider.GetRequiredService<IOptions<StartdataOpsjoner>>().Value;
             await Startdata.SeedAsync(db, opsjoner);
             await Demodata.SeedAsync(db);

@@ -1,4 +1,7 @@
 namespace Aarshjul.Application;
 
 /// <summary>Kastes når inndata bryter en forretningsregel (f.eks. frist uten valgt synlighet).</summary>
-public class Valideringsfeil(string melding) : Exception(melding);
+public class Valideringsfeil(string melding, string? felt = null) : Exception(melding)
+{
+    public string? Felt { get; } = felt;
+}

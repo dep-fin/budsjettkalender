@@ -2,6 +2,8 @@ using Aarshjul.Application;
 using Aarshjul.Application.Frister;
 using Aarshjul.Domain;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using Aarshjul.Infrastructure.Epost;
 
 namespace Aarshjul.Infrastructure.Frister;
 
@@ -10,7 +12,7 @@ namespace Aarshjul.Infrastructure.Frister;
 /// aktivt (ingen stilltiende standard). Nye tildelinger krever aktive grupper;
 /// eksisterende inaktive referanser kan beholdes ved redigering.
 /// </summary>
-public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : IFristskriving
+public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvider? klokke = null) : IFristskriving
 {
     public async Task<Guid> OpprettAsync(FristInndata inndata, CancellationToken ct = default)
     {
@@ -32,6 +34,12 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : 
         }
 
         db.Frister.Add(frist);
+        db.NyFristHendelser.Add(new NyFristHendelse
+        {
+            FristId = frist.Id, OpprettetUtcTicks = (klokke ?? TimeProvider.System).GetUtcNow().UtcTicks,
+            EtterJson = JsonSerializer.Serialize(Fristtilstand.Fra(frist))
+        });
+        db.KoordinerEpostlagring();
         await db.SaveChangesAsync(ct);
         return frist.Id;
     }
@@ -45,7 +53,15 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : 
             ?? throw new Valideringsfeil("Fristen finnes ikke.");
         var koder = await ValiderAsync(db, inndata, frist.Synlighet.Select(s => s.GruppeKode).ToList(), ct);
 
+        var foer = Fristtilstand.Fra(frist);
         SettFelter(frist, inndata);
+        var hendelse = Fristendringshendelse.Lag(frist, foer, inndata.VesentligEndring,
+            inndata.Endringsforklaring, klokke ?? TimeProvider.System);
+        if (hendelse is not null)
+        {
+            db.NyFristHendelser.Add(hendelse);
+            db.KoordinerEpostlagring();
+        }
 
         // Diff framfor «clear + re-add»: å legge til en kode som allerede er tracket gir
         // EF en identitetskonflikt. Fjern kun de som utgår, legg til kun de som er nye.
@@ -60,7 +76,9 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : 
             frist.Synlighet.Add(new FristSynlighet { FristId = id, GruppeKode = kode });
         }
 
-        await db.SaveChangesAsync(ct);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateConcurrencyException feil) when (feil.Entries.All(x => x.Entity is Frist))
+        { throw new Valideringsfeil("Fristen ble endret samtidig. Last inn fristen og prøv igjen."); }
     }
 
     public async Task<FristInndata?> HentForRedigeringAsync(Guid id, CancellationToken ct = default)
@@ -87,6 +105,7 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : 
             Kategori = frist.Kategori,
             Loep = frist.Loep,
             Notat = frist.Notat,
+            ManuellKildeUrl = frist.ManuellKildeUrl,
             Synlighetskoder = frist.Synlighet.Select(s => s.GruppeKode).ToList()
         };
     }
@@ -104,6 +123,7 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory) : 
         frist.Kategori = inndata.Kategori;
         frist.Loep = string.IsNullOrWhiteSpace(inndata.Loep) ? null : inndata.Loep.Trim();
         frist.Notat = string.IsNullOrWhiteSpace(inndata.Notat) ? null : inndata.Notat.Trim();
+        frist.ManuellKildeUrl = Kildelenke.ForLagring(inndata.ManuellKildeUrl);
     }
 
     /// <summary>Validerer skjemaet og returnerer normaliserte, gyldige gruppekoder.</summary>

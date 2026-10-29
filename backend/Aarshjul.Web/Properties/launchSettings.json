@@ -27,7 +27,8 @@
         "applicationUrl": "http://localhost:5014",
         "environmentVariables": {
           "ASPNETCORE_ENVIRONMENT": "Development",
-          "Demo": "true"
+          "Demo": "true",
+          "DagligEpost__OffentligBasisadresse": "http://localhost:5014"
         }
       }
     }

@@ -8,6 +8,7 @@ using Aarshjul.Infrastructure.Faser;
 using Aarshjul.Infrastructure.Frister;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Xunit;
 
 namespace Aarshjul.Testkontrakter;
@@ -15,9 +16,31 @@ namespace Aarshjul.Testkontrakter;
 /// <summary>Hele lagrede innholdet og offentlige projeksjoner før/etter presentasjonsendringer.</summary>
 public static class FasedataBevis
 {
+    // Oppgraderingsprøver må kunne lese/skrive autentiske rader før #140-kolonnen
+    // finnes. Dagens modell og lesetjeneste brukes igjen etter migrasjon.
+    public static IDbContextFactory<AppDbContext> HistoriskFristFabrikk(IDbContextFactory<AppDbContext> fabrikk)
+    {
+        using var db = fabrikk.CreateDbContext();
+        return new HistoriskAdapter((DbContextOptions<AppDbContext>)db.GetService<IDbContextOptions>());
+    }
+    private sealed class HistoriskAdapter(DbContextOptions<AppDbContext> options) : IDbContextFactory<AppDbContext>
+    { public AppDbContext CreateDbContext() => new HistoriskKontekst(options); }
+    private sealed class HistoriskKontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
+    {
+        protected override void OnModelCreating(ModelBuilder b)
+        {
+            base.OnModelCreating(b); b.Entity<Frist>().Ignore(x => x.ManuellKildeUrl); b.Ignore<Epostadministratorstans>();
+            b.Ignore<Epostdriftstilstand>(); b.Ignore<Epostsendeforsoek>();
+            b.Entity<Epostoppsummering>().Ignore(x => x.AntallForsoek);
+            b.Entity<Epostoppsummering>().Ignore(x => x.ForsoekStartetUtcTicks);
+            b.Entity<Epostoppsummering>().Ignore(x => x.NesteForsoekUtcTicks);
+            b.Entity<Epostoppsummering>().Ignore(x => x.NesteOppslagUtcTicks);
+        }
+    }
+
     public static async Task LeggTilHistorikkAsync(IDbContextFactory<AppDbContext> fabrikk)
     {
-        await using var db = fabrikk.CreateDbContext();
+        await using var db = HistoriskFristFabrikk(fabrikk).CreateDbContext();
         await Startdata.SeedAsync(db, new());
         var dokument = new BehandletDokument { Id = Guid.NewGuid(), Kilde = "regjeringen", DokumentNokkel = "UX83-kilde", InnholdHash = "syntetisk-hash", Tittel = "Kilde 83", Url = "https://www.regjeringen.no/no/dokumenter/ux83/id1234567/", BehandletStatus = BehandletStatus.FerdigBehandlet };
         db.BehandledeDokumenter.Add(dokument);
@@ -42,6 +65,7 @@ public static class FasedataBevis
         {
             var rader = await db.Set<T>().ToArrayAsync();
             return rader.Select(r => JsonSerializer.Serialize(db.Entry(r).Properties.OrderBy(p => p.Metadata.Name)
+                    .Where(p => p.Metadata.Name != nameof(Frist.ManuellKildeUrl) || p.CurrentValue is not null)
                     .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue)))
                 .Order(StringComparer.Ordinal).ToArray();
         }

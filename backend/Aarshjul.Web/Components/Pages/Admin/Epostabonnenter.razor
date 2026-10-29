@@ -1,0 +1,104 @@
+@page "/admin/innstillinger/epostvarsling"
+@attribute [Authorize(Policy = Autorisasjon.ErAdministrator)]
+@using Aarshjul.Application.Epost
+@using Aarshjul.Application
+@implements IDisposable
+@inject EpostabonnentadministrasjonKommando Kommando
+@inject ILogger<Epostabonnenter> Logg
+
+<PageTitle>E-postabonnenter</PageTitle>
+<a href="/admin/innstillinger">Til administrator-innstillinger</a>
+<h1>E-postabonnenter</h1>
+<p>Registrerte og påbegynte abonnementer. Alle budsjettår omfatter også fremtidige år.</p>
+<button class="knapp sekundar" type="button" disabled="@_opptatt" @onclick="LastAsync" @ref="_oppdater">Oppdater abonnenter</button>
+@if (_feil is not null) { <p class="melding feil" role="alert">@_feil</p> }
+@if (_melding is not null) { <p class="melding" role="status" tabindex="-1" @ref="_kvittering">@_melding</p> }
+@if (_opptatt) { <p role="status">Arbeider …</p> }
+else if (_rader.Count == 0 && _feil is null) { <p role="status">Ingen e-postabonnementer er registrert.</p> }
+<div class="abonnenter" aria-busy="@(_opptatt ? "true" : "false")">
+@foreach (var a in _rader)
+{
+    <article @key="a.BrukerId" aria-label="@a.Navn">
+        <h2>@a.Navn</h2>
+        <dl>
+            <dt>Brukeridentitet</dt><dd>@a.BrukerId</dd>
+            <dt>Jobbadresse</dt><dd>@a.Adresse</dd>
+            <dt>Status</dt><dd>@Status(a.Status)</dd>
+            <dt>Adressebekreftelse</dt><dd>@(a.AdresseBekreftet ? "Bekreftet" : "Ikke bekreftet")</dd>
+            <dt>Varseltyper</dt><dd>@Typer(a)</dd>
+            <dt>Budsjettår</dt><dd>@(a.Budsjettaar is null ? "Alle budsjettår" : string.Join(", ", a.Budsjettaar))</dd>
+            <dt>Kategorier</dt><dd>@(a.Kategorier is null ? "Alle kategorier" : string.Join(", ", a.Kategorier))</dd>
+            <dt>Opprettet</dt><dd>@Tid(a.Opprettet)</dd>
+            <dt>Sist endret</dt><dd>@Tid(a.Endret)</dd>
+            <dt>Adresse bekreftet</dt><dd>@Tid(a.Aktivert)</dd>
+            <dt>Siste administratorstans</dt><dd>@(a.SistStanset is null ? "Ingen" : $"{a.SistStansetAv} – {Tid(a.SistStanset)}")</dd>
+        </dl>
+        @if (a.Status != "Avmeldt")
+        {
+            <button type="button" class="knapp sekundar" disabled="@_opptatt" @onclick="() => Velg(a)">Stans varsling for @a.Navn</button>
+        }
+    </article>
+}
+</div>
+@if (_valgt is { } valgt)
+{
+    <section class="bekreftelse" role="region" aria-labelledby="stans-tittel" tabindex="-1" @ref="_bekreftelse">
+        <h2 id="stans-tittel">Bekreft stans av e-postvarsling</h2>
+        <p>@valgt.Navn – @valgt.Adresse. Status: @Status(valgt.Status).</p>
+        <p>Videre varsling stanses. E-post som allerede er overlevert kan ikke tilbakekalles.
+            Brukeren kan senere melde seg på igjen.</p>
+        <button type="button" class="knapp" disabled="@_opptatt" @onclick="StansAsync">Bekreft stans</button>
+        <button type="button" class="knapp sekundar" disabled="@_opptatt" @onclick="AvbrytAsync">Avbryt</button>
+    </section>
+}
+
+@code {
+    private readonly CancellationTokenSource _levetid = new();
+    private IReadOnlyList<EpostabonnentDto> _rader = [];
+    private EpostabonnentDto? _valgt;
+    private string? _feil, _melding;
+    private bool _opptatt, _avsluttet, _fokuser, _fokuserKvittering;
+    private ElementReference _bekreftelse, _oppdater, _kvittering;
+    protected override Task OnInitializedAsync() => LastAsync();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_fokuser) { _fokuser = false; await _bekreftelse.FocusAsync(); }
+        if (_fokuserKvittering) { _fokuserKvittering = false; await _kvittering.FocusAsync(); }
+    }
+    private void Velg(EpostabonnentDto a) { _valgt = a; _fokuser = true; _feil = _melding = null; }
+    private async Task AvbrytAsync() { _valgt = null; await _oppdater.FocusAsync(); }
+    private async Task LastAsync()
+    {
+        _opptatt = true; _rader = []; _valgt = null; _feil = _melding = null;
+        try { var rader = await Kommando.HentAsync(_levetid.Token); if (!_avsluttet) _rader = rader; }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (UnauthorizedAccessException) { _feil = "Du har ikke tilgang til e-postabonnentene."; }
+        catch (Exception) { Logg.LogWarning("Kunne ikke laste e-postabonnenter."); _feil = "Kunne ikke laste abonnentene. Velg Oppdater abonnenter for å prøve igjen."; }
+        finally { if (!_avsluttet) _opptatt = false; }
+    }
+    private async Task StansAsync()
+    {
+        if (_valgt is not { } a || _opptatt) return;
+        _opptatt = true; _feil = _melding = null;
+        try
+        {
+            await Kommando.StansAsync(a.BrukerId, a.Versjon, true, _levetid.Token);
+            _valgt = null; await LastAsync();
+            if (_feil is null) { _melding = "Videre e-postvarsling er stanset."; _fokuserKvittering = true; }
+        }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (EpostabonnementKonflikt)
+        {
+            _valgt = null; await LastAsync();
+            _feil = "Abonnementet ble endret samtidig. Les oppdatert adresse og status, og bekreft på nytt ved behov.";
+        }
+        catch (Valideringsfeil feil) { _valgt = null; _feil = feil.Message; }
+        catch (UnauthorizedAccessException) { _valgt = null; _rader = []; _feil = "Du har ikke tilgang til e-postabonnentene."; }
+        catch (Exception) { Logg.LogWarning("Kunne ikke stanse e-postvarsling."); _valgt = null; _feil = "Stans kunne ikke bekreftes. Oppdater abonnentene før du prøver igjen."; }
+        finally { if (!_avsluttet) _opptatt = false; }
+    }
+    private static string Status(string s) => s == "VenterPaaBekreftelse" ? "Venter på bekreftelse" : s;
+    private static string Typer(EpostabonnentDto a) => string.Join(", ", new[] { a.NyeFrister ? "Nye frister" : null, a.VesentligeEndringer ? "Vesentlige endringer" : null }.Where(x => x is not null));
+    private static string Tid(DateTimeOffset? t) => t?.UtcDateTime.ToString("dd.MM.yyyy HH:mm 'UTC'") ?? "Ikke bekreftet";
+    public void Dispose() { _avsluttet = true; _levetid.Cancel(); _levetid.Dispose(); }
+}

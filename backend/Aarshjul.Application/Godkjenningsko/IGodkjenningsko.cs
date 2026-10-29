@@ -67,7 +67,8 @@ public sealed record Kofilter
 /// </summary>
 public sealed record ForslagForJustering(FristInndata Felter, bool ErEndring);
 
-/// <summary>Inndata ved godkjenning: hvilket forslag, endelig synlighet, og eksplisitt POL-bekreftelse.</summary>
+/// <summary>Inndata ved publisering: forslag, endelig synlighet, eksplisitt POL-bekreftelse
+/// og eventuell vesentlig innholdsendring klassifisert av godkjenneren.</summary>
 public sealed record GodkjennInndata
 {
     public required Guid ForslagId { get; init; }
@@ -75,6 +76,10 @@ public sealed record GodkjennInndata
 
     /// <summary>Må være true dersom synligheten inkluderer POL — POL settes aldri uten aktivt valg.</summary>
     public bool PolBekreftet { get; init; }
+    /// <summary>Kun ved endringsforslag: krever faktisk endret innhold og forklaring på 1–300 tegn.
+    /// Automatiske dato-/periode-, budsjettår- og kategoriendringer varsles også uten markering.</summary>
+    public bool VesentligEndring { get; init; }
+    public string? Endringsforklaring { get; init; }
 }
 
 /// <summary>

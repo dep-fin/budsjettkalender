@@ -1,0 +1,54 @@
+{
+  "base": "29421c2ff1a1595ecfaba5e80d18ce529ade8c03",
+  "branch": "codex/137-pdf-undersokelse",
+  "sdk": "10.0.402",
+  "repeatRuns": {
+    "count": 3,
+    "identicalFiles": [
+      "summary.json",
+      "proposals.json",
+      "segments.json",
+      "pages.json",
+      "pdftekst.txt",
+      "runtime.json"
+    ],
+    "firstExitCode": 2,
+    "secondExitCode": 2,
+    "thirdExitCode": 2,
+    "signal": "seven distinct day-row dates observed=1/7; verdict=RED"
+  },
+  "build": {
+    "exitCode": 0,
+    "warnings": 0,
+    "errors": 0
+  },
+  "initialTotals": {
+    "proposals": 6,
+    "evidenceFields": 12,
+    "correctRowLinks": 0,
+    "dayDatesFound": 1,
+    "dayRowsMissingOwnProposal": 6,
+    "dayRowsWithWrongTitle": 1,
+    "nonDayRowsWithoutOwnProposal": 2,
+    "extraReferenceCandidates": 5,
+    "unresolvedCandidates": 0,
+    "exactTitleDateDuplicates": 0,
+    "semanticReferenceDuplicates": 1
+  },
+  "publication": {
+    "publishedFrister": 0,
+    "productionCodeChanged": false,
+    "migrationsRun": false,
+    "userDatabaseUsed": false,
+    "externalModelUsed": false
+  },
+  "commands": [
+    "./TestResults/137/sdk/dotnet.exe restore backend/Aarshjul.Infrastructure/Aarshjul.Infrastructure.csproj --locked-mode -m:1 -nr:false",
+    "./TestResults/137/sdk/dotnet.exe restore TestResults/137/harness/Investigation.csproj -m:1 -nr:false",
+    "./TestResults/137/sdk/dotnet.exe build TestResults/137/harness/Investigation.csproj -c Release --no-restore -m:1 -nr:false",
+    "./TestResults/137/sdk/dotnet.exe TestResults/137/harness/bin/Release/net10.0/Investigation.dll TestResults/137 run1",
+    "./TestResults/137/sdk/dotnet.exe TestResults/137/harness/bin/Release/net10.0/Investigation.dll TestResults/137 run2",
+    "./TestResults/137/sdk/dotnet.exe TestResults/137/harness/bin/Release/net10.0/Investigation.dll TestResults/137 run3",
+    "./TestResults/137/sdk/dotnet.exe TestResults/137/harness/bin/Release/net10.0/Investigation.dll TestResults/137 probes"
+  ]
+}

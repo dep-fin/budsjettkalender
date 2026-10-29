@@ -148,6 +148,8 @@ public sealed class GodkjenningskonkurranseTester : GodkjenningskonkurranseKontr
                     SET NOCOUNT ON;
                     IF (SELECT COUNT(*) FROM dbo.Frister) = 1
                        AND (SELECT COUNT(*) FROM dbo.Varsler) = 1
+                       AND (SELECT COUNT(*) FROM dbo.NyFristHendelser WHERE Type = 'Ny') = 1
+                       AND (SELECT Verdi FROM dbo.Epostrekkefolge WHERE Id = 1) = 1
                        AND (SELECT COUNT(*) FROM dbo.Forslag WHERE Status = 1) = 1
                         THROW 51001, 'Testfeil etter publiseringsskriv', 1;
                     ELSE

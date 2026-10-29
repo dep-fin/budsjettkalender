@@ -1,0 +1,176 @@
+[
+  {
+    "candidate": 1,
+    "segment": 15,
+    "input": "Teknisk justering i BUDMOD ................................................................................... 7 Ifølge liste Deres ref Vår ref 26/3503 Dato 23. juni 2026 Side 2 3.10.",
+    "Tittel": "Teknisk justering i BUDMOD ................................................................................... 7 Ifølge liste Deres ref Vår ref 26/3503 Dato Side 2 3.10",
+    "Dato": "2026-06-23",
+    "Budsjettaar": 2028,
+    "Datopresisjon": "Dag",
+    "Datokvalifikator": null,
+    "Kategori": "Budsjett",
+    "Loep": null,
+    "Status": "Forslag",
+    "Opphav": "Robot",
+    "ForeslaattSynlighet": "[\"FA\",\"FIN-FAG\"]",
+    "evidence": [
+      {
+        "Felt": "dato",
+        "TolketVerdi": "2026-06-23",
+        "Kildeutdrag": "Teknisk justering i BUDMOD ................................................................................... 7 Ifølge liste Deres ref Vår ref 26/3503 Dato 23. juni 2026 Side 2 3.10.",
+        "Konfidens": 0.65
+      },
+      {
+        "Felt": "tittel",
+        "TolketVerdi": "Teknisk justering i BUDMOD ................................................................................... 7 Ifølge liste Deres ref Vår ref 26/3503 Dato Side 2 3.10",
+        "Kildeutdrag": "Teknisk justering i BUDMOD ................................................................................... 7 Ifølge liste Deres ref Vår ref 26/3503 Dato 23. juni 2026 Side 2 3.10.",
+        "Konfidens": 0.5
+      }
+    ]
+  },
+  {
+    "candidate": 2,
+    "segment": 41,
+    "input": "Foreløpig tidsplan for arbeidet med 2028-budsjettet Frist for innsending av førsteutkast/skisse til omtale av strukturelle utfordringer og -tiltak 16. oktober 2026 Frist for ferdigstillelse av omtalen av strukturelle utfordringer og -tiltak 18. desember 2026 Frist for spesifikasjon av driftspostene for 2027-budsjettet 4. januar 2027 Frist for innsending av materiale til teknisk justering og flerårige budsjettkonsekvenser av gjeldende politikk 6. januar 2027 Frist for innsending av mulige innsparingstiltak 15. januar 2027 Frist for innsending av satsingsforslag 22. januar 2027 Frist for tabeller for nettobudsjetterte virksomheter 26. februar 2027 Regjeringens marskonferanse 9.–10. mars 2027 Utsending av Hovedbudsjettskriv Ultimo mars 2027 Materialet skal sendes elektronisk til Finansdepartementet.",
+    "Tittel": "Foreløpig tidsplan for arbeidet med 2028-budsjettet Frist for innsending av førsteutkast/skisse til omtale av strukturelle utfordringer og -tiltak Frist for ferdigstillelse av omtalen av strukturelle utfordringer og -tiltak 18. desember 2026 Frist for spesifikasjon av driftspostene for 2027-budsjettet 4. januar 2027 Frist for innsending av materiale til teknisk justering og flerårige budsjettkonse…",
+    "Dato": "2026-10-16",
+    "Budsjettaar": 2028,
+    "Datopresisjon": "Dag",
+    "Datokvalifikator": null,
+    "Kategori": "Budsjett",
+    "Loep": "rammefordeling",
+    "Status": "Forslag",
+    "Opphav": "Robot",
+    "ForeslaattSynlighet": "[\"FA\",\"FIN-FAG\"]",
+    "evidence": [
+      {
+        "Felt": "dato",
+        "TolketVerdi": "2026-10-16",
+        "Kildeutdrag": "Foreløpig tidsplan for arbeidet med 2028-budsjettet Frist for innsending av førsteutkast/skisse til omtale av strukturelle utfordringer og -tiltak 16. oktober 2026 Frist for ferdigstillelse av omtalen av strukturelle utfordringer og -tiltak 18. desember 2026 Frist for spesifikasjon av driftspostene for 2027-budsjettet 4. januar 2027 Frist for innsending av materiale til teknisk justering og flerårige budsjettkonsekvenser av gjeldende politikk 6. januar 2027 Frist for innsending av mulige innsparingstiltak 15. januar 2027 Frist for innsending av satsingsforslag 22. januar 2027 Frist for tabelle…",
+        "Konfidens": 0.65
+      },
+      {
+        "Felt": "tittel",
+        "TolketVerdi": "Foreløpig tidsplan for arbeidet med 2028-budsjettet Frist for innsending av førsteutkast/skisse til omtale av strukturelle utfordringer og -tiltak Frist for ferdigstillelse av omtalen av strukturelle utfordringer og -tiltak 18. desember 2026 Frist for spesifikasjon av driftspostene for 2027-budsjettet 4. januar 2027 Frist for innsending av materiale til teknisk justering og flerårige budsjettkonse…",
+        "Kildeutdrag": "Foreløpig tidsplan for arbeidet med 2028-budsjettet Frist for innsending av førsteutkast/skisse til omtale av strukturelle utfordringer og -tiltak 16. oktober 2026 Frist for ferdigstillelse av omtalen av strukturelle utfordringer og -tiltak 18. desember 2026 Frist for spesifikasjon av driftspostene for 2027-budsjettet 4. januar 2027 Frist for innsending av materiale til teknisk justering og flerårige budsjettkonsekvenser av gjeldende politikk 6. januar 2027 Frist for innsending av mulige innsparingstiltak 15. januar 2027 Frist for innsending av satsingsforslag 22. januar 2027 Frist for tabelle…",
+        "Konfidens": 0.5
+      }
+    ]
+  },
+  {
+    "candidate": 3,
+    "segment": 57,
+    "input": "Valutakurser per 15. desember 2026 skal legges til grunn for innspillene. 3.2.",
+    "Tittel": "Valutakurser per skal legges til grunn for innspillene. 3.2",
+    "Dato": "2026-12-15",
+    "Budsjettaar": 2028,
+    "Datopresisjon": "Dag",
+    "Datokvalifikator": null,
+    "Kategori": "Budsjett",
+    "Loep": null,
+    "Status": "Forslag",
+    "Opphav": "Robot",
+    "ForeslaattSynlighet": "[\"FA\",\"FIN-FAG\"]",
+    "evidence": [
+      {
+        "Felt": "dato",
+        "TolketVerdi": "2026-12-15",
+        "Kildeutdrag": "Valutakurser per 15. desember 2026 skal legges til grunn for innspillene. 3.2.",
+        "Konfidens": 0.65
+      },
+      {
+        "Felt": "tittel",
+        "TolketVerdi": "Valutakurser per skal legges til grunn for innspillene. 3.2",
+        "Kildeutdrag": "Valutakurser per 15. desember 2026 skal legges til grunn for innspillene. 3.2.",
+        "Konfidens": 0.5
+      }
+    ]
+  },
+  {
+    "candidate": 4,
+    "segment": 73,
+    "input": "Det skal legges ved spesifisert oversikt over kostnadsramme og styringsramme (prisnivå per 01.07.2027), anslag på benyttet bevilgning til og med 2027, foreslått bevilgning i budsjettåret, gjenstående bevilgningsbehov samt tidspunkt for oppstart og ferdigstilling for hvert enkelt byggeprosjekt som inngår i bevilgningsanslagene.",
+    "Tittel": "Det skal legges ved spesifisert oversikt over kostnadsramme og styringsramme (prisnivå per ), anslag på benyttet bevilgning til og med 2027, foreslått bevilgning i budsjettåret, gjenstående bevilgningsbehov samt tidspunkt for oppstart og ferdigstilling for hvert enkelt byggeprosjekt som inngår i bevilgningsanslagene",
+    "Dato": "2027-07-01",
+    "Budsjettaar": 2028,
+    "Datopresisjon": "Dag",
+    "Datokvalifikator": null,
+    "Kategori": "Budsjett",
+    "Loep": null,
+    "Status": "Forslag",
+    "Opphav": "Robot",
+    "ForeslaattSynlighet": "[\"FA\",\"FIN-FAG\"]",
+    "evidence": [
+      {
+        "Felt": "dato",
+        "TolketVerdi": "2027-07-01",
+        "Kildeutdrag": "Det skal legges ved spesifisert oversikt over kostnadsramme og styringsramme (prisnivå per 01.07.2027), anslag på benyttet bevilgning til og med 2027, foreslått bevilgning i budsjettåret, gjenstående bevilgningsbehov samt tidspunkt for oppstart og ferdigstilling for hvert enkelt byggeprosjekt som inngår i bevilgningsanslagene.",
+        "Konfidens": 0.65
+      },
+      {
+        "Felt": "tittel",
+        "TolketVerdi": "Det skal legges ved spesifisert oversikt over kostnadsramme og styringsramme (prisnivå per ), anslag på benyttet bevilgning til og med 2027, foreslått bevilgning i budsjettåret, gjenstående bevilgningsbehov samt tidspunkt for oppstart og ferdigstilling for hvert enkelt byggeprosjekt som inngår i bevilgningsanslagene",
+        "Kildeutdrag": "Det skal legges ved spesifisert oversikt over kostnadsramme og styringsramme (prisnivå per 01.07.2027), anslag på benyttet bevilgning til og med 2027, foreslått bevilgning i budsjettåret, gjenstående bevilgningsbehov samt tidspunkt for oppstart og ferdigstilling for hvert enkelt byggeprosjekt som inngår i bevilgningsanslagene.",
+        "Konfidens": 0.5
+      }
+    ]
+  },
+  {
+    "candidate": 5,
+    "segment": 77,
+    "input": "Følgende sett med standardtabeller skal utarbeides for nettobudsjetterte virksomheter, jf. vedlegg 3. • Tabell 1: Virksomhetenes brutto utgifter og inntekter fordelt etter art etter tilsvarende prinsipper som for de bruttobudsjetterte virksomhetene. • Tabell 2: Virksomhetenes inntekter spesifisert etter inntektskilde (bevilgninger over statsbudsjettet til finansiering av statsoppdraget, bidrag av ulik art samt oppdragsinntekter). • Tabell 3: Virksomhetenes kontantbeholdninger pr. 31. desember med spesifikasjon av de formål som kontantbeholdningen skal brukes til.",
+    "Tittel": "Følgende sett med standardtabeller skal utarbeides for nettobudsjetterte virksomheter, jf. vedlegg 3. • Tabell 1: Virksomhetenes brutto utgifter og inntekter fordelt etter art etter tilsvarende prinsipper som for de bruttobudsjetterte virksomhetene. • Tabell 2: Virksomhetenes inntekter spesifisert etter inntektskilde (bevilgninger over statsbudsjettet til finansiering av statsoppdraget, bidrag av…",
+    "Dato": "2028-12-31",
+    "Budsjettaar": 2028,
+    "Datopresisjon": "Dag",
+    "Datokvalifikator": null,
+    "Kategori": "Budsjett",
+    "Loep": null,
+    "Status": "Forslag",
+    "Opphav": "Robot",
+    "ForeslaattSynlighet": "[\"FA\",\"FIN-FAG\"]",
+    "evidence": [
+      {
+        "Felt": "dato",
+        "TolketVerdi": "2028-12-31",
+        "Kildeutdrag": "Følgende sett med standardtabeller skal utarbeides for nettobudsjetterte virksomheter, jf. vedlegg 3. • Tabell 1: Virksomhetenes brutto utgifter og inntekter fordelt etter art etter tilsvarende prinsipper som for de bruttobudsjetterte virksomhetene. • Tabell 2: Virksomhetenes inntekter spesifisert etter inntektskilde (bevilgninger over statsbudsjettet til finansiering av statsoppdraget, bidrag av ulik art samt oppdragsinntekter). • Tabell 3: Virksomhetenes kontantbeholdninger pr. 31. desember med spesifikasjon av de formål som kontantbeholdningen skal brukes til.",
+        "Konfidens": 0.65
+      },
+      {
+        "Felt": "tittel",
+        "TolketVerdi": "Følgende sett med standardtabeller skal utarbeides for nettobudsjetterte virksomheter, jf. vedlegg 3. • Tabell 1: Virksomhetenes brutto utgifter og inntekter fordelt etter art etter tilsvarende prinsipper som for de bruttobudsjetterte virksomhetene. • Tabell 2: Virksomhetenes inntekter spesifisert etter inntektskilde (bevilgninger over statsbudsjettet til finansiering av statsoppdraget, bidrag av…",
+        "Kildeutdrag": "Følgende sett med standardtabeller skal utarbeides for nettobudsjetterte virksomheter, jf. vedlegg 3. • Tabell 1: Virksomhetenes brutto utgifter og inntekter fordelt etter art etter tilsvarende prinsipper som for de bruttobudsjetterte virksomhetene. • Tabell 2: Virksomhetenes inntekter spesifisert etter inntektskilde (bevilgninger over statsbudsjettet til finansiering av statsoppdraget, bidrag av ulik art samt oppdragsinntekter). • Tabell 3: Virksomhetenes kontantbeholdninger pr. 31. desember med spesifikasjon av de formål som kontantbeholdningen skal brukes til.",
+        "Konfidens": 0.5
+      }
+    ]
+  },
+  {
+    "candidate": 6,
+    "segment": 256,
+    "input": "Med hilsen Trond Høyde (e.f.) avdelingsdirektør Solveig Margrethe Juvkam underdirektør Dokumentet er elektronisk signert og har derfor ikke håndskrevne signaturer Vedlegg: • Vedlegg 1: Mal for innspill til teknisk justering • Vedlegg 2: Mal for innspill om satsingsforslag • Vedlegg 3-1 Forvaltningsorgan med særskilte fullmakter Side 16 o Tabell 1: Virksomhetenes brutto utgifter og inntekter fordelt etter art • Vedlegg 3-2 Forvaltningsorgan med særskilte fullmakter o Tabell 2: Virksomhetenes inntekter spesifisert etter inntektskilde • Vedlegg 3-3 Forvaltningsorgan med særskilte fullmakter o Tabell 3: Forhold mellom virksomhetenes kontantbeholdning, påløpte kostnader og avsetninger per 31. desember Vedleggene kan lastes ned fra: Finansdepartementets rundskriv - regjeringen.no Side 17 Adresseliste Arbeids- og inkluderingsdepartementet Postboks 8019 Dep 0030 OSLO Barne- og familiedepartementet Postboks 8036 Dep 0030 OSLO Digitaliserings- og forvaltningsdepartementet Postboks 8112 Dep 0032 OSLO Energidepartementet Postboks 8148 Dep 0033 OSLO Forsvarsdepartementet Postboks 8126 Dep 0032 OSLO Helse- og omsorgsdepartementet Postboks 8011 Dep 0030 OSLO Justis- og beredskapsdepartementet Postboks 8005 Dep 0030 OSLO Klima- og miljødepartementet Postboks 8013 Dep 0030 OSLO Kommunal- og distriktsdepartementet Postboks 8112 Dep 0032 OSLO Kultur- og likestillingsdepartementet Postboks 8030 Dep 0030 OSLO Kunnskapsdepartementet Postboks 8119 Dep 0032 OSLO Landbruks- og matdepartementet Postboks 8007 Dep 0030 OSLO Nærings- og fiskeridepartementet Postboks 8090 Dep 0032 OSLO Samferdselsdepartementet Postboks 8010 Dep 0030 OSLO Statsministerens kontor Postboks 8001 Dep 0030 OSLO Utenriksdepartementet Postboks 8114 Dep 0032 OSLO",
+    "Tittel": "Med hilsen Trond Høyde (e.f.) avdelingsdirektør Solveig Margrethe Juvkam underdirektør Dokumentet er elektronisk signert og har derfor ikke håndskrevne signaturer Vedlegg: • Vedlegg 1: Mal for innspill til teknisk justering • Vedlegg 2: Mal for innspill om satsingsforslag • Vedlegg 3-1 Forvaltningsorgan med særskilte fullmakter Side 16 o Tabell 1: Virksomhetenes brutto utgifter og inntekter fordel…",
+    "Dato": "2028-12-31",
+    "Budsjettaar": 2028,
+    "Datopresisjon": "Dag",
+    "Datokvalifikator": null,
+    "Kategori": "Budsjett",
+    "Loep": null,
+    "Status": "Forslag",
+    "Opphav": "Robot",
+    "ForeslaattSynlighet": "[\"FA\",\"FIN-FAG\"]",
+    "evidence": [
+      {
+        "Felt": "dato",
+        "TolketVerdi": "2028-12-31",
+        "Kildeutdrag": "Med hilsen Trond Høyde (e.f.) avdelingsdirektør Solveig Margrethe Juvkam underdirektør Dokumentet er elektronisk signert og har derfor ikke håndskrevne signaturer Vedlegg: • Vedlegg 1: Mal for innspill til teknisk justering • Vedlegg 2: Mal for innspill om satsingsforslag • Vedlegg 3-1 Forvaltningsorgan med særskilte fullmakter Side 16 o Tabell 1: Virksomhetenes brutto utgifter og inntekter fordelt etter art • Vedlegg 3-2 Forvaltningsorgan med særskilte fullmakter o Tabell 2: Virksomhetenes inntekter spesifisert etter inntektskilde • Vedlegg 3-3 Forvaltningsorgan med særskilte fullmakter o Tab…",
+        "Konfidens": 0.65
+      },
+      {
+        "Felt": "tittel",
+        "TolketVerdi": "Med hilsen Trond Høyde (e.f.) avdelingsdirektør Solveig Margrethe Juvkam underdirektør Dokumentet er elektronisk signert og har derfor ikke håndskrevne signaturer Vedlegg: • Vedlegg 1: Mal for innspill til teknisk justering • Vedlegg 2: Mal for innspill om satsingsforslag • Vedlegg 3-1 Forvaltningsorgan med særskilte fullmakter Side 16 o Tabell 1: Virksomhetenes brutto utgifter og inntekter fordel…",
+        "Kildeutdrag": "Med hilsen Trond Høyde (e.f.) avdelingsdirektør Solveig Margrethe Juvkam underdirektør Dokumentet er elektronisk signert og har derfor ikke håndskrevne signaturer Vedlegg: • Vedlegg 1: Mal for innspill til teknisk justering • Vedlegg 2: Mal for innspill om satsingsforslag • Vedlegg 3-1 Forvaltningsorgan med særskilte fullmakter Side 16 o Tabell 1: Virksomhetenes brutto utgifter og inntekter fordelt etter art • Vedlegg 3-2 Forvaltningsorgan med særskilte fullmakter o Tabell 2: Virksomhetenes inntekter spesifisert etter inntektskilde • Vedlegg 3-3 Forvaltningsorgan med særskilte fullmakter o Tab…",
+        "Konfidens": 0.5
+      }
+    ]
+  }
+]

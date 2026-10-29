@@ -19,7 +19,7 @@ public sealed class FasemalTester : FasemalKontrakt
         await using var database = new SqlServerFasedatabase();
         await database.OpprettAsync("20261020135232_ForslagVersjonKonkurransekontroll");
         await FasedataBevis.LeggTilHistorikkAsync(database.Fabrikk());
-        var historikk = await FasedataBevis.HentAsync(database.Fabrikk());
+        var historikk = await FasedataBevis.HentAsync(FasedataBevis.HistoriskFristFabrikk(database.Fabrikk()));
         await using (var db = database.Fabrikk().CreateDbContext())
         {
             Assert.DoesNotContain("20261027205350_FellesFasemal", await db.Database.GetAppliedMigrationsAsync());

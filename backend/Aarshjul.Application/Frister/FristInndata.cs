@@ -19,6 +19,9 @@ public class FristInndata
     public Kategori Kategori { get; set; } = Kategori.Budsjett;
     public string? Loep { get; set; }
     public string? Notat { get; set; }
+    public string? ManuellKildeUrl { get; set; }
+    public bool VesentligEndring { get; set; }
+    public string? Endringsforklaring { get; set; }
 
     /// <summary>Valgte synlighetsgrupper (gruppekoder). Må inneholde minst én (POL kun ved aktivt valg).</summary>
     public List<string> Synlighetskoder { get; set; } = [];

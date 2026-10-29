@@ -1,0 +1,8 @@
+<section class="internarbeid">
+    <p class="internmerke">SBR-intern arbeidsflate</p>
+    @ChildContent
+</section>
+
+@code {
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
+}

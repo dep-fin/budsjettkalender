@@ -8,9 +8,19 @@ Bicep-maler for Azure-infrastrukturen (kravdok. 9.2).
 - `main.bicepparam` — eksempelparametre; fyll inn reelle verdier eller overstyr i CI.
 
 [EV01 – driftskontrakt for e-postvarsling](../docs/operations/epostvarsling-ev01.md)
-beskriver anbefalt tjenestekandidat, nødvendige rettigheter og operatørsteg.
-Beslutninger og miljøaksept gjenstår; malen etablerer verken e-posttjeneste,
-avsenderpostboks eller utsendingsjobb.
+er avstemt mot levert EV11/PR #149. Den beskriver anbefalt Graph/Exchange-kandidat,
+nødvendige rettigheter, autoritativ identitetskilde og konkrete operatørsteg.
+D1–D5 står åpne; dokumentleveransen etablerer ingen faktisk tjeneste, avsender,
+tilgang eller produksjonsaksept.
+
+Applikasjonen har nå minuttvis `DagligEpostjobb`, varig dagskoordinering,
+beskyttet HTTP/Blazor-driftsstatus og stans, begrenset retry/venting og trygg
+retensjon, se [ADR-0010](../docs/adr/0010-varig-daglig-epostoppsummering.md).
+Produksjonsadapterne for identitet og post er fortsatt utilgjengelige.
+Bicep-malen etablerer ingen postboks, Graph-/Exchange-rettigheter eller egen
+jobbressurs og setter ikke `alwaysOn`. Faktisk App Service-oppsett og navngitte
+operatører må avklares ved D2/D4; repoets tekniske standarder er ikke godkjent
+produksjonspolicy. Ingen infrastruktur eller kjørbar konfigurasjon endres av EV01.
 
 ## Validering og utrulling
 

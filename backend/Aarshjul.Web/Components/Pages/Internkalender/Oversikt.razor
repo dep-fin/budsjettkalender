@@ -1,147 +1,103 @@
 @page "/internkalender"
 @using Aarshjul.Application.Internkalender
+@inherits Internside
 @attribute [Authorize(Policy = Autorisasjon.ErSbr)]
 @inject IInternkalender Kalender
-@inject Gjeldendebrukerkilde Brukerkilde
+@inject InternkalenderKommando Kommando
 @inject NavigationManager Nav
+@inject TimeProvider Klokke
 
 <PageTitle>Internkalender (SBR)</PageTitle>
-
-<div class="admintopp">
-    <h1>Internkalender for SBR</h1>
-    <div>
-        <button class="knapp" @onclick='() => Nav.NavigateTo("/internkalender/mine")'>Mine gjøremål</button>
-        <button class="knapp" @onclick='() => Nav.NavigateTo("/internkalender/regler")'>Generelle regler</button>
-        <button class="knapp" @onclick="AapneOvrig">Åpne «Øvrig»</button>
+<NavigationLock OnBeforeInternalNavigation="FoerNavigasjon" />
+<InternkalenderOmraade>
+    <div class="admintopp">
+        <div><h1>Internkalender for SBR</h1><p class="ingress">Runder og gjøremål for det interne arbeidet. Oppgavene er atskilt fra publiserte frister.</p></div>
+        <button class="knapp" disabled="@_arbeider" @onclick="AapneOvrig">Åpne «Øvrig»</button>
     </div>
-</div>
-
-<p class="melding">
-    SBR-intern arbeidsliste, atskilt fra de publiserte fristene. Kun SBR ser denne. Hver
-    budsjettrunde har sin egen oppgaveplan; «Øvrig» samler oppgaver som ikke hører til en runde.
-</p>
-
-<div class="internboks">
-    <h2>Ny runde</h2>
-    <div class="skjemarad">
-        <label>Rundetype
-            <select @bind="_nyType">
-                @foreach (var t in Runder.Genererbare)
-                {
-                    <option value="@t">@Runder.Navn(t)</option>
-                }
-            </select>
-        </label>
-        <label>År
-            <input type="number" @bind="_nyAar" style="width:7rem" />
-        </label>
-        <label>Fyll fra generelle regler
-            <input type="checkbox" @bind="_generer" />
-        </label>
-        <button class="knapp knapp-primær" style="align-self:end" @onclick="OpprettRunde">Opprett runde</button>
-    </div>
-    @if (_feil is not null)
+    @if (_melding is not null) { <p class="internstatus" role="status">@_melding</p> }
+    @if (_feil is not null && _slett is null) { <p class="feil" role="alert">@_feil</p> }
+    <section class="internkort" aria-labelledby="ny-internrunde">
+        <h2 id="ny-internrunde">Ny runde</h2>
+        <form @onsubmit="OpprettRunde" @onsubmit:preventDefault="true" novalidate>
+            <fieldset class="internskjemafelter" disabled="@(_arbeider || !_lastet)">
+                <div class="skjemarad">
+                    <label>Rundetype<select @bind="_nyType">@foreach (var t in Runder.Genererbare) { <option value="@t">@Runder.Navn(t)</option> }</select></label>
+                    <label>År<input type="number" min="1" max="9999" @bind="_nyAar" /></label>
+                    <button type="submit" class="knapp knapp-primær">@(_arbeider ? "Arbeider …" : "Opprett runde")</button>
+                </div>
+                <label class="filtervalg"><input type="checkbox" @bind="_generer" />Fyll fra generelle regler</label>
+            </fieldset>
+        </form>
+        <p class="hint">Mars- og augustrunden har normalt oppgaver året før rundeåret. Øvrig er én stående runde uten år og regelgenerering.</p>
+    </section>
+    <h2>Internrunder</h2>
+    @if (!_lastet) { <p class="melding" role="status">Laster runder …</p> }
+    else if (_lastfeil is not null)
     {
-        <div class="feil">@_feil</div>
+        <div class="feil" role="alert"><p>@_lastfeil</p><button class="knapp" @onclick="Last">Prøv igjen</button></div>
     }
-</div>
-
-@if (!_lastet)
-{
-    <p class="melding">Laster …</p>
-}
-else
-{
-    <table class="tabell">
-        <thead>
-            <tr><th>Runde</th><th>Aktive</th><th>Ferdige</th><th>Sist synk.</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var r in _runder)
+    else if (_runder.Count == 0) { <p class="internkort">Ingen runder opprettet ennå. Opprett en runde eller åpne Øvrig.</p> }
+    else
+    {
+        <table class="tabell">
+            <thead><tr><th scope="col">Runde</th><th scope="col">Aktive</th><th scope="col">Ferdige</th><th scope="col">Sist synkronisert</th><th scope="col">Handlinger</th></tr></thead>
+            <tbody>@foreach (var r in _runder)
             {
-                <tr>
-                    <td><a href="@($"/internkalender/runde/{r.Id}")"><strong>@r.Etikett</strong></a></td>
-                    <td>@r.AntallAktive</td>
-                    <td>@r.AntallFullfoerte</td>
-                    <td>@(r.SistSynkronisert?.LocalDateTime.ToString("dd.MM.yyyy") ?? "–")</td>
-                    <td>
-                        <a href="@($"/internkalender/runde/{r.Id}")">Åpne</a>
-                        <button class="knapp-lenke" @onclick="() => Slett(r.Id, r.Etikett)">Slett</button>
-                    </td>
+                <tr @key="r.Id">
+                    <td data-label="Runde"><a href="@($"/internkalender/runde/{r.Id}")"><strong class="oppgavetittel">@r.Etikett</strong></a></td>
+                    <td data-label="Aktive">@r.AntallAktive</td><td data-label="Ferdige">@r.AntallFullfoerte</td>
+                    <td data-label="Sist synkronisert">@Internformat.Tid(r.SistSynkronisert)</td>
+                    <td data-label="Handlinger"><div class="internhandlinger"><a href="@($"/internkalender/runde/{r.Id}")" aria-label="@($"Åpne {r.Etikett}")">Åpne</a><button class="knapp-lenke" aria-label="@($"Slett {r.Etikett}")" disabled="@_arbeider" @onclick="() => VelgSlett(r)">Slett</button></div></td>
                 </tr>
-            }
-            @if (_runder.Count == 0)
-            {
-                <tr><td colspan="5" class="melding">Ingen runder opprettet ennå.</td></tr>
-            }
-        </tbody>
-    </table>
-}
-
-@if (_bekreftSlett is not null)
-{
-    <div class="bekreftboks">
-        <p>Slette runden «@_bekreftSlettEtikett» med alle gjøremål? Dette kan ikke angres.</p>
-        <button class="knapp knapp-primær" @onclick="BekreftSlett">Ja, slett</button>
-        <button class="knapp" @onclick="() => _bekreftSlett = null">Avbryt</button>
-    </div>
-}
+            }</tbody>
+        </table>
+    }
+</InternkalenderOmraade>
+<InternBekreftelse Aapen="@(_slett is not null)" Valg="@_valg" Tittel="Slett internrunde" Tekst="@($"Slette runden «{_slett?.Etikett}» med alle gjøremål? Dette kan ikke angres.")" Bekrefttekst="Ja, slett" Arbeider="@_arbeider" Feil="@_feil" Bekreft="BekreftSlett" Avbryt="AvbrytSlett" />
 
 @code {
     private IReadOnlyList<RundeDto> _runder = [];
-    private bool _lastet;
+    private bool _lastet, _arbeider, _generer = true;
     private Rundetype _nyType = Rundetype.Marsrunden;
-    private int _nyAar = DateTime.UtcNow.Year + 1;
-    private bool _generer = true;
-    private string? _feil;
-    private Guid? _bekreftSlett;
-    private string _bekreftSlettEtikett = "";
-
-    protected override async Task OnInitializedAsync() => await Last();
-
+    private int _nyAar, _valg;
+    private string? _feil, _lastfeil, _melding;
+    private RundeDto? _slett;
+    protected override async Task OnInitializedAsync() { _nyAar = Datohjelp.Idag(Klokke).Year + 1; await Last(); }
     private async Task Last()
     {
-        _runder = await Kalender.HentRunderAsync();
-        _lastet = true;
+        var visning = ++Visning; _lastet = false; _lastfeil = null;
+        try { var data = await Kalender.HentRunderAsync(Levetid.Token); if (ErGjeldende(visning)) _runder = data; }
+        catch (OperationCanceledException) when (Levetid.IsCancellationRequested) { }
+        catch (Exception e) { if (ErGjeldende(visning)) _lastfeil = Feiltekst(e, "Kunne ikke laste rundene. Prøv igjen."); }
+        finally { if (ErGjeldende(visning)) _lastet = true; }
     }
-
     private async Task OpprettRunde()
     {
-        _feil = null;
-        try
-        {
-            var bruker = await Brukerkilde.HentAsync();
-            var id = _generer
-                ? await Kalender.GenererRundeAsync(_nyType, _nyAar, bruker.Navn)
-                : await Kalender.OpprettRundeAsync(_nyType, _nyAar, bruker.Navn);
-            Nav.NavigateTo($"/internkalender/runde/{id}");
-        }
-        catch (Valideringsfeil f)
-        {
-            _feil = f.Message;
-        }
+        if (_arbeider || !_lastet) return;
+        _arbeider = true; _feil = null; var visning = Visning;
+        try { var id = await Kommando.OpprettRundeAsync(_nyType, _nyAar, _generer, Levetid.Token); if (ErGjeldende(visning)) { _arbeider = false; Nav.NavigateTo($"/internkalender/runde/{id}"); } }
+        catch (OperationCanceledException) when (Levetid.IsCancellationRequested) { }
+        catch (Exception e) { if (ErGjeldende(visning)) _feil = Feiltekst(e, "Kunne ikke opprette runden. Valgene er beholdt. Prøv igjen."); }
+        finally { _arbeider = false; }
     }
-
     private async Task AapneOvrig()
     {
-        var bruker = await Brukerkilde.HentAsync();
-        var id = await Kalender.HentEllerOpprettOvrigAsync(bruker.Navn);
-        Nav.NavigateTo($"/internkalender/runde/{id}");
+        if (_arbeider) return; _arbeider = true; _feil = null; var visning = Visning;
+        try { var id = await Kommando.AapneOvrigAsync(Levetid.Token); if (ErGjeldende(visning)) { _arbeider = false; Nav.NavigateTo($"/internkalender/runde/{id}"); } }
+        catch (OperationCanceledException) when (Levetid.IsCancellationRequested) { }
+        catch (Exception e) { if (ErGjeldende(visning)) _feil = Feiltekst(e, "Kunne ikke åpne Øvrig. Prøv igjen."); }
+        finally { _arbeider = false; }
     }
-
-    private void Slett(Guid id, string etikett)
-    {
-        _bekreftSlett = id;
-        _bekreftSlettEtikett = etikett;
-    }
-
+    private void VelgSlett(RundeDto r) { if (_arbeider) return; _slett = r; _valg++; _feil = null; }
+    private void AvbrytSlett() { if (!_arbeider) { _slett = null; _feil = null; } }
     private async Task BekreftSlett()
     {
-        if (_bekreftSlett is { } id)
-        {
-            await Kalender.SlettRundeAsync(id);
-            _bekreftSlett = null;
-            await Last();
-        }
+        if (_arbeider || _slett is not { } r) return;
+        _arbeider = true; _feil = null; var visning = Visning;
+        try { await Kommando.SlettRundeAsync(r.Id, Levetid.Token); if (!ErGjeldende(visning)) return; _slett = null; _melding = $"Runden «{r.Etikett}» er slettet."; await Last(); }
+        catch (OperationCanceledException) when (Levetid.IsCancellationRequested) { }
+        catch (Exception e) { if (ErGjeldende(visning)) _feil = Feiltekst(e, "Kunne ikke slette runden. Prøv igjen."); }
+        finally { _arbeider = false; }
     }
+    private void FoerNavigasjon(LocationChangingContext context) { if (_arbeider) context.PreventNavigation(); }
 }

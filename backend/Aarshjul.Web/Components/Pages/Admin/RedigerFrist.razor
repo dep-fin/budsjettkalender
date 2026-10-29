@@ -53,7 +53,7 @@ else
     }
     @if (_feil is not null)
     {
-        <div class="feil" role="alert" tabindex="-1" @ref="_feilfelt">@_feil</div>
+        <div id="fristfeil" class="feil" role="alert" tabindex="-1" @ref="_feilfelt">@_feil</div>
     }
 
     <form class="skjema" @onsubmit="Lagre" @onsubmit:preventDefault="true">
@@ -115,6 +115,30 @@ else
             <textarea @bind="_inndata.Notat" rows="2"></textarea>
         </label>
 
+        @if (!ErJuster)
+        {
+            <label>Kildelenke (valgfritt)
+                <input type="url" @bind="_inndata.ManuellKildeUrl" aria-invalid="@(_kildefeil ? "true" : "false")"
+                       aria-describedby="@(_kildefeil ? "kildehjelp fristfeil" : "kildehjelp")" />
+            </label>
+            <p id="kildehjelp" class="melding">Bruk en offentlig HTTPS-adresse på regjeringen.no eller www.regjeringen.no. Den manuelle lenken brukes foran lenken fra et tilknyttet dokument. Tomt felt fjerner den manuelle lenken og bruker dokumentlenken hvis den finnes.</p>
+        }
+
+        @if (Id is not null || ErJuster && _erEndre)
+        {
+            <fieldset>
+                <legend>E-post om vesentlig endring</legend>
+                <p>Endret dato, klokkeslett, presisjon, kvalifikator, budsjettår eller kategori varsles automatisk. Vanlig tekstkorrektur varsles ikke.</p>
+                <label class="filtervalg"><input type="checkbox" @bind="_inndata.VesentligEndring" /> Marker annen faktisk innholdsendring som vesentlig</label>
+                @if (_inndata.VesentligEndring)
+                {
+                    <label>Kort endringsforklaring
+                        <input @bind="_inndata.Endringsforklaring" maxlength="300" />
+                    </label>
+                }
+            </fieldset>
+        }
+
         @if (!_erEndre)
         {
             <fieldset class="synlighet">
@@ -170,6 +194,7 @@ else
     private bool _lagrer;
     private bool _lagret;
     private bool _fokuserFeil;
+    private bool _kildefeil;
     private ElementReference _feilfelt;
     private int? _arbeidsaar;
     private readonly CancellationTokenSource _levetid = new();
@@ -208,6 +233,7 @@ else
         _inndataForslagId = null;
         _kvalifikatorValg = "";
         _feil = null;
+        _kildefeil = false;
         _lastfeil = null;
         _fokuserFeil = false;
         _lagret = false;
@@ -304,6 +330,7 @@ else
         var retur = Retur;
         _lagrer = true;
         _feil = null;
+        _kildefeil = false;
         _inndata!.Datokvalifikator =
             _inndata.Datopresisjon == Datopresisjon.Maaned && !string.IsNullOrEmpty(_kvalifikatorValg)
                 ? Enum.Parse<Datokvalifikator>(_kvalifikatorValg)
@@ -333,6 +360,7 @@ else
         {
             if (!ErGjeldende(versjon)) return;
             _feil = f.Message;
+            _kildefeil = f.Felt == nameof(FristInndata.ManuellKildeUrl);
             _fokuserFeil = true;
         }
         finally { if (ErGjeldende(versjon)) _lagrer = false; }

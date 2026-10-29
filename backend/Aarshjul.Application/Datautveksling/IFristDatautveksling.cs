@@ -21,6 +21,7 @@ public sealed record FristEksport
     public string? Loep { get; init; }
     public string? Kilde { get; init; }
     public Guid? DokumentId { get; init; }
+    public string? ManuellKildeUrl { get; init; }
     public FristStatus Status { get; init; }
     public Opphav Opphav { get; init; }
     public string? ForeslaattAv { get; init; }

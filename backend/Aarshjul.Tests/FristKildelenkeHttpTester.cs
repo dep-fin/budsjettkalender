@@ -130,7 +130,8 @@ public sealed class FristKildelenkeHttpTester : IDisposable
         var frist = new Frist
         {
             Id = Guid.NewGuid(), Tittel = tittel, Dato = new(2030, 11, 20), Budsjettaar = 2031,
-            DokumentId = dokument.Id, Status = status, Synlighet = [new() { GruppeKode = gruppe }]
+            DokumentId = dokument.Id, Status = status, Synlighet = [new() { GruppeKode = gruppe }],
+            ManuellKildeUrl = url
         };
         db.Frister.Add(frist);
         return frist.Id;

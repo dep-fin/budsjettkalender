@@ -15,6 +15,7 @@ internal sealed class Nettleser
     private readonly IPlaywright _playwright;
     private readonly IBrowser _browser;
     private readonly ConcurrentQueue<string> _feil = new();
+    private readonly ConcurrentQueue<string> _klientlogg = new();
     private readonly List<IBrowserContext> _kontekster = [];
     private readonly ConcurrentQueue<string> _applogg;
     public string Mappe { get; }
@@ -24,9 +25,9 @@ internal sealed class Nettleser
     private Nettleser(Process app, IPlaywright playwright, IBrowser browser, string mappe, string adresse, ConcurrentQueue<string> applogg)
         => (_app, _playwright, _browser, Mappe, Adresse, _applogg) = (app, playwright, browser, mappe, adresse, applogg);
 
-    public static async Task Kjor(Func<Nettleser, Task> scenario)
+    public static async Task Kjor(Func<Nettleser, Task> scenario, bool kontrollertEpost = false)
     {
-        var n = await Start();
+        var n = await Start(kontrollertEpost);
         try { await scenario(n); }
         catch (Exception scenariofeil)
         {
@@ -40,7 +41,7 @@ internal sealed class Nettleser
         await n.RyddOpp();
     }
 
-    private static async Task<Nettleser> Start()
+    private static async Task<Nettleser> Start(bool kontrollertEpost)
     {
         var rot = new DirectoryInfo(AppContext.BaseDirectory);
         while (rot is not null && !File.Exists(Path.Combine(rot.FullName, "global.json"))) rot = rot.Parent;
@@ -63,6 +64,11 @@ internal sealed class Nettleser
         foreach (var arg in new[] { dll, "--urls", adresse }) start.ArgumentList.Add(arg);
         start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         start.Environment["Demo"] = "true";
+        start.Environment["DagligEpost__OffentligBasisadresse"] = adresse;
+        if (kontrollertEpost) start.Environment["DagligEpost__KontrollertKjoring"] = "true";
+        // Eksisterende kontrollflyter bytter adaptertilstand uten å flytte klokken.
+        // EV11 prøver produksjonsstandarden for oppslagspause ved Application-grensen.
+        if (kontrollertEpost) start.Environment["DagligEpost__Oppslagspause"] = "00:00:00";
         start.Environment["ConnectionStrings__Aarshjul"] = $"Data Source={Path.Combine(mappe, "demo.db")}";
         // Ikke skriv bearer-URL-er fra feed-forespørsler til CI-loggen.
         start.Environment["Logging__LogLevel__Default"] = "Warning";
@@ -115,6 +121,8 @@ internal sealed class Nettleser
             side.SetDefaultTimeout(10_000);
             side.PageError += (_, e) => _feil.Enqueue(RedigerHemmelighet(e));
             side.Console += (_, e) => { if (e.Type == "error") _feil.Enqueue(RedigerHemmelighet(e.Location + " " + e.Text)); };
+            side.PageError += (_, e) => _klientlogg.Enqueue(e);
+            side.Console += (_, e) => _klientlogg.Enqueue(e.Location + " " + e.Text);
         };
         return await ctx.NewPageAsync();
     }
@@ -218,6 +226,14 @@ internal sealed class Nettleser
 
     public void BekreftIngenKretsfeil() => Assert.True(_feil.IsEmpty, string.Join("; ", _feil.Distinct()));
 
+    public void BekreftIngenHemmelighet(string hemmelighet)
+        => Assert.False(_applogg.Concat(_klientlogg).Any(x => x.Contains(hemmelighet, StringComparison.Ordinal)), "Hemmelig lenke må ikke finnes i app- eller nettleserlogger.");
+
     private static string RedigerHemmelighet(string tekst)
-        => System.Text.RegularExpressions.Regex.Replace(tekst, @"/kalender/feed/[^\s'""<>]+", "/kalender/feed/[skjult]");
+    {
+        tekst = System.Text.RegularExpressions.Regex.Replace(tekst, @"/kalender/feed/[^\s'""<>]+", "/kalender/feed/[skjult]");
+        tekst = System.Text.RegularExpressions.Regex.Replace(tekst, @"/epostvarsling/bekreft[^\s'""<>]*", "/epostvarsling/bekreft[skjult]");
+        tekst = System.Text.RegularExpressions.Regex.Replace(tekst, @"/epostvarsling/avmeld[^\s'""<>]*", "/epostvarsling/avmeld[skjult]");
+        return System.Text.RegularExpressions.Regex.Replace(tekst, @"\b[0-9A-Fa-f]{64}\b", "[skjult bekreftelse]");
+    }
 }

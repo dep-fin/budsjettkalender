@@ -119,6 +119,28 @@ public sealed class FristKildelenkeTester : IDisposable
             Assert.Equal(frist.Id, resultat.Id);
             Assert.Null(resultat.KildeUrl);
         }
+
+        // Samme negative #69-matrise gjelder en lagret manuell verdi, skrivegrensen
+        // og hele erstatt-alt-kandidaten. Ikke bare den gamle dokumentprojeksjonen.
+        frist.ManuellKildeUrl = url;
+        await _t.Db.SaveChangesAsync();
+        Assert.Null((await Lesing.HentEnAsync(Fa, frist.Id))!.KildeUrl);
+        if (string.IsNullOrWhiteSpace(url)) return;
+        var skriving = new FristskrivingTjeneste(_t.Factory);
+        var input = (await skriving.HentForRedigeringAsync(frist.Id))!;
+        var feil = await Assert.ThrowsAsync<Aarshjul.Application.Valideringsfeil>(() => skriving.OpprettAsync(input));
+        Assert.Contains("Kildelenke", feil.Message);
+        input.Tittel = "Skal ikke lagres";
+        await Assert.ThrowsAsync<Aarshjul.Application.Valideringsfeil>(() => skriving.OppdaterAsync(frist.Id, input));
+        Assert.Equal("Syntetisk frist", (await skriving.HentForRedigeringAsync(frist.Id))!.Tittel);
+        var utveksling = new Aarshjul.Infrastructure.Datautveksling.FristDatautveksling(_t.Factory, new FastKlokke(Idag));
+        var foer = await utveksling.EksporterAsync();
+        var kandidat = foer with { Frister = [
+            foer.Frister[0] with { Id = Guid.NewGuid(), Tittel = "Gyldig rad først", ManuellKildeUrl = "https://regjeringen.no/no/gyldig140" },
+            foer.Frister[0] with { Tittel = "Skal ikke erstatte" }] };
+        await Assert.ThrowsAsync<Aarshjul.Application.Valideringsfeil>(() => utveksling.ForhaandsvisAsync(kandidat));
+        await Assert.ThrowsAsync<Aarshjul.Application.Valideringsfeil>(() => utveksling.ImporterAsync(kandidat));
+        Assert.Equal(System.Text.Json.JsonSerializer.Serialize(foer), System.Text.Json.JsonSerializer.Serialize(await utveksling.EksporterAsync()));
     }
 
     [Theory]
@@ -164,6 +186,7 @@ public sealed class FristKildelenkeTester : IDisposable
         var pol = Frist(Dokument("https://regjeringen.no/skjult-pol-markor").Id, "POL");
         var upublisert = Frist(Dokument("https://regjeringen.no/upublisert-markor").Id);
         upublisert.Status = FristStatus.Forslag;
+        pol.ManuellKildeUrl = "https://regjeringen.no/skjult-manuell-markor";
         await _t.Db.SaveChangesAsync();
 
         Assert.Empty(await Lesing.HentSynligeAsync(Fa, new()));
@@ -171,7 +194,32 @@ public sealed class FristKildelenkeTester : IDisposable
         Assert.Null(await Lesing.HentEnAsync(Fa, pol.Id));
         Assert.Null(await Lesing.HentEnAsync(Fa, upublisert.Id));
         var polKontekst = new Synlighetskontekst(false, ["POL"]);
-        Assert.Equal("https://regjeringen.no/skjult-pol-markor", Assert.Single(await Lesing.HentSynligeAsync(polKontekst, new())).KildeUrl);
+        Assert.Equal("https://regjeringen.no/skjult-manuell-markor", Assert.Single(await Lesing.HentSynligeAsync(polKontekst, new())).KildeUrl);
+    }
+
+    [Fact]
+    public async Task Manuell_overstyring_og_tom_fallback_bevarer_dokument_kilde_og_opphav()
+    {
+        var dokument = Dokument("https://regjeringen.no/no/dokument140");
+        var frist = Frist(dokument.Id);
+        await _t.Db.SaveChangesAsync();
+        var skriving = new FristskrivingTjeneste(_t.Factory);
+        var felter = (await skriving.HentForRedigeringAsync(frist.Id))!;
+        felter.ManuellKildeUrl = "https://www.regjeringen.no/no/overstyring140";
+        await skriving.OppdaterAsync(frist.Id, felter);
+        foreach (var dto in new[] { Assert.Single(await Lesing.HentSynligeAsync(Fa, new())),
+            Assert.Single(await Lesing.HentLandingsutvalgAsync(Fa, Idag, new())), (await Lesing.HentEnAsync(Fa, frist.Id))! })
+        {
+            Assert.Equal(felter.ManuellKildeUrl, dto.KildeUrl);
+            Assert.Equal(dokument.Id, dto.DokumentId); Assert.Equal("lokal.pdf", dto.Kilde);
+        }
+        felter.ManuellKildeUrl = "";
+        await skriving.OppdaterAsync(frist.Id, felter);
+        Assert.Equal("https://regjeringen.no/no/dokument140", (await Lesing.HentEnAsync(Fa, frist.Id))!.KildeUrl);
+        var eksport = new Aarshjul.Infrastructure.Datautveksling.FristDatautveksling(_t.Factory, new FastKlokke(Idag));
+        var bevart = Assert.Single((await eksport.EksporterAsync()).Frister);
+        Assert.Equal(Opphav.Robot, bevart.Opphav); Assert.Equal(dokument.Id, bevart.DokumentId);
+        Assert.Equal("lokal.pdf", bevart.Kilde); Assert.Null(bevart.ManuellKildeUrl);
     }
 
     private BehandletDokument Dokument(string? url)

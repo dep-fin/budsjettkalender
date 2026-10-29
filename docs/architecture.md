@@ -21,6 +21,78 @@ Mal → genererte forslag → egen gjennomgang → frist.
 Lesing → synlighetsfilter i SQL → DTO → HTTP/Blazor/eksport.
 Internkalenderens gjøremål behandles separat bak `ErSbr`.
 
+E-postpåmelding → kontrollert adressebekreftelse → egen aktiv status → avmelding går
+gjennom `IEpostabonnement`. Web henter stabil brukeridentitet fra innlogging ved hvert
+HTTP-/Blazor-kall; ingen operasjon tar en mottatt identitet som eier fra skjemaet.
+Infrastructure lagrer ett abonnement per identitet med versjonskontroll og skjuler
+bekreftelsestransporten bak `IBekreftelsespost`. Bare demo/Testing registrerer den
+kontrollerte mottakeren. Produksjon registrerer en utilgjengelig transport og kan ikke
+opprette påmelding. Bekreftelsestransporten får fortsatt ingen fristdata.
+Se [EV02-akseptansen](acceptance/2026-10-28-epost-ev02.md).
+
+Administrator-innstillinger → e-postabonnenter går gjennom
+`IEpostabonnentadministrasjon`. HTTP og kretskommandoen autoriserer administrator
+før andres abonnement leses eller stanses; aktøren hentes fra innloggingen.
+Stans krever målidentitet, gjeldende versjon og bekreftelse, og lagrer avmelding
+og revisjonsspor i samme transaksjon under EV09s overleveringslås. Lesing
+oppretter ingen kontoer. Verken roller, grupper eller kalenderfeed endres.
+Se [EV10-akseptansen](acceptance/2026-10-29-epost-ev10.md) og ADR-0010.
+
+Administrator-innstillinger → e-postdrift går gjennom `IEpostdrift` med egen beskyttet
+HTTP-inngang og en kretskommando som revurderer administratorpolicy ved hver operasjon.
+En seedet, versjonert driftsrad deles av alle jobbinstanser. Stans tar samme globale
+overleveringslås som senderen og kontrolleres igjen før synkront transportmottak.
+Plan og forsøksjournal bevarer status, tellere og ventefrister over omstart og nye dager.
+Bare adapterens uttrykkelige sikkert-usendt-garanti gir begrenset retry; ellers blir
+mulig overlevering Uavklart. TimeProvider avgrenser tilgangsoppslag og kvitteringsventing.
+Opprydding bruker samme lås, begrensede transaksjonsbatcher og bevarer dagsnøkler,
+hendelsesidentiteter og behandlingskoblinger. Se [EV11](acceptance/2026-10-29-epost-ev11.md).
+
+Direkte manuell oppretting → atomisk ny frist-hendelse → varig dagsplan → fersk
+mottakertilgang → sentralt synlighetsfilter → egen tekst-/HTML-melding går gjennom
+`IDagligEpostoppsummering.KjorAsync`. Tid, lagring, identitetskilde og posttransport
+skjules i Infrastructure. En unik bruker/lokal dato og vinnende versjonsovergang
+verner to instanser. Bekreftet overlevering gjentas ikke; mulig overlevering stanser
+automatisk retry. Hendelses-IDer bevarer sene commits til neste dags oppsummering.
+En felles koordinasjonsrad ordner adresseaktivering og publisering i databasen innen
+samme transaksjon som de respektive endringene. Utvalget bruker publiseringssekvens
+etter abonnentens aktiveringsgrense; UTC-klokken avgjør bare sendetid og lokal dato.
+Bare Planlagt med forventet status og versjon kan gå til UnderSending.
+Jobben starter etter Webs skjemaoppstart og vekkes av en TimeProvider-timer hvert
+minutt; selve operasjonen håndhever kl. 08.00 Europe/Oslo eller konfigurert tid.
+Testing og eksplisitt kontrollert demo kjører operasjonen direkte uten bakgrunnsjobb.
+Produksjon har utilgjengelig tilgangskilde og oppsummeringstransport. Demo bruker et
+selvstendig kontrollert identitetsregister, ikke sist lagrede innloggingsclaims.
+Se [ADR-0010](adr/0010-varig-daglig-epostoppsummering.md) og
+[EV03-akseptansen](acceptance/2026-10-28-epost-ev03.md).
+
+Godkjenning og justering med godkjenning bruker samme varige hendelser og
+databaseordnede lagring. Nytt bruker-/robot-/generert forslag gir Ny først ved
+publisering. Endringsforslag sammenlikner faktisk innlest måltilstand med den
+publiserte ettertilstanden og beholder synlighet, opphav og kildespor. En liten
+felles hendelsesbygger skjuler vesentlighetsvalideringen for direkte redigering
+og køen, uten egen kontekst eller lagring. Forslagets konkurransetoken og
+fristinnholdets samtidighetspredikater verner samme atomiske operasjon.
+Se [EV06-akseptansen](acceptance/2026-10-29-epost-ev06.md).
+
+Fristimport sammenlikner godkjent før-/ettertilstand per Frist.Id i den samme
+erstatt-alt-transaksjonen. Første publisering er Ny; semantisk vesentlig forskjell
+bruker den felles hendelsesbyggeren. Faktisk bortfall er Slettet med siste
+publiserte metadata og relasjonelle historiske gruppekoder, uten avhengighet til
+dagens fristrad eller grupperegister. Oppsummeringen filtrerer disse kodene i SQL
+før historisk metadata materialiseres, med fersk mottakerrolle/grupper ved begge
+innholdskontroller. Andre hendelser krever dagens godkjente, synlige frist.
+En særskilt aktiveringssekvens og allerede bekreftede plankoblinger avgjør
+ny-og-fjernet uavhengig av valgte typer. Gjeninnført identitet får aldri en ekstra
+Ny; gamle slettingshendelser brukes ikke når fristen er publisert igjen.
+Se [EV07-akseptansen](acceptance/2026-10-29-epost-ev07.md).
+
+En oppsummerings egen avmeldingsrett går gjennom den samme IEpostabonnement-
+grensen og en avgrenset anonym JSON-inngang. Bare hash og livssyklus lagres.
+GET/HEAD leser ingen rett og endrer ingenting. Siste abonnementslesing og
+synkront transportmottak deler en kort databaselås med avmelding; venting på
+kvittering skjer uten låsen. Tidligere overlevert post kan ikke tilbakekalles.
+Se EV09-delen av ADR-0010 og [EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md).
 HTTP-policyer og Blazor-sideautorisasjon er tilgangsgrensen for skrivetjenestene.
 Tjenestegrensesnittene i seg selv er ikke en ekstra autorisasjonsgrense.
 Ved nye innganger må policyene håndheves og testes der.
@@ -36,6 +108,7 @@ Ved nye innganger må policyene håndheves og testes der.
 - [Konkurransekontroll ved godkjenning](adr/0007-konkurransekontroll-ved-godkjenning.md).
 - [Felles validering av gjentaksregler](adr/0008-felles-validering-av-gjentaksregler.md).
 - [Separat nettleserakseptanse](adr/0009-nettleserakseptanse.md).
+- [Varig daglig e-postoppsummering](adr/0010-varig-daglig-epostoppsummering.md).
 
 Se [gjeldende status](status.md) for leverte endringer og åpne oppgaver.
 

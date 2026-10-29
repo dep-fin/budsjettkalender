@@ -25,6 +25,27 @@ public class FristskrivingTester : IDisposable
 
     private FristskrivingTjeneste Tjeneste() => new(_t.Factory);
 
+    [Fact]
+    public async Task Manuell_kildelenke_lagres_gjenaapnes_og_kan_endres_eller_fjernes()
+    {
+        IFristskriving skriving = Tjeneste();
+        IFristlesing lesing = new FristTjeneste(_t.Factory, new FastKlokke(new(2026, 1, 1)));
+        var inndata = GyldigInndata("FA");
+        inndata.ManuellKildeUrl = "https://www.regjeringen.no/no/manuell140";
+        var id = await skriving.OpprettAsync(inndata);
+        var ctx = new Synlighetskontekst(false, ["FA"]);
+        Assert.Equal(inndata.ManuellKildeUrl, (await lesing.HentEnAsync(ctx, id))!.KildeUrl);
+        var endret = (await skriving.HentForRedigeringAsync(id))!;
+        Assert.Equal(inndata.ManuellKildeUrl, endret.ManuellKildeUrl);
+        endret.ManuellKildeUrl = "HTTPS://REGJERINGEN.NO:443/no/endret140";
+        await skriving.OppdaterAsync(id, endret);
+        Assert.Equal("https://regjeringen.no/no/endret140", (await lesing.HentEnAsync(ctx, id))!.KildeUrl);
+        endret.ManuellKildeUrl = "  ";
+        await skriving.OppdaterAsync(id, endret);
+        Assert.Null((await skriving.HentForRedigeringAsync(id))!.ManuellKildeUrl);
+        Assert.Null((await lesing.HentEnAsync(ctx, id))!.KildeUrl);
+    }
+
     private static FristInndata GyldigInndata(params string[] koder) => new()
     {
         Tittel = "Rammefordeling",

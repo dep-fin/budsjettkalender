@@ -1,6 +1,7 @@
 using Aarshjul.Domain;
 using Aarshjul.Application.Faser;
 using Aarshjul.Infrastructure.Faser;
+using Aarshjul.Infrastructure.Epost;
 using Microsoft.EntityFrameworkCore;
 
 namespace Aarshjul.Infrastructure;
@@ -10,6 +11,12 @@ namespace Aarshjul.Infrastructure;
 /// </summary>
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
+    private readonly EpostrekkefolgeLagring _epostrekkefolge = new();
+    internal void KoordinerEpostlagring() => _epostrekkefolge.Aktiv = true;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        => optionsBuilder.AddInterceptors(_epostrekkefolge);
+
     public DbSet<Frist> Frister => Set<Frist>();
     public DbSet<FristSynlighet> FristSynlighet => Set<FristSynlighet>();
     public DbSet<Synlighetsgruppe> Synlighetsgrupper => Set<Synlighetsgruppe>();
@@ -22,6 +29,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Varsel> Varsler => Set<Varsel>();
     public DbSet<InnhentingsStatus> InnhentingsStatuser => Set<InnhentingsStatus>();
     public DbSet<Kalenderabonnement> Kalenderabonnementer => Set<Kalenderabonnement>();
+    public DbSet<Epostabonnement> Epostabonnementer => Set<Epostabonnement>();
+    public DbSet<Epostadministratorstans> Epostadministratorstanser => Set<Epostadministratorstans>();
+    public DbSet<NyFristHendelse> NyFristHendelser => Set<NyFristHendelse>();
+    public DbSet<Epostoppsummering> Epostoppsummeringer => Set<Epostoppsummering>();
+    public DbSet<Epostdriftstilstand> Epostdrift => Set<Epostdriftstilstand>();
+    public DbSet<Epostsendeforsoek> Epostsendeforsoek => Set<Epostsendeforsoek>();
+    public DbSet<Oppsummeringshendelse> Oppsummeringshendelser => Set<Oppsummeringshendelse>();
     internal DbSet<FasemalRad> Fasemaler => Set<FasemalRad>();
 
     // --- Internkalender for SBR (SBR-intern arbeidsliste) ---
@@ -34,6 +48,84 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<Epostdriftstilstand>(e =>
+        {
+            e.ToTable("Epostdrift", t => t.HasCheckConstraint("CK_Epostdrift_EnRad", "[Id] = 1"));
+            e.HasKey(x => x.Id); e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.AktoerId).HasMaxLength(128);
+            e.Property(x => x.Versjon).IsConcurrencyToken();
+            e.HasData(new Epostdriftstilstand { Id = 1, Versjon = new("e3110000-0000-0000-0000-000000000001") });
+        });
+        b.Entity<Epostsendeforsoek>(e =>
+        {
+            e.HasKey(x => x.Id); e.Property(x => x.Status).HasMaxLength(32).IsConcurrencyToken();
+            e.HasIndex(x => new { x.OppsummeringId, x.Nummer }).IsUnique();
+            e.HasOne<Epostoppsummering>().WithMany().HasForeignKey(x => x.OppsummeringId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Epostadministratorstans>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.BrukerId).HasMaxLength(128);
+            e.Property(x => x.AktoerId).HasMaxLength(128);
+            e.Property(x => x.Handling).HasMaxLength(32);
+            e.HasIndex(x => new { x.BrukerId, x.Tidspunkt });
+            // Ingen kaskade til bruker eller abonnement: revisjonssporet skal bevares.
+        });
+        b.Entity<Epostrekkefolge>(e =>
+        {
+            e.ToTable("Epostrekkefolge", t => t.HasCheckConstraint("CK_Epostrekkefolge_EnRad", "[Id] = 1"));
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.HasData(new Epostrekkefolge { Id = 1, Verdi = 0 });
+        });
+        b.Entity<Epostaktivering>(e =>
+        {
+            e.ToTable("Epostaktiveringer");
+            e.HasKey(x => x.BrukerId);
+            e.Property(x => x.BrukerId).HasMaxLength(128);
+        });
+        b.Entity<NyFristHendelse>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Type).HasMaxLength(16).HasDefaultValue("Ny");
+            e.Property(x => x.Forklaring).HasMaxLength(300);
+            e.HasIndex(x => x.FristId).IsUnique().HasFilter("[Type] = 'Ny'");
+            e.HasIndex(x => x.Publiseringssekvens);
+            // Ingen FK til frist: import/sletting skal ikke slette hendelseshistorikken.
+        });
+        b.Entity<Epostoppsummering>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.BrukerId).HasMaxLength(128);
+            e.Property(x => x.Status).HasMaxLength(32).IsConcurrencyToken();
+            e.Property(x => x.Utsettelsesgrunn).HasMaxLength(64);
+            e.Property(x => x.AvmeldingsHash).HasMaxLength(64);
+            e.HasIndex(x => x.AvmeldingsHash).HasFilter("[AvmeldingsHash] IS NOT NULL");
+            e.Property(x => x.Versjon).IsConcurrencyToken();
+            e.HasIndex(x => new { x.BrukerId, x.LokalDato }).IsUnique();
+        });
+        b.Entity<FristHendelsessynlighet>(e =>
+        {
+            e.ToTable("FristHendelsessynlighet");
+            e.HasKey(x => new { x.HendelseId, x.GruppeKode });
+            e.Property(x => x.GruppeKode).HasMaxLength(64);
+            e.HasOne<NyFristHendelse>().WithMany().HasForeignKey(x => x.HendelseId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<Oppsummeringshendelse>(e =>
+        {
+            e.HasKey(x => new { x.OppsummeringId, x.HendelseId });
+            e.HasOne(x => x.Oppsummering).WithMany(x => x.Hendelser)
+                .HasForeignKey(x => x.OppsummeringId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Epostabonnement>(e =>
+        {
+            e.HasKey(x => x.BrukerId);
+            e.Property(x => x.BrukerId).HasMaxLength(128);
+            e.Property(x => x.Adresse).HasMaxLength(254);
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.BekreftelsesHash).HasMaxLength(64);
+            e.Property(x => x.Versjon).IsConcurrencyToken();
+        });
         b.Entity<FasemalRad>(e =>
         {
             e.ToTable("Fasemaler", t => t.HasCheckConstraint("CK_Fasemaler_EnFellesMal", "[Id] = 1"));
@@ -63,6 +155,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<Frist>(e =>
         {
             e.HasKey(x => x.Id);
+            // Førmetadata må beskrive versjonen som faktisk oppdateres.
+            e.Property(x => x.Dato).IsConcurrencyToken();
+            e.Property(x => x.Datopresisjon).IsConcurrencyToken();
+            e.Property(x => x.Datokvalifikator).IsConcurrencyToken();
+            e.Property(x => x.Klokkeslett).IsConcurrencyToken();
+            e.Property(x => x.Budsjettaar).IsConcurrencyToken();
+            e.Property(x => x.Kategori).IsConcurrencyToken();
+            e.Property(x => x.Tittel).IsConcurrencyToken();
+            e.Property(x => x.Notat).IsConcurrencyToken();
+            e.Property(x => x.Loep).IsConcurrencyToken();
+            e.Property(x => x.Kilde).IsConcurrencyToken();
+            e.Property(x => x.DokumentId).IsConcurrencyToken();
+            e.Property(x => x.ManuellKildeUrl).IsConcurrencyToken();
+            e.Property(x => x.Status).IsConcurrencyToken();
             e.Property(x => x.Tittel).HasMaxLength(512);
             e.Property(x => x.Loep).HasMaxLength(128);
             e.Property(x => x.Kilde).HasMaxLength(128);
@@ -170,14 +276,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<InternRunde>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property(x => x.SistSynkronisert).IsConcurrencyToken();
             e.Property(x => x.OpprettetAv).HasMaxLength(256);
-            e.HasIndex(x => new { x.Rundetype, x.Aar });
+            e.HasIndex(x => new { x.Rundetype, x.Aar }).IsUnique().HasFilter("[Aar] IS NOT NULL");
+            e.HasIndex(x => x.Rundetype).IsUnique().HasFilter("[Aar] IS NULL");
         });
 
         // --- Internkalender: internt gjøremål ---
         b.Entity<InterntGjoeremaal>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property(x => x.Status).IsConcurrencyToken();
+            e.Property(x => x.ManueltEndret).IsConcurrencyToken();
             e.Property(x => x.Tittel).HasMaxLength(512);
             e.Property(x => x.AnkerLoep).HasMaxLength(128);
             e.Property(x => x.FullfoertAvId).HasMaxLength(128);

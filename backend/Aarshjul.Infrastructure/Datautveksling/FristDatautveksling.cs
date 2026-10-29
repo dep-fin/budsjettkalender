@@ -1,6 +1,9 @@
 using Aarshjul.Application.Datautveksling;
 using Aarshjul.Domain;
 using Microsoft.EntityFrameworkCore;
+using Aarshjul.Infrastructure.Frister;
+using Aarshjul.Infrastructure.Epost;
+using System.Text.Json;
 
 namespace Aarshjul.Infrastructure.Datautveksling;
 
@@ -36,6 +39,7 @@ public sealed class FristDatautveksling(IDbContextFactory<AppDbContext> dbFactor
             Loep = f.Loep,
             Kilde = f.Kilde,
             DokumentId = f.DokumentId,
+            ManuellKildeUrl = f.ManuellKildeUrl,
             Status = f.Status,
             Opphav = f.Opphav,
             ForeslaattAv = f.ForeslaattAv,
@@ -70,10 +74,13 @@ public sealed class FristDatautveksling(IDbContextFactory<AppDbContext> dbFactor
 
         // Sletting og innlegging må lykkes samlet, også hvis innleggingen feiler.
         await using var transaksjon = await db.Database.BeginTransactionAsync(ct);
+        db.KoordinerEpostlagring();
         try
         {
             // Erstatt-alt: fjern eksisterende frister (synlighet kaskaderes via FristSynlighet-FK).
             var eksisterende = await db.Frister.Include(f => f.Synlighet).ToListAsync(ct);
+            var hendelser = await LagHendelserAsync(db, eksisterende, kandidater, ct);
+            db.NyFristHendelser.AddRange(hendelser);
             var antallErstattet = eksisterende.Count;
             db.Frister.RemoveRange(eksisterende);
 
@@ -94,12 +101,56 @@ public sealed class FristDatautveksling(IDbContextFactory<AppDbContext> dbFactor
         }
     }
 
+    private async Task<List<NyFristHendelse>> LagHendelserAsync(AppDbContext db, List<Frist> foer,
+        List<Frist> etter, CancellationToken ct)
+    {
+        var publisertFoer = foer.Where(f => f.Status == FristStatus.Godkjent).ToDictionary(f => f.Id);
+        var publisertEtter = etter.Where(f => f.Status == FristStatus.Godkjent).ToDictionary(f => f.Id);
+        var ider = publisertEtter.Keys.ToList();
+        // Første Ny er livsvarig per identitet. En eksplisitt gjeninnført ID sammenliknes
+        // med siste bevarte publiserte tilstand, også for eldre frister uten Ny-historikk.
+        var historikk = await db.NyFristHendelser.AsNoTracking().Where(h => ider.Contains(h.FristId))
+            .OrderByDescending(h => h.Publiseringssekvens).ToListAsync(ct);
+        var resultat = new List<NyFristHendelse>();
+        foreach (var f in publisertEtter.Values)
+        {
+            Fristtilstand? tidligere = publisertFoer.TryGetValue(f.Id, out var gammel) ? Fristtilstand.Fra(gammel) : null;
+            var historiske = historikk.Where(h => h.FristId == f.Id).ToList();
+            if (tidligere is null)
+            {
+                var json = historiske.Select(h => h.Type == "Slettet" ? h.FoerJson : h.EtterJson).FirstOrDefault(j => j is not null);
+                if (json is not null) tidligere = JsonSerializer.Deserialize<Fristtilstand>(json);
+            }
+            NyFristHendelse? hendelse = tidligere is not null
+                ? Fristendringshendelse.Lag(f, tidligere, false, null, klokke)
+                : historiske.Count == 0 ? new()
+                {
+                    FristId = f.Id, OpprettetUtcTicks = klokke.GetUtcNow().UtcTicks,
+                    EtterJson = JsonSerializer.Serialize(Fristtilstand.Fra(f))
+                } : null;
+            if (hendelse is not null) resultat.Add(hendelse);
+        }
+        foreach (var f in publisertFoer.Values.Where(f => !publisertEtter.ContainsKey(f.Id)))
+        {
+            var hendelse = new NyFristHendelse
+            {
+                FristId = f.Id, Type = "Slettet", OpprettetUtcTicks = klokke.GetUtcNow().UtcTicks,
+                FoerJson = JsonSerializer.Serialize(Fristtilstand.Fra(f))
+            };
+            resultat.Add(hendelse);
+            db.Set<FristHendelsessynlighet>().AddRange(f.Synlighet.Select(s => new FristHendelsessynlighet
+            { HendelseId = hendelse.Id, GruppeKode = s.GruppeKode }));
+        }
+        return resultat;
+    }
+
     private static void Kontroller(FristDatabase database)
     {
         ArgumentNullException.ThrowIfNull(database);
         Importvalidering.Kontroller(database.Versjon, database.Frister, f => f.Id);
         if (database.Frister.Any(f => f.SynligFor is null))
             throw new Aarshjul.Application.Valideringsfeil("Alle frister må ha en synlighetsliste. En tom liste er tillatt.");
+        foreach (var frist in database.Frister) Kildelenke.ForLagring(frist.ManuellKildeUrl);
     }
 
     private static async Task<(IReadOnlyList<FristEksport> Frister, IReadOnlyList<string> Advarsler)> KlargjoerAsync(
@@ -117,7 +168,7 @@ public sealed class FristDatautveksling(IDbContextFactory<AppDbContext> dbFactor
                 if (gyldigeKoder.Contains(kode)) koder.Add(kode);
                 else advarsler.Add($"«{kilde.Tittel}»: hoppet over ukjent synlighetsgruppe «{kode}».");
             }
-            frister.Add(kilde with { SynligFor = koder.ToArray() });
+            frister.Add(kilde with { SynligFor = koder.ToArray(), ManuellKildeUrl = Kildelenke.ForLagring(kilde.ManuellKildeUrl) });
         }
         return (frister, advarsler);
     }
@@ -137,6 +188,7 @@ public sealed class FristDatautveksling(IDbContextFactory<AppDbContext> dbFactor
             Loep = kilde.Loep,
             Kilde = kilde.Kilde,
             DokumentId = kilde.DokumentId,
+            ManuellKildeUrl = kilde.ManuellKildeUrl,
             Status = kilde.Status,
             Opphav = kilde.Opphav,
             ForeslaattAv = kilde.ForeslaattAv,

@@ -111,6 +111,238 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.ToTable("BrukerGrupper");
                 });
 
+            modelBuilder.Entity("Aarshjul.Domain.Epostabonnement", b =>
+                {
+                    b.Property<string>("BrukerId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Adresse")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<DateTimeOffset?>("Aktivert")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("AlleBudsjettaar")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AlleKategorier")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("AntallSendt")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("BekreftelseUtloeper")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("BekreftelsesHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("Bekreftelsesforsoek")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("Endret")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("NyeFrister")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("Opprettet")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("SendevinduStart")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("SistSendt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("UtvalgJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("Versjon")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("VesentligeEndringer")
+                        .HasColumnType("bit");
+
+                    b.HasKey("BrukerId");
+
+                    b.ToTable("Epostabonnementer");
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.Epostadministratorstans", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AktoerId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("BrukerId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Handling")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTimeOffset>("Tidspunkt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrukerId", "Tidspunkt");
+
+                    b.ToTable("Epostadministratorstanser");
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.Epostdriftstilstand", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AktoerId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<long?>("EndretUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("Stanset")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("Versjon")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Epostdrift", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Epostdrift_EnRad", "[Id] = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Stanset = false,
+                            Versjon = new Guid("e3110000-0000-0000-0000-000000000001")
+                        });
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.Epostoppsummering", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("AktivertUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("AntallForsoek")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AvmeldingsHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<long?>("Avmeldingssekvens")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("BekreftetUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("BrukerId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<long?>("ForsoekStartetUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateOnly>("LokalDato")
+                        .HasColumnType("date");
+
+                    b.Property<long?>("NesteForsoekUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("NesteOppslagUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Utsettelsesgrunn")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid>("Versjon")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AvmeldingsHash")
+                        .HasFilter("[AvmeldingsHash] IS NOT NULL");
+
+                    b.HasIndex("BrukerId", "LokalDato")
+                        .IsUnique();
+
+                    b.ToTable("Epostoppsummeringer");
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.Epostsendeforsoek", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long?>("AvsluttetUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Nummer")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("OppsummeringId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("StartetUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OppsummeringId", "Nummer")
+                        .IsUnique();
+
+                    b.ToTable("Epostsendeforsoek");
+                });
+
             modelBuilder.Entity("Aarshjul.Domain.Forslag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -183,18 +415,23 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Budsjettaar")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<DateOnly>("Dato")
+                        .IsConcurrencyToken()
                         .HasColumnType("date");
 
                     b.Property<int?>("Datokvalifikator")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<int>("Datopresisjon")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<Guid?>("DokumentId")
+                        .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ForeslaattAv")
@@ -204,20 +441,29 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Kategori")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<string>("Kilde")
+                        .IsConcurrencyToken()
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
 
                     b.Property<TimeOnly?>("Klokkeslett")
+                        .IsConcurrencyToken()
                         .HasColumnType("time");
 
                     b.Property<string>("Loep")
+                        .IsConcurrencyToken()
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
 
+                    b.Property<string>("ManuellKildeUrl")
+                        .IsConcurrencyToken()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Notat")
+                        .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Opphav")
@@ -227,9 +473,11 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasColumnType("date");
 
                     b.Property<int>("Status")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<string>("Tittel")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
@@ -241,6 +489,20 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.HasIndex("Sorteringsdag");
 
                     b.ToTable("Frister");
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.FristHendelsessynlighet", b =>
+                {
+                    b.Property<Guid>("HendelseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("GruppeKode")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("HendelseId", "GruppeKode");
+
+                    b.ToTable("FristHendelsessynlighet", (string)null);
                 });
 
             modelBuilder.Entity("Aarshjul.Domain.FristSynlighet", b =>
@@ -418,11 +680,18 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("SistSynkronisert")
+                        .IsConcurrencyToken()
                         .HasColumnType("datetimeoffset");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Rundetype", "Aar");
+                    b.HasIndex("Rundetype")
+                        .IsUnique()
+                        .HasFilter("[Aar] IS NULL");
+
+                    b.HasIndex("Rundetype", "Aar")
+                        .IsUnique()
+                        .HasFilter("[Aar] IS NOT NULL");
 
                     b.ToTable("InternRunder");
                 });
@@ -464,6 +733,7 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("ManueltEndret")
+                        .IsConcurrencyToken()
                         .HasColumnType("bit");
 
                     b.Property<string>("Notat")
@@ -482,6 +752,7 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasColumnType("date");
 
                     b.Property<int>("Status")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<int>("Tidfestingstype")
@@ -540,6 +811,62 @@ namespace Aarshjul.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Kalenderabonnementer");
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.NyFristHendelse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EtterJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FoerJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Forklaring")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("FristId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("OpprettetUtcTicks")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Publiseringssekvens")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasDefaultValue("Ny");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FristId")
+                        .IsUnique()
+                        .HasFilter("[Type] = 'Ny'");
+
+                    b.HasIndex("Publiseringssekvens");
+
+                    b.ToTable("NyFristHendelser");
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.Oppsummeringshendelse", b =>
+                {
+                    b.Property<Guid>("OppsummeringId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("HendelseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("OppsummeringId", "HendelseId");
+
+                    b.ToTable("Oppsummeringshendelser");
                 });
 
             modelBuilder.Entity("Aarshjul.Domain.RegelAnsvarlig", b =>
@@ -671,6 +998,49 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.ToTable("Varsler");
                 });
 
+            modelBuilder.Entity("Aarshjul.Infrastructure.Epost.Epostaktivering", b =>
+                {
+                    b.Property<string>("BrukerId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<long>("Endringssekvens")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Livssyklussekvens")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Sekvens")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("BrukerId");
+
+                    b.ToTable("Epostaktiveringer", (string)null);
+                });
+
+            modelBuilder.Entity("Aarshjul.Infrastructure.Epost.Epostrekkefolge", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<long>("Verdi")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Epostrekkefolge", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Epostrekkefolge_EnRad", "[Id] = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Verdi = 0L
+                        });
+                });
+
             modelBuilder.Entity("Aarshjul.Infrastructure.Faser.FasemalRad", b =>
                 {
                     b.Property<int>("Id")
@@ -720,6 +1090,24 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.Navigation("Gruppe");
                 });
 
+            modelBuilder.Entity("Aarshjul.Domain.Epostsendeforsoek", b =>
+                {
+                    b.HasOne("Aarshjul.Domain.Epostoppsummering", null)
+                        .WithMany()
+                        .HasForeignKey("OppsummeringId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.FristHendelsessynlighet", b =>
+                {
+                    b.HasOne("Aarshjul.Domain.NyFristHendelse", null)
+                        .WithMany()
+                        .HasForeignKey("HendelseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Aarshjul.Domain.FristSynlighet", b =>
                 {
                     b.HasOne("Aarshjul.Domain.Frist", "Frist")
@@ -762,6 +1150,17 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.Navigation("Runde");
                 });
 
+            modelBuilder.Entity("Aarshjul.Domain.Oppsummeringshendelse", b =>
+                {
+                    b.HasOne("Aarshjul.Domain.Epostoppsummering", "Oppsummering")
+                        .WithMany("Hendelser")
+                        .HasForeignKey("OppsummeringId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Oppsummering");
+                });
+
             modelBuilder.Entity("Aarshjul.Domain.RegelAnsvarlig", b =>
                 {
                     b.HasOne("Aarshjul.Domain.GjoeremaalRegel", "Regel")
@@ -798,6 +1197,11 @@ namespace Aarshjul.Infrastructure.Migrations
             modelBuilder.Entity("Aarshjul.Domain.Bruker", b =>
                 {
                     b.Navigation("Grupper");
+                });
+
+            modelBuilder.Entity("Aarshjul.Domain.Epostoppsummering", b =>
+                {
+                    b.Navigation("Hendelser");
                 });
 
             modelBuilder.Entity("Aarshjul.Domain.Forslag", b =>

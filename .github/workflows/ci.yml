@@ -28,8 +28,12 @@ jobs:
         run: dotnet build backend/Aarshjul.slnx --configuration Release --no-restore
       - name: Test
         run: dotnet test backend/Aarshjul.slnx --configuration Release --no-build --logger trx --results-directory TestResults
-      - name: Last opp testresultater
+      - name: Kontroller hemmeligheter før opplasting
+        id: hemmeligheter
         if: always()
+        run: python3 .github/scripts/kontroller-hemmeligheter.py TestResults
+      - name: Last opp testresultater
+        if: always() && steps.hemmeligheter.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: testresultater
@@ -75,16 +79,20 @@ jobs:
           ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
           results = root.findall('t:Results/t:UnitTestResult', ns)
           counters = root.find('t:ResultSummary/t:Counters', ns)
-          if len(results) != 46 or counters is None:
-              raise SystemExit('SQL Server: forventet 46 utførte tester')
+          if len(results) != 539 or counters is None:
+              raise SystemExit('SQL Server: forventet 539 utførte tester')
           if any(r.get('outcome') != 'Passed' for r in results):
               raise SystemExit('SQL Server: minst én test feilet eller ble hoppet over')
           if int(counters.get('executed', '0')) != len(results) or int(counters.get('notExecuted', '0')) != 0:
               raise SystemExit('SQL Server: antall utførte/hoppede tester er ugyldig')
           print(f'SQL Server: {len(results)} tester bestått, ingen hoppet over')
           PY
-      - name: Last opp SQL-testresultater
+      - name: Kontroller hemmeligheter før SQL-opplasting
+        id: hemmeligheter
         if: always()
+        run: python3 .github/scripts/kontroller-hemmeligheter.py SqlServerTestResults
+      - name: Last opp SQL-testresultater
+        if: always() && steps.hemmeligheter.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: sqlserver-testresultater
@@ -97,7 +105,7 @@ jobs:
   browser-test:
     name: Nettleser – samlet akseptanse
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Sett opp .NET
@@ -129,16 +137,20 @@ jobs:
           ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
           results = root.findall('t:Results/t:UnitTestResult', ns)
           counters = root.find('t:ResultSummary/t:Counters', ns)
-          if len(results) != 264 or counters is None:
-              raise SystemExit('Nettleser: forventet 264 utførte scenarioer')
+          if len(results) != 418 or counters is None:
+              raise SystemExit('Nettleser: forventet 418 utførte scenarioer')
           if any(r.get('outcome') != 'Passed' for r in results):
               raise SystemExit('Nettleser: minst ett scenario feilet eller ble hoppet over')
           if int(counters.get('executed', '0')) != len(results) or int(counters.get('notExecuted', '0')) != 0:
               raise SystemExit('Nettleser: ugyldig antall utførte/hoppede tester')
-          print('Nettleser: 264 scenarioer bestått, ingen hoppet over')
+          print('Nettleser: 418 scenarioer bestått, ingen hoppet over')
           PY
-      - name: Last opp nettleserresultater
+      - name: Kontroller hemmeligheter før nettleseropplasting
+        id: hemmeligheter
         if: always()
+        run: python3 .github/scripts/kontroller-hemmeligheter.py BrowserTestResults
+      - name: Last opp nettleserresultater
+        if: always() && steps.hemmeligheter.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: nettleser-testresultater

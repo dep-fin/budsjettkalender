@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "ticket": 137,
+  "parent": 136,
+  "runtimeBase": "29421c2ff1a1595ecfaba5e80d18ce529ade8c03",
+  "candidateBranch": "codex/137-pdf-undersokelse",
+  "candidateKind": "documentation and evidence data only; final commit assigned by PR",
+  "publicArtifacts": [
+    {
+      "path": "classifications.json",
+      "sha256": "CF368A28697EBA2E027BCCB9A1343965EF1A60ABD71CE80B8F9D9E273BA8DE7D",
+      "bytes": 2098,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "controls.json",
+      "sha256": "2ECE6630039B0DD100D7A73DAF4D0DA25CFED80E442D6EFDD90FE8778F2F892E",
+      "bytes": 1974,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "fasit.json",
+      "sha256": "8E7EF9B8173A5D820CF83E2DE8C1A2D1AF4BA8C4C7E3ACD0C1B7EBB337446A0D",
+      "bytes": 3234,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "pages.json",
+      "sha256": "814B04D76391A2405673D68E878075F9C366EEC9E8B843D7AC766D0D0EFA9EDA",
+      "bytes": 43697,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "pdftekst.json",
+      "sha256": "3891A1656F5450B4E90FE1C3A3B6964268017ABF64F35A821B4F03CF09BD26FD",
+      "bytes": 43250,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "probes.json",
+      "sha256": "BD8C9BC0207112EBAFA07562272CD680DAD16168D3AF223C92DDE2C23CDDADA4",
+      "bytes": 2154,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "proposals.json",
+      "sha256": "49C4B25DA537158933CA329B689B4688606AE23F3B3C72C162248AB449B4F2DA",
+      "bytes": 15796,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "r-6-2026.pdf",
+      "sha256": "B902EABED996A1C077D1F242D11B24ECFDE044F898880BEB1ADAD5CEBB9FB60A",
+      "bytes": 491309,
+      "hashRepresentation": "raw bytes"
+    },
+    {
+      "path": "README.md",
+      "sha256": "6B62680619AF7DC52463CE73AD1F6FD13C26C171D78CE5441F13E6F759A51677",
+      "bytes": 18319,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "row-comparison.json",
+      "sha256": "07509123C60A13D1077516BAB74C2AC448B38FBE5892BD2914E157D203ECAB59",
+      "bytes": 4855,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "runtime.json",
+      "sha256": "3CE2B6537E98E8105848A7756EDEE7FC51BB41083555A8EFD4985D5382E3C64E",
+      "bytes": 616,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "segments.json",
+      "sha256": "9A636CB187D5A3694B349FB1D7F9BA0A93F9678578E1B0E5E88DF4089CA6638A",
+      "bytes": 64724,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "source.json",
+      "sha256": "FB2EBA673F412DAB21C4C847F1DFED8C15FD9562421E2FF8134EA9337F501C4F",
+      "bytes": 323,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    },
+    {
+      "path": "summary.json",
+      "sha256": "2BE6C7F011724B00F9E0B731D75F7F80A1146CCA5A2FD719FE4F6104448BAAB0",
+      "bytes": 1807,
+      "hashRepresentation": "UTF-8 without BOM; CRLF normalized to LF for transport"
+    }
+  ],
+  "manifestSelfHash": "Omitted to avoid self-reference; bind manifest to the final Git tree.",
+  "rawAppTextHashRepresentation": "Decode pdftekst.json text, encode as UTF-8 without BOM with all original CR/LF preserved. This is distinct from the JSON transport-file hash and PDF-file hash.",
+  "localEvidence": [
+    {
+      "path": "TestResults/137/harness/Program.cs",
+      "sha256": "D8671541863428F8973B561A446B033FFAF4F52292D2F87B64EBA774C2485939",
+      "bytes": 8111,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/harness/Investigation.csproj",
+      "sha256": "8BFA5E9CD4302A8DDACDAE9DFF527AAB61E58F4FC789D90E72A22BCB6A56D876",
+      "bytes": 522,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/harness/packages.lock.json",
+      "sha256": "CD5ED691305073C3EFCD75D23DA90EEFDEB528F4836DF7EEC161A01A6D599173",
+      "bytes": 18132,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/harness/bin/Release/net10.0/Investigation.dll",
+      "sha256": "E7965093B39D831A322D920EDB16333F7B2ECD1DCE207EFF432BE1E49D115C89",
+      "bytes": 47616,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/run1/disposable.db",
+      "sha256": "D084D0ECBC7DD255106860970A12E994354129FDBE2AA78826A104DB6B0334C3",
+      "bytes": 339968,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/run2/disposable.db",
+      "sha256": "E4FABB178A2C08B243550AC363FFC106F1BC510A82CB682CA50F2B5B971D18A3",
+      "bytes": 339968,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/run3/disposable.db",
+      "sha256": "BB590C03CE59811333E7E563303CDE9310F36E6FCE5F483CC8E97C3EE6759537",
+      "bytes": 335872,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/run1.log",
+      "sha256": "EC4E687C72348F0A4FDD2600374D682CC5538C3D89B7E4A8D9BE73E02088840A",
+      "bytes": 177,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/run2.log",
+      "sha256": "EC4E687C72348F0A4FDD2600374D682CC5538C3D89B7E4A8D9BE73E02088840A",
+      "bytes": 177,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/run3.log",
+      "sha256": "EC4E687C72348F0A4FDD2600374D682CC5538C3D89B7E4A8D9BE73E02088840A",
+      "bytes": 177,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/build.log",
+      "sha256": "053B92546D1A58445D667536B0D6689C0FE6F852B3C7C5CB2EA672FDF8258DE4",
+      "bytes": 918,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/build-probes.log",
+      "sha256": "0D7AA60923157D03C280EEB4CBB7A88C0CF19B10430D78A25C011F052C5DA17C",
+      "bytes": 918,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/restore-harness.log",
+      "sha256": "606F67F31E54FBDE9D018667C5F98D20A7F34E0A6E2130C8ACA0B011D28202A9",
+      "bytes": 790,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/hypotheses-before-probes.md",
+      "sha256": "96735F98F938983D24B920ADC10B296D651B2CA0AC554261BF5C6F306647A921",
+      "bytes": 1067,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/page-03.png",
+      "sha256": "74F2874BEDBB516119C9D5F8B411162E0B17FE54AF59FAED1F6B74C6BBD7195C",
+      "bytes": 206826,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/create-evidence.py",
+      "sha256": "0AD1FA2F832587034EE3AEB3C811DCFBA80DBC5E9B411460ED4C531BCF3DE867",
+      "bytes": 2432,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/finalize-evidence.py",
+      "sha256": "6DB184FEA32AB6C9E6F102831D833978040673D78B60EB7835FE532B7B348688",
+      "bytes": 5047,
+      "published": false
+    },
+    {
+      "path": "TestResults/137/verify-evidence.py",
+      "sha256": "5046E5EB7012AC0E200FA6077FD7D6FF556BEC4FA3368EA0E6C973E1E963E713",
+      "bytes": 5761,
+      "published": false
+    }
+  ],
+  "checks": {
+    "sourcePdfHash": true,
+    "allNineRowsPresentInProductionPage3Text": true,
+    "allSixProposalsClassified": true,
+    "allStoredFieldValuesAndSegmentsConsistent": true,
+    "allSevenIsolatedDayRowsCorrect": true,
+    "repeatRunsByteIdentical": true,
+    "relativeLinks": true,
+    "jsonParsing": true,
+    "textFileWhitespace": true,
+    "noPublication": true
+  },
+  "limits": [
+    "Single document, deterministic offline adapter, disposable SQLite only.",
+    "No UI, HTTP authorization, SQL Server, Azure or production proof.",
+    "Temporary harness source, binaries and databases are retained locally, not in public artifacts. Re-execution on a new machine requires equivalent temporary harness.",
+    "A green document-evidence validation does not mean the extraction symptom was fixed; all three full runs intentionally remain RED."
+  ]
+}

@@ -43,6 +43,8 @@ public sealed class GodkjenningskonkurranseTester : GodkjenningskonkurranseKontr
                     SELECT CASE WHEN
                         (SELECT COUNT(*) FROM Frister) = 1 AND
                         (SELECT COUNT(*) FROM Varsler) = 1 AND
+                        (SELECT COUNT(*) FROM NyFristHendelser WHERE Type = 'Ny') = 1 AND
+                        (SELECT Verdi FROM Epostrekkefolge WHERE Id = 1) = 1 AND
                         (SELECT COUNT(*) FROM Forslag WHERE Status = 1) = 1
                     THEN RAISE(ABORT, 'Testfeil etter publiseringsskriv')
                     ELSE RAISE(ABORT, 'Testoppsett: publiseringsskriv mangler') END;

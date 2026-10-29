@@ -1,0 +1,12 @@
+.oversiktstopp { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.oversiktstopp h2 { margin-bottom: 0; }
+.antall { color: var(--dempet); font-size: .9rem; }
+.administratorliste { list-style: none; margin: 0; padding: 0; }
+.administratorliste li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 0; border-top: 1px solid var(--kant); }
+.administratornavn { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
+.egenbruker { padding: 3px 9px; border-radius: 16px; background: var(--myk); color: var(--aksent); font-size: .85rem; font-weight: 600; }
+.tilgangskilde { flex-shrink: 0; font-size: .9rem; color: var(--dempet); }
+.forvaltningshjelp { border-top: 1px solid var(--kant); padding-top: 16px; margin-bottom: 0; color: var(--dempet); font-size: .9rem; }
+@media (max-width: 600px) {
+    .administratorliste li { flex-direction: column; align-items: flex-start; gap: 8px; }
+}

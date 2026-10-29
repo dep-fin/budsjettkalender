@@ -40,6 +40,43 @@ POL betyr politisk ledelse og tildeles eksplisitt.
 **Kalenderabonnement**: Tilbakekallbar tokenlenke til en serverfiltrert iCalendar-feed.
 En nedlastet ICS-fil er et øyeblikksbilde, mens abonnementet hentes på nytt av kalenderklienten.
 
+**E-postabonnement**: Brukerens selvvalgte påmelding til e-postvarsling på egen, bekreftet
+jobbadresse. Påmeldingen kan vente på adressebekreftelse, være aktiv eller være avmeldt.
+
+**Adressebekreftelse**: Brukerens bekreftelse på at vedkommende disponerer den oppgitte
+jobbadressen. Bekreftelsen tildeler ingen funksjonsrolle eller synlighetsgruppe.
+
+**Avmeldingsrett**: En hemmelig lenke fra en oppsummering som bare gir rett til å
+stanse det aktuelle e-postabonnementets bekreftede påmeldingsperiode.
+
+**Adressebytte**: Brukerens uttrykkelige erstatning av egen jobbadresse i det samme
+e-postabonnementet. Varslingen er stanset frem til den nye adressen er bekreftet.
+
+**Administratorstans**: Administratorens bekreftede avmelding av et e-postabonnement,
+med registrert aktør og tidspunkt. Brukeren kan senere melde seg på igjen ved en ny
+uttrykkelig handling.
+
+**Ny frist-hendelse**: Første publisering av en frist, som kan inngå i abonnentens
+daglige oppsummering. Et upublisert forslag er ingen slik hendelse.
+
+**Vesentlig endring**: En faktisk endring i en publisert frist som krever abonnentens
+oppmerksomhet. Endret dato, tid, tentativ periode, budsjettår eller kategori er alltid vesentlig;
+annen innholdsendring kan være vesentlig når administrator begrunner dette.
+
+**Daglig oppsummering**: Én samlet e-post med relevante fristoppdateringer for én abonnent
+og én norsk kalenderdag. Bekreftet overlevering betyr at transporten har tatt imot
+meldingen; det bekrefter ikke at en ekstern postkasse har mottatt den.
+
+**Slettingshendelse** (`Slettet`): Varslingshendelse om faktisk bortfall av en tidligere
+publisert frist, med siste publiserte metadata og synlighet. Den tilhører Vesentlige
+endringer, også når en frist fjernes fra godkjent utvalg ved import.
+
+**Driftsstans**: Administratorens felles stans av nye daglige e-postoverleveringer.
+Ventende hendelser beholdes til gjenopptakelse. Kalender og publisering fortsetter.
+
+**Sikkert usendt**: Transporten bekrefter at den ikke har mottatt eller overlatt meldingen
+videre. Dette skiller seg fra et uavklart utfall etter mulig overlevering.
+
 ## Internkalender
 
 **Internrunde**: SBRs arbeidsrunde for en rundetype og et år, med egne interne gjøremål.
