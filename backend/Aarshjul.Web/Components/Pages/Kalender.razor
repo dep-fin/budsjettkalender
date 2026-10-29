@@ -5,7 +5,7 @@
 @inject TimeProvider Klokke
 @inject Kalendertilstand Tilstand
 @inject IFristlesing Lesing
-@inject Synlighetskontekstkilde Kontekstkilde
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Kalender</PageTitle>
 
@@ -13,11 +13,15 @@
     <aside class="leserfilter" aria-label="Fristutvalg" tabindex="-1" @ref="_utvalgsfilter">
         <p class="menyoverskrift">Din kalender</p>
         <Minikalender ValgtDato="_valgtDato" Idag="Idag" Frister="Maanedsfrister" DatoValgt="VelgDatoAsync" />
+        @if (ViserListe)
+        {
+            <label class="maanedsvalg kalenderkontekstvalg">Vis måned<input type="month" min="0001-01" max="9999-12" value="@_valgtDato.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture)" @onchange="VedMaanedsvalgAsync" /></label>
+        }
         <h2>Velg utvalg</h2>
-        <Kalenderfilter Tilstand="Tilstand" TilgjengeligeAar="TilgjengeligeAar" Endret="LastInnAsync" />
+        <Kalenderfilter Tilstand="Tilstand" TilgjengeligeAar="TilgjengeligeAar" Endret="FiltreEndretAsync" SoekAlleDatoer="SoekAlleDatoerAsync" />
         <div class="kalenderforklaring"><strong>Samme frister, ulike perspektiver</strong><p>Kalender viser datoene på tvers av valgte budsjettår. Budsjettår samler ett helt løp.</p></div>
     </aside>
-    <div class="leseinnhold">
+    <div class="leseinnhold" role="region" aria-label="Kalender" tabindex="-1" @ref="_kalenderinnhold">
         <p class="menyoverskrift">Kalender</p>
         <h1>Kalender</h1>
         <p class="ingress">Se fristene i kalenderen, og behold oversikten over budsjettårene.</p>
@@ -39,27 +43,57 @@
             </section>
         }
         <section class="kalenderutvalg" aria-label="Aktivt kalenderutvalg">
-            <span><strong>Periode:</strong> @Periodetekst</span>
+            <span><strong>@(ViserListe ? "Kalenderkontekst:" : "Periode:")</strong> @Periodetekst</span>
             <span><strong>Budsjettår:</strong> @(Tilstand.Budsjettaar.Count == 0 ? "Ingen valgt" : string.Join(", ", Tilstand.Budsjettaar.Order()))</span>
             <span><strong>Kategorier:</strong> @(Tilstand.Kategorier.Count == 0 ? "Ingen valgt" : string.Join(", ", Tilstand.Kategorier.Order().Select(Visningformat.KategoriNavn)))</span>
             @if (!string.IsNullOrWhiteSpace(Tilstand.Soek)) { <span><strong>Søk:</strong> «@Tilstand.Soek.Trim()»</span> }
         </section>
+        @if (!Tilstand.VisSoeketreff)
+        {
+        @if (Tilstand.HarAapnetSoek)
+        {
+            <button class="knapp" @onclick="SoekAlleDatoerAsync">Tilbake til søketreff</button>
+        }
         <nav class="kalendervisninger" aria-label="Kalendervisning">
             @foreach (var (visning, navn) in Visninger)
             {
                 <button aria-pressed="@(Tilstand.Visning == visning ? "true" : "false")" @onclick="() => ByttVisningAsync(visning)">@navn</button>
             }
         </nav>
+        }
         <section aria-label="@Visningsnavn" aria-busy="@(!Lastet ? "true" : "false")">
+            @if (ViserListe)
+            {
+                <div class="kalenderliste-topp">
+                    <h2 tabindex="-1" @ref="_listeoverskrift">@(Tilstand.VisSoeketreff ? "Søketreff" : Tilstand.VisListehistorikk ? "Tidligere hendelser" : "Kommende frister")</h2>
+                    @if (Tilstand.VisSoeketreff)
+                    {
+                        <p>Alle datoer, inkludert tidligere frister. Valgte budsjettår og kategorier avgrenser treffene.</p>
+                        <button class="knapp" @onclick="TilbakeTilKalenderAsync">Tilbake til kalenderen</button>
+                    }
+                    else
+                    {
+                    <p>@(Tilstand.VisListehistorikk ? $"Før {Kalendervisning.Dato(Tilstand.Listedato ?? Idag)}, seneste først. Tentative frister vises når måneden er over." : $"Fra og med {Kalendervisning.Dato(Tilstand.Listedato ?? Idag)}. Tentative frister vises til måneden er over.")</p>
+                    <button class="knapp" disabled="@(!Lastet)" @onclick="VeksleHistorikkAsync">@(Tilstand.VisListehistorikk ? "Tilbake til kommende frister" : "Vis tidligere hendelser")</button>
+                    }
+                </div>
+                @if (Lastet && Lastefeil is null && Tilstand.ListeOppdatert)
+                {
+                    <p class="melding" role="status">Utvalget er oppdatert. Frister, rekkefølge eller dagens dato er endret. Du er tilbake på side 1.</p>
+                }
+            }
+            else
+            {
             <nav class="maanedsnavigasjon" aria-label="@(Tilstand.Periode == Kalenderperiode.Maaned ? "Månedsnavigasjon" : "Ukenavigasjon")">
                 <button class="knapp" @onclick="() => VelgDatoAsync(Idag)">I dag</button>
                 <div class="periodepiler">
                     <button class="knapp" aria-label="@(Tilstand.Periode == Kalenderperiode.Maaned ? "Forrige måned" : "Forrige uke")" disabled="@(!KanFlytte(-1))" @onclick="() => FlyttAsync(-1)">‹</button>
                     <button class="knapp" aria-label="@(Tilstand.Periode == Kalenderperiode.Maaned ? "Neste måned" : "Neste uke")" disabled="@(!KanFlytte(1))" @onclick="() => FlyttAsync(1)">›</button>
                 </div>
-                <h2 class="@(Tilstand.Visning == Kalenderpresentasjon.Maaned ? null : "periodeoverskrift")">@(Tilstand.Visning == Kalenderpresentasjon.Liste ? $"Liste for {char.ToLowerInvariant(Periodetekst[0])}{Periodetekst[1..]}" : Periodetekst)</h2>
+                <h2 class="@(Tilstand.Visning == Kalenderpresentasjon.Maaned ? null : "periodeoverskrift")">@Periodetekst</h2>
                 <label class="maanedsvalg">Vis måned<input type="month" min="0001-01" max="9999-12" value="@_valgtDato.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture)" @onchange="VedMaanedsvalgAsync" /></label>
             </nav>
+            }
             @if (!Lastet)
             {
                 <p class="melding" role="status">Laster frister …</p>
@@ -76,7 +110,7 @@
                         <span class="@Visningformat.FargeklasseForAar(aar)"><i class="aarsprikk" aria-hidden="true"></i>Budsjettår @aar</span>
                     }
                 </div>
-                @foreach (var maaned in Frister.Where(f => f.ErTentativ).GroupBy(f => Kalendervisning.FoersteDag(f.Dato)).OrderBy(g => g.Key))
+                @foreach (var maaned in Frister.Where(f => f.ErTentativ && !ViserListe).GroupBy(f => Kalendervisning.FoersteDag(f.Dato)).OrderBy(g => g.Key))
                 {
                     <section class="tentative-maanedsfrister" aria-label="@($"Tentative frister i {Kalendervisning.Maaned(maaned.Key)}")">
                         <h3>@Kalendervisning.Maaned(maaned.Key) · Dato ikke fastsatt</h3>
@@ -89,7 +123,11 @@
                     </section>
                 }
                 <div class="kalenderflate">
-                    @if (Tilstand.Visning == Kalenderpresentasjon.Maaned)
+                    @if (Tilstand.VisSoeketreff)
+                    {
+                        <Kalenderliste Frister="Frister" AapneFrist="AapneFristAsync" VisIKalenderen="VisTreffIKalenderAsync" Idag="Idag" />
+                    }
+                    else if (Tilstand.Visning == Kalenderpresentasjon.Maaned)
                     {
                         <Maanedskalender ValgtDato="_valgtDato" Idag="Idag" Frister="Frister" AapneDag="AapneDagAsync" AapneFrist="AapneFristAsync" />
                     }
@@ -101,15 +139,42 @@
                     {
                         <Kalenderliste Frister="Frister" AapneFrist="AapneFristAsync" />
                     }
-                    <p class="kalenderstatus" role="status">@Frister.Count @(Frister.Count == 1 ? "frist" : "frister") i @(Tilstand.Periode == Kalenderperiode.Maaned ? "måneden" : "uken") · @Frister.Count(f => !f.ErTentativ) med fast dag</p>
+                    @if (ViserListe)
+                    {
+                        <nav class="listesider" aria-label="Sider med frister">
+                            <button class="knapp" aria-label="Forrige side" disabled="@(Tilstand.Listeside <= 1)" @onclick="() => LastInnUtvalgAsync(-1)">‹ Forrige</button>
+                            <p role="status">Side @(Tilstand.AntallListesider == 0 ? 0 : Tilstand.Listeside) av @Tilstand.AntallListesider · @Tilstand.AntallListefrister @(Tilstand.AntallListefrister == 1 ? "frist" : "frister")</p>
+                            <button class="knapp" aria-label="Neste side" disabled="@(Tilstand.Listeside >= Tilstand.AntallListesider)" @onclick="() => LastInnUtvalgAsync(1)">Neste ›</button>
+                        </nav>
+                    }
+                    else
+                    {
+                        <p class="kalenderstatus" role="status">@Frister.Count @(Frister.Count == 1 ? "frist" : "frister") i @(Tilstand.Periode == Kalenderperiode.Maaned ? "måneden" : "uken") · @Frister.Count(f => !f.ErTentativ) med fast dag</p>
+                    }
                 </div>
-                @if (Frister.Count == 0) { <p class="melding">Ingen frister i utvalget ditt denne @(Tilstand.Periode == Kalenderperiode.Maaned ? "måneden" : "uken").</p> }
-                <p class="kalenderhint">Velg en dato for dagsagenda, eller en frist for å lese detaljene.</p>
+                @if (Frister.Count == 0)
+                {
+                    @if (Tilstand.VisSoeketreff)
+                    {
+                        <div class="melding" role="status">
+                            <p>Ingen søketreff. Alle datoer er søkt, inkludert tidligere frister. Valgte budsjettår og kategorier avgrenser fortsatt søket.</p>
+                            <button class="knapp" @onclick="EndreKalenderutvalgAsync">Endre utvalg</button>
+                            <button class="knapp" @onclick="ToemSoekAsync">Tøm søket</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="melding">@(ViserListe ? (Tilstand.VisListehistorikk ? "Ingen tidligere hendelser i utvalget ditt." : "Ingen kommende frister i utvalget ditt.") : $"Ingen frister i utvalget ditt denne {(Tilstand.Periode == Kalenderperiode.Maaned ? "måneden" : "uken")}.")</p>
+                    }
+                }
+                <p class="kalenderhint">@(ViserListe ? "Velg en frist for å lese detaljene. Minikalenderen beholder kalenderperioden din." : "Velg en dato for dagsagenda, eller en frist for å lese detaljene.")</p>
             }
         </section>
     </div>
 </div>
-<Fristdialog @ref="_fristdialog" Startbudsjettaar="@(Tilstand.Budsjettaar.Count == 1 ? Tilstand.Budsjettaar.Single() : (int?)null)" />
+<Fristdialog @ref="_fristdialog" Startbudsjettaar="@(Tilstand.Budsjettaar.Count == 1 ? Tilstand.Budsjettaar.Single() : (int?)null)"
+    VisIKalenderen="@(Tilstand.VisSoeketreff ? EventCallback.Factory.Create<FristDto>(this, VisTreffIKalenderAsync) : default)"
+    FristUtilgjengelig="OppdaterUtilgjengeligTreffAsync" UtilgjengeligLukket="FokuserTreffAsync" />
 
 @code {
     [SupplyParameterFromQuery(Name = "aar")] public string? Lenkeaar { get; set; }
@@ -120,7 +185,8 @@
     private int? _lenkeaar;
     private static readonly (Kalenderpresentasjon Visning, string Navn)[] Visninger =
         [(Kalenderpresentasjon.Maaned, "Måned"), (Kalenderpresentasjon.Uke, "Uke"), (Kalenderpresentasjon.Liste, "Liste")];
-    private string Visningsnavn => Tilstand.Visning switch
+    private bool ViserListe => Tilstand.VisSoeketreff || Tilstand.Visning == Kalenderpresentasjon.Liste;
+    private string Visningsnavn => Tilstand.VisSoeketreff ? "Søketreff" : Tilstand.Visning switch
     {
         Kalenderpresentasjon.Maaned => "Månedskalender", Kalenderpresentasjon.Uke => "Ukekalender", _ => "Kalenderliste"
     };
@@ -128,6 +194,10 @@
     private DateOnly _valgtDato { get => Tilstand.ValgtDato ?? Idag; set => Tilstand.ValgtDato = value; }
     private Fristdialog _fristdialog = default!;
     private ElementReference _utvalgsfilter;
+    private ElementReference _listeoverskrift;
+    private ElementReference _kalenderinnhold;
+    private bool _fokuserListe;
+    private bool _fokuserKalender;
     private DateOnly Idag => Datohjelp.Idag(Klokke);
     private IReadOnlyList<FristDto> Frister = [];
     private IReadOnlyList<FristDto> Maanedsfrister = [];
@@ -136,6 +206,7 @@
     private string? Lastefeil;
     private int _lasting;
     private bool _avsluttet;
+    private readonly CancellationTokenSource _levetid = new();
 
     protected override Task OnInitializedAsync()
     {
@@ -152,6 +223,7 @@
             || !int.TryParse(Lenkekategori, out var kategori) || !Enum.IsDefined((Kategori)kategori)
             || !DateOnly.TryParseExact(Lenkedato, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
                 System.Globalization.DateTimeStyles.None, out var dato)) return;
+        Tilstand.ForlatSoek();
         _lenkeaar = aar; Tilstand.Budsjettaar.Clear(); Tilstand.Budsjettaar.Add(aar);
         Tilstand.Kategorier.Clear(); Tilstand.Kategorier.Add((Kategori)kategori);
         Tilstand.Soek = ""; Tilstand.ValgtDato = dato;
@@ -159,17 +231,109 @@
         await LastInnAsync();
     }
 
-    private async Task LastInnAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_fokuserKalender && Lastet && !Tilstand.VisSoeketreff)
+        {
+            _fokuserKalender = false;
+            await _kalenderinnhold.FocusAsync();
+        }
+        if (!_fokuserListe || !Lastet || !ViserListe) return;
+        _fokuserListe = false;
+        await _listeoverskrift.FocusAsync();
+    }
+
+    private Task LastInnAsync() => LastInnUtvalgAsync();
+
+    private Task SoekAlleDatoerAsync()
+    {
+        Tilstand.AapneSoek();
+        return LastInnUtvalgAsync(fokuserListe: true);
+    }
+
+    private Task TilbakeTilKalenderAsync()
+    {
+        Tilstand.ForlatSoek();
+        return LastInnUtvalgAsync(fokuserKalender: true);
+    }
+
+    private Task ToemSoekAsync()
+    {
+        Tilstand.Soek = "";
+        return FiltreEndretAsync();
+    }
+
+    private Task OppdaterUtilgjengeligTreffAsync() => Tilstand.VisSoeketreff ? LastInnAsync() : Task.CompletedTask;
+
+    private Task FokuserTreffAsync()
+    {
+        _fokuserListe = Tilstand.VisSoeketreff;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task VisTreffIKalenderAsync(FristDto treff)
+    {
+        var lasting = ++_lasting;
+        try
+        {
+            var ctx = await HentKontekstAsync();
+            var frist = await Lesing.HentEnAsync(ctx, treff.Id, _levetid.Token);
+            if (_avsluttet || lasting != _lasting) return;
+            // Navigasjon bruker fersk dato og tilgang, og utvider aldri filtervalg.
+            if (frist is null || SkjulesAvFiltre(frist))
+            {
+                await _fristdialog.VisUtilgjengeligAsync();
+                await LastInnAsync();
+                return;
+            }
+            Tilstand.ForlatSoek();
+            Tilstand.Visning = Kalenderpresentasjon.Maaned;
+            Tilstand.Periode = Kalenderperiode.Maaned;
+            _valgtDato = Kalendervisning.FoersteDag(frist.Dato);
+            await LastInnUtvalgAsync(fokuserKalender: true);
+        }
+        catch (OperationCanceledException) when (_levetid.IsCancellationRequested) { }
+        catch (Exception)
+        {
+            if (_avsluttet || lasting != _lasting) return;
+            await _fristdialog.VisUtilgjengeligAsync();
+            await LastInnAsync();
+        }
+    }
+
+    private Task VeksleHistorikkAsync()
+    {
+        Tilstand.VisListehistorikk = !Tilstand.VisListehistorikk;
+        return LastInnAsync();
+    }
+
+    private Task FiltreEndretAsync()
+    {
+        Tilstand.NullstillListesider();
+        return LastInnAsync();
+    }
+
+    private async Task<ISynlighetskontekst> HentKontekstAsync()
+    {
+        var bruker = (await AuthState.GetAuthenticationStateAsync()).User;
+        return bruker.Identity?.IsAuthenticated == true
+            ? Synlighetskontekst.FraPrincipal(bruker) : new Synlighetskontekst(false, []);
+    }
+
+    private async Task LastInnUtvalgAsync(int sidesteg = 0, bool fokuserListe = false, bool fokuserKalender = false)
     {
         var lasting = ++_lasting;
         Lastet = false;
+        _fokuserListe = false;
+        _fokuserKalender = false;
         Frister = [];
         Maanedsfrister = [];
+        TilgjengeligeAar = [];
         try
         {
-            var ctx = await Kontekstkilde.HentAsync();
+            var ctx = await HentKontekstAsync();
             // Årsvalgene omfatter hele det autoriserte, godkjente utvalget, også historikk.
-            var aar = await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, inkluderHistorikk: true);
+            var aar = await Lesing.HentTilgjengeligeBudsjettaarAsync(ctx, inkluderHistorikk: true, _levetid.Token);
             if (_avsluttet || lasting != _lasting) return;
             TilgjengeligeAar = _lenkeaar is { } lenkeaar ? aar.Append(lenkeaar).Distinct().Order().ToArray() : aar;
             Tilstand.InitialiserAar(aar);
@@ -183,16 +347,18 @@
                     Budsjettaar = Tilstand.Budsjettaar.ToArray(),
                     // Hele berørte måneder er nødvendig for tentative frister, som
                     // ikke tilhører sin avledede sorteringsdag, og minikalenderen.
-                    FraDato = Kalendervisning.FoersteDag(fra),
-                    TilDato = Kalendervisning.SisteDag(til),
+                    FraDato = ViserListe ? null : Kalendervisning.FoersteDag(fra),
+                    TilDato = ViserListe ? null : Kalendervisning.SisteDag(til),
                     InkluderHistorikk = true
-                });
+                }, _levetid.Token);
             if (_avsluttet || lasting != _lasting) return;
-            // Søk på serveren i det allerede autoriserte periodeutvalget. Ingen usynlige
+            // Søk på serveren i det allerede autoriserte utvalget. Ingen usynlige
             // titler/notater eller tellinger sendes til nettleseren.
             var soek = Tilstand.Soek.Trim();
             Maanedsfrister = string.IsNullOrEmpty(soek) ? frister : frister.Where(f => TrefferSoek(f, soek)).ToArray();
-            Frister = Maanedsfrister.Where(f => f.ErTentativ || (f.Dato >= fra && f.Dato <= til)).ToArray();
+            Frister = ViserListe
+                ? Tilstand.HentListeside(Maanedsfrister, Idag, sidesteg)
+                : Maanedsfrister.Where(f => f.ErTentativ || (f.Dato >= fra && f.Dato <= til)).ToArray();
             Lastefeil = null;
         }
         catch (Exception)
@@ -200,12 +366,20 @@
             if (_avsluttet || lasting != _lasting) return;
             Frister = [];
             Maanedsfrister = [];
+            TilgjengeligeAar = [];
             Lastefeil = "Kunne ikke laste frister akkurat nå. Prøv igjen.";
         }
         Lastet = true;
+        _fokuserListe = (sidesteg != 0 || fokuserListe) && Lastefeil is null;
+        _fokuserKalender = fokuserKalender && Lastefeil is null;
     }
 
-    public void Dispose() => _avsluttet = true;
+    public void Dispose()
+    {
+        _avsluttet = true;
+        _levetid.Cancel();
+        _levetid.Dispose();
+    }
 
     private bool KanFlytte(int steg)
     {
@@ -220,11 +394,11 @@
 
     private async Task ByttVisningAsync(Kalenderpresentasjon visning)
     {
-        var forrigePeriode = Tilstand.Periode;
+        var forrigeVisning = Tilstand.Visning;
         Tilstand.Visning = visning;
         if (visning != Kalenderpresentasjon.Liste)
             Tilstand.Periode = visning == Kalenderpresentasjon.Maaned ? Kalenderperiode.Maaned : Kalenderperiode.Uke;
-        if (forrigePeriode != Tilstand.Periode) await LastInnAsync();
+        if (forrigeVisning != visning) await LastInnAsync();
     }
 
     private async Task VelgDatoAsync(DateOnly dato)

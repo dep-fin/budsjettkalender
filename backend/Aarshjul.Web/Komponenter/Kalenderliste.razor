@@ -1,12 +1,22 @@
 <ol class="kalenderliste">
-    @foreach (var frist in Frister.Where(f => !f.ErTentativ).OrderBy(f => f.Dato).ThenBy(f => f.Klokkeslett).ThenBy(f => f.Tittel).ThenBy(f => f.Id))
+    @foreach (var frist in Frister)
     {
         <li>
             <button class="listefrist @Visningformat.FargeklasseForAar(frist.Budsjettaar)" data-frist-id="@frist.Id" aria-label="@frist.Tittel" @onclick="() => AapneFrist.InvokeAsync(frist)">
-                <span class="listefrist-dato">@Visningformat.FormatDato(frist)@if (!frist.HarKlokkeslett) { <small>Heldag</small> }</span>
-                <span class="listefrist-tittel"><strong>@frist.Tittel</strong><small>@Visningformat.KategoriNavn(frist.Kategori)</small></span>
+                <span class="listefrist-dato">
+                    @Visningformat.FormatDato(frist)@if (frist.ErTentativ) { <small>Dato ikke fastsatt</small> } else if (!frist.HarKlokkeslett) { <small>Heldag</small> }
+                    @if (Idag is { } idag && (frist.ErTentativ ? Kalendervisning.SisteDag(frist.Dato) < idag : frist.Dato < idag))
+                    {
+                        <small>Tidligere frist</small>
+                    }
+                </span>
+                <span class="listefrist-tittel"><strong>@frist.Tittel</strong><small>@Visningformat.KategoriNavn(frist.Kategori)</small>@if (VisIKalenderen.HasDelegate) { <small>Åpne frist</small> }</span>
                 <span class="listefrist-aar"><i class="aarsprikk" aria-hidden="true"></i>Budsjettår @frist.Budsjettaar</span>
             </button>
+            @if (VisIKalenderen.HasDelegate)
+            {
+                <button class="knapp" aria-label="@($"Vis i kalenderen: {frist.Tittel}")" @onclick="() => VisIKalenderen.InvokeAsync(frist)">Vis i kalenderen</button>
+            }
         </li>
     }
 </ol>
@@ -14,4 +24,6 @@
 @code {
     [Parameter] public IReadOnlyList<FristDto> Frister { get; set; } = [];
     [Parameter] public EventCallback<FristDto> AapneFrist { get; set; }
+    [Parameter] public EventCallback<FristDto> VisIKalenderen { get; set; }
+    [Parameter] public DateOnly? Idag { get; set; }
 }

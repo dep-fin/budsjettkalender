@@ -1,16 +1,36 @@
 # Utvikling
 
-EV09 / #119 er levert gjennom PR #146 som main
-`dd2a24c87aceb692c576eafa155d02ee0541b12b`. EV10 / #120 er lokal kandidat fra
-samme base. Oppdaget inventar er **1403 ordinære, 510 SQL Server- og 359
-nettlesertilfeller**. Alle 1348/480/354 navn fra basen er bevart ordinalt uten
-tap eller dubletter. CI krever nøyaktig **510 SQL- og 359 Chromium-resultater**
-uten feil/hopp. Jobbgrensene 15/20/45 minutter, pakkeaudit og TRX-/hemmelighetsvern
-består. SQL Server er bygget og oppdaget lokalt; disponibel tilkobling mangler.
-Lokalt består 1403 ordinære og 46 berørte reelle Edge/Kestrel-forløp uten feil/hopp.
-Full SQL Server-/Chromium-kandidat-CI og samlet review/audit gjenstår.
-Se [EV10-akseptansen](acceptance/2026-10-29-epost-ev10.md) for lokale bevis og
-[EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md) for datert tidligere bevis.
+EV10 / #120 videreføres i eksisterende [PR #147](https://github.com/depmartin/Budsjettkalender/pull/147)
+med levert main `ce439c2ee55d6d79095d0b488768b13823f36531` integrert.
+Den tidligere EV10-kandidaten bestod 1403/510/359 i
+[CI 40901718289](https://github.com/depmartin/Budsjettkalender/actions/runs/40901718289)
+på EV09-basen; dette er historisk bevis og dekker ikke den nye integrasjonen.
+Ny discovery bekrefter eksakt union: **1404 ordinære, 510 SQL Server og 414 nettlesertilfeller**.
+Alle navn fra begge foreldre er bevart uten tap, dubletter eller navn utenfor unionen.
+Sluttprøvene består 1404/1404 ordinære og 132/132 relevante Edge/Kestrel-tilfeller,
+uten feil/hopp. Den første nettleserkjøringens ene EV08-avvik er bevart og
+beskrevet sammen med etterprøvingen i
+[EV10-akseptansen](acceptance/2026-10-29-epost-ev10.md#integrasjon-med-levert-kalenderliste-og-søk).
+CI krever nøyaktig **510 SQL- og 414 Chromium-resultater** uten feil/hopp.
+Hemmelighetssøk før TRX-opplasting, opplastingsvilkår, aktiv audit og
+tidsgrenser 15/20/45 minutter består. Ny full kandidat-CI gjenstår.
+
+#139 er levert i [PR #148](https://github.com/depmartin/Budsjettkalender/pull/148)
+som denne main. Kalenderens lokale tekstfilter beholdes; «Søk i alle datoer»/Enter
+åpner egen treffliste med historikk, eksplisitte år/kategorier, 25 per side,
+ferske detaljer og månedsnavigasjon. Søk/side og opprinnelig kalenderkontekst
+bevares. Årsavkryssing beholder fokus gjennom venting og bortfalt år uten å
+beholde gamle årsvalg. [Slutt-CI 40927726909](https://github.com/depmartin/Budsjettkalender/actions/runs/40927726909)
+bestod 1349 ordinære, 480 SQL Server og 409 Chromium. Dette er forelderens bevis.
+[Søkeakseptansen](acceptance/2026-10-29-kalendersoek.md) bevarer de daterte
+lokale prøvene og bevisgrensene. Ingen API eller migrasjon inngikk i #139.
+
+Levert #138s [slutt-CI 40901062835](https://github.com/depmartin/Budsjettkalender/actions/runs/40901062835)
+bestod 1349 ordinære, 480 SQL Server og 378 Chromium før bekreftet merge.
+[EV09-avstemmingen](acceptance/2026-10-29-kommende-liste.md#nodvendig-ev09-mainintegrasjon-i-ci-lokken-29-oktober-2026)
+bevarer tidligere revisjonsbundne prøver, review, rødt CI-bevis og de tre
+historiske SQLite-filunntakene. Disse filene er ikke åpnet under #139.
+Ingen deploy inngår.
 
 EV08 bruker eksisterende abonnementslagring uten egen modellendring/migrasjon.
 Fra `/epostvarsling` kan Aktiv/Venter bytte egen adresse og Avmeldt uttrykkelig
@@ -52,7 +72,8 @@ avmeldingshash/-sekvens med indeks. Alle leverte og EV09s faktiske
 Up/Down er uendret. SQL-prøvene starter både med bare levert EV07 og med bare den
 opprinnelige kildelenkemigrasjonen registrert i migrasjonshistorikken, og krever
 at normal `MigrateAsync` installerer den manglende leverte migrasjonen og EV09
-idempotent. Fra faktisk levert main er bare Avmeldingslenke ventende.
+idempotent. I EV09s opprinnelige byggegrunnlag var bare Avmeldingslenke ventende;
+gjeldende EV10-kandidat legger til Epostadministratorstans.
 Disse tilfellene krever ekte SQL Server i CI når lokal testvariabel mangler.
 Normal `Demoskjema.SikreAsync` oppgraderer EV02–EV05 og hver enkelt gren atomisk og
 idempotent. Tidlig retur krever begge leverte skjemaendringer og begge EV09-
@@ -351,14 +372,18 @@ grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gj
 
 ## Obligatorisk nettleserakseptanse
 
-Gjeldende EV10-kandidat krever nøyaktig **359 beståtte Chromium-scenarioer**
+Gjeldende EV10-integrasjon krever nøyaktig **414 beståtte Chromium-scenarioer**
 uten hopp eller manglende TRX. **510 ekte SQL Server-tilfeller** kreves i den
 separate SQL-porten. De daterte kjøringene nedenfor viser tidligere kandidatgrunnlag.
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 359 scenarioer bruker disponible Kestrel-verter,
-inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06, to fra EV07, fire fra EV08 og fire fra EV09, fem fra EV10, to fra #140,
-sju fra UX17 og seks fra UX18. Alle tidligere navn består.
+eksisterende app eller database: 414 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06,
+to fra EV07, fire fra EV08, fire fra EV09 og fem fra EV10,
+sju fra UX17, seks fra UX18, to fra #140, åtte fra #138s listeutvalg og 16 fra
+felles detaljretting, samt 31 fra #139s søk, treffnavigasjon og fokus ved årsvalg. Detaljprøvene revaliderer synlighet, grupper og autentisering,
+håndterer sletting, tømmer dialog-DOM ved Lukk/Escape og verner mot sene svar
+og JS-åpninger. Alle tidligere navn består.
 Demoflytene starter i Development med Demo=true, tilfeldig loopback-port og ny SQLite-fil.
 De kontrollerte flytene bruker den eksisterende HTTP-testverten i Testing med ekte
 Kestrel, SQLite i minnet og testautentisering.
@@ -435,7 +460,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 359 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 414 beståtte scenarioer uten hopp.
 EV05/UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -446,7 +471,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 359; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny kandidat-CI må fullføre alle 414; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -582,12 +607,15 @@ Produksjonsappen kjører foreløpig migrasjoner ved oppstart. Egen deploy-migrer
 SQL/Entra-oppsett, Data Protection og Azure-nettverk må verifiseres i et driftsmiljø.
 Se `infra/README.md` og gjennomgangens åpne oppgaver før utrulling.
 
-## EV09 – daterte lokale bevis før levering i PR #146
+## EV09 – levert avmeldingslenke
 
 [EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md) beskriver rød/grønn,
 1348 ordinære tilfeller, delte SQLite-/SQL Server-kontrakter, migrasjonskjede
-og anonym avmelding fra faktisk e-post. Integrert inventar er 1348/480/354,
-med alle navn fra EV09 og levert main bevart. Lokal Edge er et kontrollert
+og anonym avmelding fra faktisk e-post. EV09 er levert i PR #146, merget som
+`dd2a24c87aceb692c576eafa155d02ee0541b12b`. Dens slutt-CI
+[40887998599](https://github.com/depmartin/Budsjettkalender/actions/runs/40887998599)
+bestod 1348/480/354; dette er forelderens bevis. #138s tidligere union var 1349/480/378.
+Alle navn fra EV09 og #138 bevares ved den nye EV10-integrasjonen. Lokal Edge er et kontrollert
 nettleserbevis; faktisk SQL Server og full Chromium utføres i kandidat-CI.
 
 CI kontrollerer TRX for avmeldingsfragment og 64-tegns hexverdier før hver

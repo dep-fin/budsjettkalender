@@ -67,5 +67,36 @@ public sealed class KalenderutvalgTester : IDisposable
         Assert.Equal(new[] { "2026 annen måned", "2026 budsjett", "2027 budsjett", "2028 budsjett", "2028 gul bok" }, frister.Select(f => f.Tittel).Order());
     }
 
+    [Fact]
+    public async Task Ubegrenset_listeutvalg_bevarer_53_frister_eksplisitte_aarsunioner_og_tentativ_presisjon_uten_skjulte_tellinger()
+    {
+        var ider = new List<Guid>();
+        for (var i = 0; i < 53; i++)
+        {
+            var frist = new Frist
+            {
+                Id = Guid.NewGuid(), Tittel = $"Liste {i:00}", Dato = new DateOnly(2030, 12, 1).AddDays(i),
+                Budsjettaar = i % 2 == 0 ? 2031 : 2033, Kategori = Kategori.Budsjett,
+                Synlighet = [new() { GruppeKode = "FAG" }]
+            };
+            if (i == 0) { frist.Datopresisjon = Datopresisjon.Maaned; frist.Datokvalifikator = Datokvalifikator.Primo; }
+            ider.Add(frist.Id);
+            _t.Db.Frister.Add(frist);
+        }
+        LeggTil("Utelatt mellomår", 2032, Kategori.Budsjett, new(2031, 1, 1));
+        LeggTil("Skjult valgt år", 2031, Kategori.Budsjett, new(2031, 1, 1), "POL");
+        LeggTil("Upublisert valgt år", 2031, Kategori.Budsjett, new(2031, 1, 1), status: FristStatus.Forslag);
+        _t.Db.SaveChanges();
+        var frister = await Lesing.HentSynligeAsync(_leser, new()
+        {
+            Budsjettaar = [2031, 2033], Kategorier = [Kategori.Budsjett], InkluderHistorikk = true
+        });
+        Assert.Equal(ider, frister.Select(f => f.Id));
+        Assert.Equal(Datopresisjon.Maaned, frister[0].Datopresisjon);
+        Assert.Equal(Datokvalifikator.Primo, frister[0].Datokvalifikator);
+        Assert.Equal(new DateOnly(2030, 12, 1), frister[0].Dato);
+        Assert.Equal(new DateOnly(2031, 1, 22), frister[^1].Dato);
+    }
+
     public void Dispose() => _t.Dispose();
 }
