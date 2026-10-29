@@ -13,6 +13,69 @@ namespace Aarshjul.SqlServerTests;
 
 public sealed class DagligEpostTester : DagligEpostKontrakt
 {
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task SQL_oppgradering_fra_hver_levert_gren_bevarer_lenke_eller_historisk_synlighet_og_ventende_plan(bool manuellFoerst)
+    {
+        await using var database = new Sqldatabase(); await database.OpprettAsync("20261028193853_Abonnementsutvalg");
+        await EpostoppgraderingBevis.LeggTilAsync(database);
+        var plan = await EpostoppgraderingBevis.LeggTilEV04PlanAsync(database);
+        await EpostoppgraderingBevis.InstallerGrenmigrasjonAsync(database, manuellFoerst
+            ? new Aarshjul.Infrastructure.Migrations.ManuellKildelenke()
+            : new Aarshjul.Infrastructure.Migrations.HistoriskSlettingssynlighet());
+        await using (var oppsett = database.Fabrikk().CreateDbContext())
+        {
+            Assert.Equal(new[] { manuellFoerst ? "20261029092000_HistoriskSlettingssynlighet" : "20261029092000_ManuellKildelenke" },
+                await oppsett.Database.GetPendingMigrationsAsync());
+            if (manuellFoerst)
+                await oppsett.Database.ExecuteSqlRawAsync("UPDATE Frister SET ManuellKildeUrl = 'https://regjeringen.no/no/bevart-gren140'");
+            else
+            {
+                oppsett.Set<FristHendelsessynlighet>().Add(new() { HendelseId = plan.Behandlet, GruppeKode = "FAG" });
+                await oppsett.SaveChangesAsync();
+            }
+        }
+        var foer = await EpostoppgraderingBevis.HentAsync(database);
+        var varsling = await EpostoppgraderingBevis.HentVarslingsdataAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            await db.Database.MigrateAsync(); await db.Database.MigrateAsync();
+            Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+            Assert.Equal(new[] { "20261029092000_HistoriskSlettingssynlighet", "20261029092000_ManuellKildelenke" },
+                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(2));
+            Assert.All(await db.Frister.ToListAsync(), f => Assert.Equal(manuellFoerst ? "https://regjeringen.no/no/bevart-gren140" : null, f.ManuellKildeUrl));
+            Assert.Equal(manuellFoerst ? 0 : 1, await db.Set<FristHendelsessynlighet>().CountAsync());
+            Assert.Equal(await db.Database.SqlQueryRaw<long>("SELECT Verdi AS Value FROM Epostrekkefolge WHERE Id = 1").SingleAsync(),
+                await db.Database.SqlQueryRaw<long>("SELECT Livssyklussekvens AS Value FROM Epostaktiveringer WHERE BrukerId = 'eldre'").SingleAsync());
+        }
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+        Assert.Equal(varsling, await EpostoppgraderingBevis.HentVarslingsdataAsync(database));
+        await EpostoppgraderingBevis.BekreftEV05PlanAsync(database, plan);
+    }
+
+    [Fact]
+    public async Task Manuell_kildelenke_migrerer_fra_levert_EV05_uten_datatap_eller_historiske_hendelser()
+    {
+        await using var database = new Sqldatabase(); await database.OpprettAsync("20261028193853_Abonnementsutvalg");
+        await EpostoppgraderingBevis.LeggTilAsync(database);
+        var foer = await EpostoppgraderingBevis.HentAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            await db.Database.MigrateAsync(); await db.Database.MigrateAsync();
+            Assert.All(await db.Frister.ToListAsync(), f => Assert.Null(f.ManuellKildeUrl));
+            Assert.Empty(await db.NyFristHendelser.ToListAsync());
+        }
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+        Aarshjul.Application.Frister.IFristskriving skriving = new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(database.Fabrikk());
+        var id = await skriving.OpprettAsync(new()
+        {
+            Tittel = "Manuell kilde etter SQL-oppgradering", Dato = new(2030, 11, 20), Budsjettaar = 2031,
+            Synlighetskoder = ["FA"], ManuellKildeUrl = "https://regjeringen.no/no/sql140"
+        });
+        Assert.Equal("https://regjeringen.no/no/sql140", (await skriving.HentForRedigeringAsync(id))!.ManuellKildeUrl);
+        Aarshjul.Application.Frister.IFristlesing lesing = new Aarshjul.Infrastructure.Frister.FristTjeneste(database.Fabrikk(), TimeProvider.System);
+        Assert.Equal("https://regjeringen.no/no/sql140", (await lesing.HentEnAsync(new Aarshjul.Application.Synlighet.Synlighetskontekst(false, ["FA"]), id))!.KildeUrl);
+    }
     [Fact]
     public async Task EV07_migrasjon_fra_EV05_bevarer_data_og_planer_uten_historisk_tilbakefylling()
     {
@@ -87,8 +150,8 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
         await using (var db = database.Fabrikk().CreateDbContext())
         {
             await db.Database.MigrateAsync();
-            Assert.Equal(new[] { "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering", "20261028165341_VarseltyperOgEndringer", "20261028193853_Abonnementsutvalg", "20261029092000_HistoriskSlettingssynlighet" },
-                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(5));
+            Assert.Equal(new[] { "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering", "20261028165341_VarseltyperOgEndringer", "20261028193853_Abonnementsutvalg", "20261029092000_HistoriskSlettingssynlighet", "20261029092000_ManuellKildelenke" },
+                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(6));
         }
         Assert.True(foer == await EpostoppgraderingBevis.HentAsync(database), "Leverte UX16-/EV02-data må bevares gjennom EV03-oppgraderingen.");
         await EpostoppgraderingBevis.BekreftInternvern(database);

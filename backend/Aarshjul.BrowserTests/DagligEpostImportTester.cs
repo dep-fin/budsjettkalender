@@ -20,7 +20,8 @@ public sealed partial class DagligEpostTester
             await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-01T07:00");
             await n.Gaa("/admin/data"); var opprinnelig = await EV07LastNed(n, "opprinnelig.json");
             var rad = new FristEksport { Id = Guid.NewGuid(), Tittel = "EV07 importert", Dato = new(2044, 11, 20), Budsjettaar = 2045,
-                Kategori = Kategori.Regnskap, Status = FristStatus.Godkjent, SynligFor = ["FAG"] };
+                Kategori = Kategori.Regnskap, Status = FristStatus.Godkjent, SynligFor = ["FAG"],
+                ManuellKildeUrl = "https://regjeringen.no/no/importert140" };
             var pol = rad with { Id = Guid.NewGuid(), Tittel = "EV07 skjult politisk", SynligFor = ["POL"] };
             var fil = opprinnelig with { Frister = opprinnelig.Frister.Concat([rad, pol]).ToArray() };
             await EV07Forhaandsvis(n, fil); await EV07Bekreft(n);
@@ -31,10 +32,20 @@ public sealed partial class DagligEpostTester
             await Expect(n.Side.GetByRole(AriaRole.Article)).ToContainTextAsync("Ny frist: EV07 importert");
             await Expect(n.Side.GetByRole(AriaRole.Article)).Not.ToContainTextAsync("EV07 skjult politisk");
             await n.LoggInn("demo-admin"); await SettTid(n, "2030-01-02T07:00"); await n.Gaa("/admin/data");
-            var faktisk = await EV07LastNed(n, "identisk.json"); await EV07Forhaandsvis(n, faktisk); await EV07Bekreft(n);
+            var faktisk = await EV07LastNed(n, "identisk.json");
+            Assert.Equal(rad.ManuellKildeUrl, Assert.Single(faktisk.Frister, f => f.Id == rad.Id).ManuellKildeUrl);
+            Assert.Equal(rad.ManuellKildeUrl, (string?)(await n.Frister()).Single(f => (string?)f!["id"] == rad.Id.ToString())!["kildeUrl"]);
+            await EV07Forhaandsvis(n, faktisk); await EV07Bekreft(n);
             await Expect(n.Side.Locator("main")).ToContainTextAsync($"Importerte {fil.Frister.Count}");
             await n.Gaa("/demo/epostkjoring"); await Kjor(n, "0 bekreftet");
             await n.Gaa("/admin/data");
+            rad = rad with { ManuellKildeUrl = "https://www.regjeringen.no/no/endret140" };
+            var lenkefil = faktisk with { Frister = faktisk.Frister.Select(f => f.Id == rad.Id ? f with { ManuellKildeUrl = rad.ManuellKildeUrl } : f).ToArray() };
+            await EV07Forhaandsvis(n, lenkefil); await EV07Bekreft(n);
+            await Expect(n.Side.Locator("main")).ToContainTextAsync($"Importerte {lenkefil.Frister.Count}");
+            await n.Gaa("/demo/epostkjoring"); await Kjor(n, "0 bekreftet");
+            await n.Gaa("/admin/data");
+            Assert.Equal(rad.ManuellKildeUrl, Assert.Single((await EV07LastNed(n, "lenkeendring.json")).Frister, f => f.Id == rad.Id).ManuellKildeUrl);
             rad = rad with { Dato = new(2044, 12, 5) };
             fil = opprinnelig with { Frister = opprinnelig.Frister.Append(rad).ToArray() };
             await n.Side.SetViewportSizeAsync(bredde, 844); await EV07Forhaandsvis(n, fil);

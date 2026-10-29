@@ -16,6 +16,70 @@ namespace Aarshjul.Testkontrakter;
 public abstract partial class DagligEpostKontrakt
 {
     [Fact]
+    public async Task Import_bevarer_manuell_lenke_i_publiserte_oeyeblikksbilder_uten_ny_vesentlighetskategori()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        IFristDatautveksling import = new FristDatautveksling(db.Fabrikk(), p.Klokke);
+        var rad = Importrad("Importert kilde") with { ManuellKildeUrl = "https://regjeringen.no/no/opprinnelig140" };
+        await import.ImporterAsync(new() { Frister = [rad] });
+        await p.Aktiver(); await VelgUtvalg(p, null, null, false, true);
+        var journal = await Varslingsjournal(db);
+        rad = rad with { ManuellKildeUrl = "  https://www.regjeringen.no/no/ny140  " };
+        var fil = new FristDatabase { Frister = [rad] };
+        var visning = await import.ForhaandsvisAsync(fil);
+        Assert.Equal("https://www.regjeringen.no/no/ny140", Assert.Single(visning.Frister).ManuellKildeUrl);
+        Assert.Equal(journal, await Varslingsjournal(db));
+        await import.ImporterAsync(fil);
+        Assert.Equal(journal, await Varslingsjournal(db));
+        await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        var eksport = await import.EksporterAsync();
+        Assert.Equal("https://www.regjeringen.no/no/ny140", Assert.Single(eksport.Frister).ManuellKildeUrl);
+        await import.ImporterAsync(eksport with { Frister = [eksport.Frister[0] with { Dato = new(2030, 12, 5) }] });
+        await using (var kontroll = db.Fabrikk().CreateDbContext())
+        {
+            var endret = await kontroll.NyFristHendelser.SingleAsync(h => h.Type == "Endret");
+            Assert.Equal("https://www.regjeringen.no/no/ny140", JsonSerializer.Deserialize<Fristtilstand>(endret.FoerJson!)!.ManuellKildeUrl);
+            Assert.Equal("https://www.regjeringen.no/no/ny140", JsonSerializer.Deserialize<Fristtilstand>(endret.EtterJson!)!.ManuellKildeUrl);
+        }
+        await p.Jobb().KjorAsync(); Assert.Contains("Vesentlig endring: Importert kilde", Assert.Single(p.Post.Hent("a")).Tekst);
+        p.Klokke.Flytt(TimeSpan.FromDays(1));
+        await import.ImporterAsync(new() { Frister = [] });
+        await using (var kontroll = db.Fabrikk().CreateDbContext())
+        {
+            var slettet = await kontroll.NyFristHendelser.SingleAsync(h => h.Type == "Slettet");
+            Assert.Null(slettet.EtterJson);
+            Assert.Equal("https://www.regjeringen.no/no/ny140", JsonSerializer.Deserialize<Fristtilstand>(slettet.FoerJson!)!.ManuellKildeUrl);
+            Assert.Equal("FAG", Assert.Single(await kontroll.Set<FristHendelsessynlighet>().ToListAsync()).GruppeKode);
+        }
+        await p.Jobb().KjorAsync();
+        var melding = p.Post.Hent("a").Last();
+        Assert.Contains("Fjernet frist: Importert kilde", melding.Tekst);
+        Assert.DoesNotContain("regjeringen.no", melding.Tekst); Assert.DoesNotContain("regjeringen.no", melding.Html);
+    }
+
+    [Fact]
+    public async Task Ugyldig_manuell_importlenke_bevarer_frister_hendelser_historiske_grupper_og_sekvens()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        IFristDatautveksling import = new FristDatautveksling(db.Fabrikk(), p.Klokke);
+        var beholdt = Importrad("Beholdt kilde") with { ManuellKildeUrl = "https://regjeringen.no/no/bevart140" };
+        var fjernet = Importrad("Historisk kilde");
+        await import.ImporterAsync(new() { Frister = [beholdt, fjernet] });
+        await p.Aktiver(); await VelgUtvalg(p, null, null, false, true);
+        await import.ImporterAsync(new() { Frister = [beholdt] });
+        var eksport = JsonSerializer.Serialize(await import.EksporterAsync()); var journal = await Varslingsjournal(db);
+        var ugyldig = new FristDatabase { Frister = [beholdt with { Dato = new(2030, 12, 5) },
+            Importrad("Ugyldig senere rad") with { ManuellKildeUrl = "https://regjeringen.no.example.org/avvist140" }] };
+        await Assert.ThrowsAsync<Aarshjul.Application.Valideringsfeil>(() => import.ForhaandsvisAsync(ugyldig));
+        await Assert.ThrowsAsync<Aarshjul.Application.Valideringsfeil>(() => import.ImporterAsync(ugyldig));
+        Assert.Equal(eksport, JsonSerializer.Serialize(await import.EksporterAsync()));
+        Assert.Equal(journal, await Varslingsjournal(db));
+        await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains("Fjernet frist: Historisk kilde", melding.Tekst); Assert.DoesNotContain("Beholdt kilde", melding.Tekst);
+    }
+
+    [Fact]
     public async Task Import_samler_bare_faktisk_ny_endret_og_fjernet_publisert_identitet()
     {
         await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);

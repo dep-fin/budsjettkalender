@@ -202,6 +202,75 @@ public abstract partial class DagligEpostKontrakt
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Manuell_kildelenke_varsles_bare_ved_begrunnet_markering(bool markert)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Kildelenkeendring");
+        var id = await p.Skriv.OpprettAsync(input);
+        await p.Aktiver(); await VelgUtvalg(p, null, null, false, true);
+        input.ManuellKildeUrl = "https://regjeringen.no/no/ny-kilde140";
+        input.VesentligEndring = markert; input.Endringsforklaring = markert ? "Kildedokumentet er erstattet" : null;
+        await p.Skriv.OppdaterAsync(id, input);
+        if (markert)
+        {
+            await using var historikk = db.Fabrikk().CreateDbContext();
+            var hendelse = await historikk.NyFristHendelser.SingleAsync(h => h.Type == "Endret");
+            var legacy = System.Text.Json.Nodes.JsonNode.Parse(hendelse.FoerJson!)!.AsObject();
+            legacy.Remove("ManuellKildeUrl"); // En faktisk eldre JSON-hendelse har ikke dette feltet.
+            hendelse.FoerJson = legacy.ToJsonString(); await historikk.SaveChangesAsync();
+        }
+        await p.Jobb().KjorAsync();
+        if (markert) Assert.Contains("Kildedokumentet er erstattet", Assert.Single(p.Post.Hent("a")).Tekst);
+        else Assert.Empty(p.Post.Hent("a"));
+    }
+
+    [Fact]
+    public async Task Lenkeendring_under_planlegging_krever_fersk_lesing_foer_overlevering()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        await p.Aktiver(); var input = Inndata("Kildelenke ved siste kontroll");
+        var id = await p.Skriv.OpprettAsync(input);
+        var endret = false;
+        var port = new FoerLagring(async kontekst =>
+        {
+            if (endret || !kontekst.ChangeTracker.Entries<Oppsummeringshendelse>().Any(x => x.State == EntityState.Added)) return;
+            endret = true; input.ManuellKildeUrl = "https://regjeringen.no/no/fersk140";
+            await p.Skriv.OppdaterAsync(id, input);
+        });
+        Assert.Equal("EndretFoerOverlevering", Assert.Single((await p.Jobb(port).KjorAsync()).Mottakere).Status);
+        Assert.Empty(p.Post.Hent("a"));
+        await p.Jobb().KjorAsync(); Assert.Single(p.Post.Hent("a"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Samtidig_lenkeendring_ruller_hele_godkjenningen_tilbake(bool juster)
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        var input = Inndata("Samtidig kildelenke"); var maal = await p.Skriv.OpprettAsync(input);
+        input.Dato = input.Dato.AddDays(1); var forslag = await SendForslag(db, input, maal);
+        var endret = false;
+        var port = new FoerLagring(async _ =>
+        {
+            if (endret) return; endret = true;
+            var fersk = (await p.Skriv.HentForRedigeringAsync(maal))!;
+            fersk.ManuellKildeUrl = "https://regjeringen.no/no/vinner140";
+            await p.Skriv.OppdaterAsync(maal, fersk);
+        });
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => PubliserForslag(db, p, forslag, input, juster, port));
+        var lagret = (await p.Skriv.HentForRedigeringAsync(maal))!;
+        Assert.Equal(new DateOnly(2030, 11, 20), lagret.Dato);
+        Assert.Equal("https://regjeringen.no/no/vinner140", lagret.ManuellKildeUrl);
+        IGodkjenningsko ko = new GodkjenningskoTjeneste(db.Fabrikk());
+        Assert.Contains(await ko.HentKoAsync(), f => f.Id == forslag);
+        await using var kontroll = db.Fabrikk().CreateDbContext();
+        Assert.Equal(1, await kontroll.NyFristHendelser.CountAsync()); Assert.Empty(await kontroll.Varsler.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task Koe_publiserer_foerst_ved_godkjenning_og_sender_til_egen_mottaker(bool juster)
     {
         await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
@@ -234,7 +303,8 @@ public abstract partial class DagligEpostKontrakt
     public async Task Koe_endrer_dato_med_ekte_foertilstand_og_bevart_maal_tid_og_synlighet(bool juster)
     {
         await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
-        var input = Inndata("Etablert mål"); var maal = await p.Skriv.OpprettAsync(input);
+        var input = Inndata("Etablert mål"); input.ManuellKildeUrl = "https://regjeringen.no/no/bevart140";
+        var maal = await p.Skriv.OpprettAsync(input);
         await p.Aktiver(); await VelgUtvalg(p, null, null, false, true);
         input.Dato = new(2030, 12, 5);
         var forslag = await SendForslag(db, input, maal);
@@ -254,6 +324,7 @@ public abstract partial class DagligEpostKontrakt
         Assert.Contains("05.12.2030 kl. 13:45", melding.Tekst);
         var synlig = Assert.Single(await new FristTjeneste(db.Fabrikk(), p.Klokke).HentSynligeAsync(new Synlighetskontekst(false, ["FAG"]), new() { InkluderHistorikk = true }));
         Assert.Equal(maal, synlig.Id);
+        Assert.Equal("https://regjeringen.no/no/bevart140", synlig.KildeUrl);
     }
 
     private static async Task VelgUtvalg(Proeve p, int[]? aar, Kategori[]? kategorier, bool nye = true, bool endringer = false)

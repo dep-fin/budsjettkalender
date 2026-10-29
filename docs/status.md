@@ -1,7 +1,9 @@
 # Gjeldende status
 
-Oppdatert 29. oktober 2026. Dette er samlet leveransestatus. [PR #143](https://github.com/depmartin/Budsjettkalender/pull/143), [PR #135](https://github.com/depmartin/Budsjettkalender/pull/135), [PR #134](https://github.com/depmartin/Budsjettkalender/pull/134), [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132)
-og kommentarene i [#110](https://github.com/depmartin/Budsjettkalender/issues/110), [#75](https://github.com/depmartin/Budsjettkalender/issues/75) og
+Oppdatert 29. oktober 2026. Dette er samlet leveransestatus. [PR #144](https://github.com/depmartin/Budsjettkalender/pull/144), [PR #143](https://github.com/depmartin/Budsjettkalender/pull/143), [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142),
+[PR #135](https://github.com/depmartin/Budsjettkalender/pull/135), [PR #134](https://github.com/depmartin/Budsjettkalender/pull/134), [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132)
+og kommentarene i [#140](https://github.com/depmartin/Budsjettkalender/issues/140),
+[#110](https://github.com/depmartin/Budsjettkalender/issues/110), [#75](https://github.com/depmartin/Budsjettkalender/issues/75) og
 [#93](https://github.com/depmartin/Budsjettkalender/issues/93) er kilden til siste
 publiserte head, faktisk CI, mergecommit, verifisert main og oppgavenes livsløp. Tidligere kandidatbeskrivelser og lokale
 testtall er bevart som [datert historikk](archive/status-foer-ux18-2026-10-28.md),
@@ -69,32 +71,46 @@ konkurranseprøver og reelle brukerforløp. Oppdaget inventar er 1157 ordinære,
 310 SQL Server- og 342 nettlesertilfeller med hele basens navn bevart. Akseptansens
 beskrivelse av en lokal kandidat er datert byggbevis før denne leveringen.
 
-EV07 ([#117](https://github.com/depmartin/Budsjettkalender/issues/117)) er levert i
-[PR #143](https://github.com/depmartin/Budsjettkalender/pull/143), bekreftet merget som
-`d3bec41e7a42106e6f2b8bee80de0916c3f65b60`. Slutt-[CI 40857856203](https://github.com/depmartin/Budsjettkalender/actions/runs/40857856203)
-bestod 1228 ordinære, 379 ekte SQL Server- og 344 Chromium-tilfeller uten feil/hopp.
-Samlet Standards-/Spec-review og separat sikkerhetsaudit er avklart i PR-en.
-Fristimport beholder erstatt-alt og v1-formatet,
+EV07 ([#117](https://github.com/depmartin/Budsjettkalender/issues/117)) er bekreftet
+merget i [PR #143](https://github.com/depmartin/Budsjettkalender/pull/143) som main
+`d3bec41e7a42106e6f2b8bee80de0916c3f65b60`. Import beholder erstatt-alt og v1-formatet,
 men sammenlikner publisert innhold per identitet i samme transaksjon. Reelle Ny,
-Endret og Slettet lagres atomisk med import og publiseringssekvens; identisk
-gjenimport og korrektur varsler ikke. Sletting bruker siste publiserte metadata
-og relasjonelt bevart synlighet sammen med fersk mottakertilgang. Livssyklus
-utelater ny-og-fjernet før første oppsummering uavhengig av valgte varseltyper.
-Vanlige kalenderlenker viser et relevant utvalg og en generell fjerningsmelding.
-[EV07-akseptansen](acceptance/2026-10-29-epost-ev07.md) beskriver prøver, additiv
-oppgradering og bevisgrenser. Alle EV06-navn er bevart. Akseptansens lokale
-kandidatbeskrivelse er datert byggbevis før leveringen. Ingen produksjonsutsending inngår.
+Endret og Slettet lagres atomisk med import, historisk publikum og sekvens;
+identisk gjenimport og korrektur varsler ikke. Sletting bruker fersk mottakertilgang.
+Livssyklus utelater ny-og-fjernet før første oppsummering uavhengig av varseltyper.
+Vanlige kalenderlenker viser relevant utvalg og generell fjerningsmelding.
+[EV07-akseptansen](acceptance/2026-10-29-epost-ev07.md) bevarer daterte lokale og
+første CI-bevis; PR #143 er kilden til leveransens slutt-CI og livsløp.
+Slutt-[CI 40857856203](https://github.com/depmartin/Budsjettkalender/actions/runs/40857856203)
+bestod 1228 ordinære, 379 SQL Server- og 344 Chromium-tilfeller uten feil/hopp.
 
-EV08 ([#118](https://github.com/depmartin/Budsjettkalender/issues/118)) er en lokal
-kandidat fra faktisk EV07-main. Eget adressebytte krever gjeldende versjon og
-egenadressesamtykke. Ny adresse venter varig på ny bekreftelse, med stanset
-fristvarsling, beholdte varselvalg og felles forsøksgrenser. Bekreftelsen setter
-nye databaseordnede type-, utvalgs- og livssyklusgrenser uten etterslep. Ingen
-modellendring eller migrasjon. [EV08-akseptansen](acceptance/2026-10-29-epost-ev08.md)
-beskriver rød/grønn, HTTP, lagrings-/konkurranseprøver og ekte nettleserforløp.
-Oppdaget inventar er 1288 ordinære, 432 SQL Server- og 348 nettlesertilfeller;
-alle EV07-navn er bevart. Samlet review, separat sikkerhetsaudit og faktisk
-kandidat-CI gjenstår hos orkestratoren. Ingen produksjonsutsending inngår.
+EV08 ([#118](https://github.com/depmartin/Budsjettkalender/issues/118)) er merget i
+[PR #144](https://github.com/depmartin/Budsjettkalender/pull/144) som faktisk main
+`b6a85f2251831eaba1cd69d17249ec57e13578c3`. Eget adressebytte krever gjeldende
+versjon og egenadressesamtykke. Ny adresse venter varig på ny bekreftelse, med
+stanset fristvarsling, beholdte varselvalg og felles forsøksgrenser. Bekreftelsen
+setter nye databaseordnede type-, utvalgs- og livssyklusgrenser uten etterslep.
+Ingen egen modellendring eller migrasjon. [EV08-akseptansen](acceptance/2026-10-29-epost-ev08.md)
+bevarer datert byggbevis; PR #144 er kilden til leveransens livsløp.
+
+[#140](https://github.com/depmartin/Budsjettkalender/issues/140), parent #136 punkt 4,
+er kandidat i [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142).
+Direkte administratoroppretting/redigering får valgfri manuell kildelenke med
+prioritet foran dokumentets lenke og forklaring ved tømming. Én serverregel
+gjelder skriving, JSON-import og lesing; proveniens og køjustering bevares.
+JSON v1 får et valgfritt felt. Lenkeendring følger eksisterende begrunnede
+vesentlighetsvalg. Additiv migrasjon/demo og innholdsøyeblikksbilder er avstemt
+med levert EV07; begge migrasjonene med timestamp 20261029092000 beholdes.
+Forrige kandidat på EV07-basen bestod alle tre faktiske porter i
+[CI 40868270127](https://github.com/depmartin/Budsjettkalender/actions/runs/40868270127):
+1242 ordinære, 389 SQL Server og 346 Chromium. Dette er historisk bevis for den
+gamle basen. Kandidaten er nå avstemt med levert EV08, og alle navn fra begge
+foreldre er bevart; samlet inventar er 1302/442/350. Lokal ordinærsuite består
+1302/1302, målrettet samspill 545/545 og relevante Edge/Kestrel-forløp 31/31,
+uten feil/hopp. SQL Server er bygget/oppdaget, ikke lokalt kjørt. Prøver og
+presise bevisgrenser står i [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md).
+Alle tre faktiske nye kandidat-CI-porter må være grønne. Ingen ny formell
+review/audit er utført i denne autoriserte CI-løkken. Ingen deploy inngår.
 
 ## UX18 – samlet akseptanse og publisering
 

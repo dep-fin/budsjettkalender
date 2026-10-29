@@ -9,6 +9,19 @@ namespace Aarshjul.Tests;
 
 public sealed class MigrasjonsmodellTester
 {
+    [Fact]
+    public void Manuell_kildelenke_er_additiv_nullable_og_konkurransebeskyttet_i_siste_maal()
+    {
+        KontrollerMaal("20261029092000_ManuellKildelenke", true, true, true);
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlServer("Server=localhost;Database=KunModell;Integrated Security=True").Options);
+        var samling = db.GetService<IMigrationsAssembly>();
+        var siste = samling.CreateMigration(samling.Migrations.Last().Value, db.Database.ProviderName!);
+        var kolonne = Assert.IsType<AddColumnOperation>(Assert.Single(siste.UpOperations));
+        Assert.Equal("ManuellKildeUrl", kolonne.Name); Assert.Equal("Frister", kolonne.Table);
+        Assert.True(kolonne.IsNullable); Assert.Null(kolonne.DefaultValue);
+        Assert.True(siste.TargetModel.FindEntityType(typeof(Frist))!.FindProperty("ManuellKildeUrl")!.IsConcurrencyToken);
+    }
     [Theory]
     [InlineData("20261028112544_UnikeInternrunder", false, false)]
     [InlineData("20261028133321_DagligEpostoppsummering", true, false)]

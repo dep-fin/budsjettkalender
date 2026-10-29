@@ -31,6 +31,31 @@ public class FristDatautvekslingTester : IDisposable
 
     private FristDatautveksling Tjeneste() => new(_t.Factory, new FastKlokke(Idag));
 
+    [Fact]
+    public async Task Json_versjon1_bevarer_manuell_lenke_og_gammel_fil_gir_null()
+    {
+        var skriving = new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(_t.Factory);
+        var id = await skriving.OpprettAsync(new()
+        {
+            Tittel = "Manuell kilde", Dato = new(2030, 11, 20), Budsjettaar = 2031,
+            Synlighetskoder = ["FA"], ManuellKildeUrl = "https://regjeringen.no/no/json140"
+        });
+        var database = await Tjeneste().EksporterAsync();
+        var json = System.Text.Json.JsonSerializer.Serialize(database, Aarshjul.Web.Api.FristEndepunkter.DatabaseJson);
+        var kopi = System.Text.Json.JsonSerializer.Deserialize<FristDatabase>(json, Aarshjul.Web.Api.FristEndepunkter.DatabaseJson)!;
+        Assert.Equal(1, kopi.Versjon);
+        Assert.Equal("https://regjeringen.no/no/json140", Assert.Single(kopi.Frister).ManuellKildeUrl);
+        var forhaandsvisning = await Tjeneste().ForhaandsvisAsync(kopi);
+        Assert.Equal(kopi.Frister[0].ManuellKildeUrl, Assert.Single(forhaandsvisning.Frister).ManuellKildeUrl);
+        Assert.Equal(json, System.Text.Json.JsonSerializer.Serialize(await Tjeneste().EksporterAsync(), Aarshjul.Web.Api.FristEndepunkter.DatabaseJson));
+        await Tjeneste().ImporterAsync(kopi);
+        Assert.Equal("https://regjeringen.no/no/json140", (await skriving.HentForRedigeringAsync(id))!.ManuellKildeUrl);
+        var gammel = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        gammel["frister"]![0]!.AsObject().Remove("manuellKildeUrl");
+        await Tjeneste().ImporterAsync(System.Text.Json.JsonSerializer.Deserialize<FristDatabase>(gammel.ToJsonString(), Aarshjul.Web.Api.FristEndepunkter.DatabaseJson)!);
+        Assert.Null((await skriving.HentForRedigeringAsync(id))!.ManuellKildeUrl);
+    }
+
     private void LeggTilFrist(string tittel, string[] grupper, int budsjettaar = 2027)
     {
         var frist = new Frist

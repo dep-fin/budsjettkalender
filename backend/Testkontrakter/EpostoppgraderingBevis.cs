@@ -5,12 +5,34 @@ using Aarshjul.Infrastructure.Epost;
 using Aarshjul.Infrastructure.Internkalender;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Xunit;
 
 namespace Aarshjul.Testkontrakter;
 
 public static class EpostoppgraderingBevis
 {
+    // De to leveransene hadde samme timestamp, men uavhengige additive Up-operasjoner.
+    // Installer akkurat én autentisk gren før den normale oppgraderingsgrensen prøves.
+    public static async Task InstallerGrenmigrasjonAsync(Epostdatabase database, Migration migrasjon)
+    {
+        await using var db = database.Fabrikk().CreateDbContext();
+        await using var transaksjon = await db.Database.BeginTransactionAsync();
+        if (db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+            foreach (var kolonne in migrasjon.UpOperations.OfType<AddColumnOperation>().Where(c => c.ColumnType == "nvarchar(max)"))
+                kolonne.ColumnType = "TEXT";
+        foreach (var kommando in db.GetService<IMigrationsSqlGenerator>().Generate(migrasjon.UpOperations, db.Model))
+            await db.Database.ExecuteSqlRawAsync(kommando.CommandText);
+        if (db.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+        {
+            var attributt = (MigrationAttribute)Attribute.GetCustomAttribute(migrasjon.GetType(), typeof(MigrationAttribute))!;
+            var versjon = (string)migrasjon.TargetModel.FindAnnotation("ProductVersion")!.Value!;
+            await db.Database.ExecuteSqlRawAsync(db.GetService<IHistoryRepository>().GetInsertScript(new(attributt.Id, versjon)));
+        }
+        await transaksjon.CommitAsync();
+    }
+
     // Autentisk modell for abonnementet før EV05. Bare migrasjonsoppsett bruker den;
     // alle kontroller etter oppgradering og all runtime bruker dagens modell.
     public static IDbContextFactory<AppDbContext> HistoriskFabrikk(Epostdatabase database)
@@ -25,7 +47,7 @@ public static class EpostoppgraderingBevis
     private sealed class HistoriskKontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
     {
         protected override void OnModelCreating(ModelBuilder b)
-        { base.OnModelCreating(b); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson);
+        { base.OnModelCreating(b); b.Entity<Frist>().Ignore(x => x.ManuellKildeUrl); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson);
             b.Ignore<FristHendelsessynlighet>(); b.Entity("Aarshjul.Infrastructure.Epost.Epostaktivering").Ignore("Livssyklussekvens"); }
     }
     public sealed record EV03Plan(Guid Behandlet, Guid Ventende, Guid GammelPlan, Guid VentendePlan);
@@ -35,7 +57,7 @@ public static class EpostoppgraderingBevis
         var plan = await LeggTilEV03PlanAsync(database, ev04: true);
         await using var db = database.Fabrikk().CreateDbContext();
         var id = await db.NyFristHendelser.Where(h => h.Id == plan.Ventende).Select(h => h.FristId).SingleAsync();
-        var skriving = new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(database.Fabrikk(), new EpostabonnementKontrakt.Proeveklokke());
+        var skriving = new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(FasedataBevis.HistoriskFristFabrikk(database.Fabrikk()), new EpostabonnementKontrakt.Proeveklokke());
         var input = (await skriving.HentForRedigeringAsync(id))!; input.Dato = input.Dato.AddDays(1);
         input.VesentligEndring = true; input.Endringsforklaring = "Bevar EV04-forklaring";
         await skriving.OppdaterAsync(id, input);
@@ -161,7 +183,7 @@ public static class EpostoppgraderingBevis
             return rader.Select(r => JsonSerializer.Serialize(kontekst.Entry(r).Properties.OrderBy(p => p.Metadata.Name)
                 .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue))).Order(StringComparer.Ordinal).ToArray();
         }
-        return JsonSerializer.Serialize(new { Fasedata = await FasedataBevis.HentAsync(database.Fabrikk()),
+        return JsonSerializer.Serialize(new { Fasedata = await FasedataBevis.HentAsync(FasedataBevis.HistoriskFristFabrikk(database.Fabrikk())),
             Abonnement = await Rader<Epostabonnement>(), Feed = await Rader<Kalenderabonnement>(), Runder = await Rader<InternRunde>(),
             Gjoeremaal = await Rader<InterntGjoeremaal>(), Ansvar = await Rader<GjoeremaalAnsvarlig>(),
             Regler = await Rader<GjoeremaalRegel>(), Rundetyper = await Rader<RegelRundetype>(), Regelansvar = await Rader<RegelAnsvarlig>() });

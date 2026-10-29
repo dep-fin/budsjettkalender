@@ -131,7 +131,7 @@ public class FristTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvid
                 f.Status,
                 f.Synlighet.Select(s => s.GruppeKode).ToList(),
                 f.Klokkeslett,
-                TillattKildeUrl(db.BehandledeDokumenter.Where(d => d.Id == f.DokumentId).Select(d => d.Url).FirstOrDefault()),
+                EffektivKildeUrl(f.ManuellKildeUrl, db.BehandledeDokumenter.Where(d => d.Id == f.DokumentId).Select(d => d.Url).FirstOrDefault()),
                 serAlt && db.Forslag.Any(forslag => forslag.Status == FristStatus.Forslag
                     && forslag.ForslagType == ForslagType.Endring && forslag.EndrerFristId == f.Id)));
 
@@ -142,19 +142,8 @@ public class FristTjeneste(IDbContextFactory<AppDbContext> dbFactory, TimeProvid
 
     // Kalles i den siste projeksjonen, etter SQL-filteret for fristens synlighet.
     // Bare dokumentets lagrede adresse brukes; ingen gjetting fra kilde, filnavn eller opphav.
-    private static string? TillattKildeUrl(string? url)
-    {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
-            || !uri.IsWellFormedOriginalString()
-            || uri.Scheme != Uri.UriSchemeHttps
-            || uri.Port != 443
-            || uri.GetComponents(UriComponents.UserInfo | UriComponents.KeepDelimiter, UriFormat.UriEscaped).Length != 0
-            || !(uri.Host.Equals("regjeringen.no", StringComparison.OrdinalIgnoreCase)
-                || uri.Host.Equals("www.regjeringen.no", StringComparison.OrdinalIgnoreCase)))
-            return null;
-
-        return uri.AbsoluteUri;
-    }
+    private static string? EffektivKildeUrl(string? manuell, string? dokument)
+        => Kildelenke.TillattUrl(manuell) ?? Kildelenke.TillattUrl(dokument);
 
     private DateOnly Idag() => Datohjelp.Idag(klokke);
 }

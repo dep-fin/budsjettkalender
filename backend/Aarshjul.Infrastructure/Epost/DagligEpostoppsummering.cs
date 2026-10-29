@@ -150,7 +150,7 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         var frister = await db.Frister.AsNoTracking().Where(f => f.Status == FristStatus.Godkjent && fristIder.Contains(f.Id))
             .FiltrerSynlige(rett)
             .Select(f => new Fristinnhold(f.Id, f.Tittel, f.Dato, f.Datopresisjon, f.Datokvalifikator,
-                f.Klokkeslett, f.Budsjettaar, f.Kategori, f.Loep, f.Notat, false)).ToListAsync(ct);
+                f.Klokkeslett, f.Budsjettaar, f.Kategori, f.Loep, f.Notat, false, f.ManuellKildeUrl)).ToListAsync(ct);
         var synligeIder = frister.Select(f => f.Id).ToList(); var grupper = rett.Grupper.ToList();
         // Historisk metadata filtreres i SQL. Bare eksplisitt atomisk Slettet kan
         // bruke siste publiserte synlighet; en manglende frist er ingen fallback.
@@ -170,7 +170,7 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         var slettinger = hendelser.Where(h => h.Type == "Slettet").GroupBy(h => h.FristId).Select(g => g.Last()).ToList();
         foreach (var h in slettinger)
             if (h.FoerJson is { } json && JsonSerializer.Deserialize<Fristtilstand>(json) is { } f)
-                frister.Add(new(h.FristId, f.Tittel, f.Dato, f.Presisjon, f.Kvalifikator, f.Tid, f.Budsjettaar, f.Kategori, f.Loep, f.Notat, true));
+                frister.Add(new(h.FristId, f.Tittel, f.Dato, f.Presisjon, f.Kvalifikator, f.Tid, f.Budsjettaar, f.Kategori, f.Loep, f.Notat, true, f.ManuellKildeUrl));
         var autoriserte = frister.ToDictionary(f => f.Id);
         hendelser = hendelser.Where(h => (h.Type != "Slettet" || slettinger.Contains(h))
             && autoriserte.TryGetValue(h.FristId, out var f) && Relevant(h, f, utvalg)).ToList();
@@ -249,5 +249,5 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         => presisjon == Datopresisjon.Maaned
             ? $"Tentativt: {(kvalifikator?.ToString().ToLowerInvariant() is { } k ? k + " " : "")}{dato.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("nb-NO"))}"
             : dato.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture) + (tid is { } klokke ? $" kl. {klokke:HH:mm}" : "");
-    private sealed record Fristinnhold(Guid Id, string Tittel, DateOnly Dato, Datopresisjon Presisjon, Datokvalifikator? Kvalifikator, TimeOnly? Tid, int Budsjettaar, Kategori Kategori, string? Loep, string? Notat, bool Slettet);
+    private sealed record Fristinnhold(Guid Id, string Tittel, DateOnly Dato, Datopresisjon Presisjon, Datokvalifikator? Kvalifikator, TimeOnly? Tid, int Budsjettaar, Kategori Kategori, string? Loep, string? Notat, bool Slettet, string? ManuellKildeUrl);
 }

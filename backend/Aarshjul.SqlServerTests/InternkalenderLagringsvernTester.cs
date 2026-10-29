@@ -22,7 +22,7 @@ public sealed class InternkalenderLagringsvernTester : InternkalenderSynkKontrak
         await using var database = new SqlServerInternkalenderdatabase();
         await database.OpprettAsync("20261028083448_Epostabonnement");
         await FasedataBevis.LeggTilHistorikkAsync(database.Fabrikk());
-        var fristerFoer = await FasedataBevis.HentAsync(database.Fabrikk());
+        var fristerFoer = await FasedataBevis.HentAsync(FasedataBevis.HistoriskFristFabrikk(database.Fabrikk()));
         var post = new KontrollertBekreftelsespost();
         var epost = new EpostabonnementTjeneste(EpostoppgraderingBevis.HistoriskFabrikk(database.Fabrikk()), TimeProvider.System, post);
         await epost.MeldPaaAsync("aktiv-foer-ux16", "aktiv@fin.dep.no", true);
@@ -65,7 +65,7 @@ public sealed class InternkalenderLagringsvernTester : InternkalenderSynkKontrak
             Assert.Equal(new[] { "20261028083448_Epostabonnement", "20261028112544_UnikeInternrunder",
                 "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering",
                 "20261028165341_VarseltyperOgEndringer", "20261028193853_Abonnementsutvalg",
-                "20261029092000_HistoriskSlettingssynlighet" }, anvendte.TakeLast(7));
+                "20261029092000_HistoriskSlettingssynlighet", "20261029092000_ManuellKildelenke" }, anvendte.TakeLast(8));
         }
     }
 
