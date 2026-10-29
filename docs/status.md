@@ -1,6 +1,6 @@
 # Gjeldende status
 
-Oppdatert 29. oktober 2026. Dette er samlet leveransestatus. [PR #144](https://github.com/depmartin/Budsjettkalender/pull/144), [PR #143](https://github.com/depmartin/Budsjettkalender/pull/143), [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142),
+Oppdatert 29. oktober 2026. Dette er samlet leveransestatus. [PR #146](https://github.com/depmartin/Budsjettkalender/pull/146), [PR #145](https://github.com/depmartin/Budsjettkalender/pull/145), [PR #144](https://github.com/depmartin/Budsjettkalender/pull/144), [PR #143](https://github.com/depmartin/Budsjettkalender/pull/143), [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142),
 [PR #135](https://github.com/depmartin/Budsjettkalender/pull/135), [PR #134](https://github.com/depmartin/Budsjettkalender/pull/134), [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132)
 og kommentarene i [#140](https://github.com/depmartin/Budsjettkalender/issues/140),
 [#110](https://github.com/depmartin/Budsjettkalender/issues/110), [#75](https://github.com/depmartin/Budsjettkalender/issues/75) og
@@ -84,14 +84,15 @@ første CI-bevis; PR #143 er kilden til leveransens slutt-CI og livsløp.
 Slutt-[CI 40857856203](https://github.com/depmartin/Budsjettkalender/actions/runs/40857856203)
 bestod 1228 ordinære, 379 SQL Server- og 344 Chromium-tilfeller uten feil/hopp.
 
-EV08 ([#118](https://github.com/depmartin/Budsjettkalender/issues/118)) er merget i
-[PR #144](https://github.com/depmartin/Budsjettkalender/pull/144) som faktisk main
-`b6a85f2251831eaba1cd69d17249ec57e13578c3`. Eget adressebytte krever gjeldende
-versjon og egenadressesamtykke. Ny adresse venter varig på ny bekreftelse, med
-stanset fristvarsling, beholdte varselvalg og felles forsøksgrenser. Bekreftelsen
-setter nye databaseordnede type-, utvalgs- og livssyklusgrenser uten etterslep.
-Ingen egen modellendring eller migrasjon. [EV08-akseptansen](acceptance/2026-10-29-epost-ev08.md)
-bevarer datert byggbevis; PR #144 er kilden til leveransens livsløp.
+EV08 ([#118](https://github.com/depmartin/Budsjettkalender/issues/118)) er levert i
+[PR #144](https://github.com/depmartin/Budsjettkalender/pull/144), bekreftet merget som
+`b6a85f2251831eaba1cd69d17249ec57e13578c3`. Slutt-[CI 40868254126](https://github.com/depmartin/Budsjettkalender/actions/runs/40868254126)
+bestod 1288 ordinære, 432 ekte SQL Server- og 348 Chromium-tilfeller uten feil/hopp.
+Eget adressebytte krever gjeldende versjon og egenadressesamtykke. Ny adresse
+venter varig på ny bekreftelse med stanset fristvarsling, beholdte varselvalg og
+felles forsøksgrenser. Ny bekreftelse setter nye databaseordnede type-, utvalgs-
+og livssyklusgrenser uten etterslep. Ingen EV08-migrasjon.
+[EV08-akseptansen](acceptance/2026-10-29-epost-ev08.md) bevarer tidligere lokale byggbevis.
 
 [#140](https://github.com/depmartin/Budsjettkalender/issues/140), parent #136 punkt 4,
 er levert i [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142),
@@ -115,21 +116,36 @@ Alle tre faktiske porter bestod i [slutt-CI 40875485618](https://github.com/depm
 PR-ens merge og alle tre jobbresultater er kontrollert live. Ingen ny formell
 review/audit ble utført i denne autoriserte CI-løkken. Ingen deploy inngår.
 
+EV09 ([#119](https://github.com/depmartin/Budsjettkalender/issues/119)) er levert i
+[PR #146](https://github.com/depmartin/Budsjettkalender/pull/146), merget som faktisk
+main `dd2a24c87aceb692c576eafa155d02ee0541b12b`. Dens
+[slutt-CI 40887998599](https://github.com/depmartin/Budsjettkalender/actions/runs/40887998599)
+bestod 1348 ordinære, 480 ekte SQL Server og 354 Chromium uten feil/hopp, ifølge
+den [bekreftede leveransejournalen](https://github.com/depmartin/Budsjettkalender/issues/119#issuecomment-6499618378).
+Hver oppsummering har en snever avmeldingsrett per livssyklus; anonym GET/HEAD
+endrer ingenting, uttrykkelig JSON-bekreftelse avmelder idempotent.
+Sendestans gjelder frem til synkront transportmottak; senere kvittering ventes
+uten lås. Additiv migrasjon/demooppgradering og hemmelighetsvern er levert.
+[EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md) bevarer daterte lokale bevis.
+
 [#138](https://github.com/depmartin/Budsjettkalender/issues/138), parent #136 punkt 1,
-er lokal kandidat med kommende frister i Liste, 25 per side, separat historikk
-og fersk detaljtilgang med tømming ved lukking. Den er avstemt med faktisk levert
-main `12d12601b0fe8d83d0a4a84b88cff589bd954572`. Alle sju egne produktblobber og
-fem egne testblobber fra gjennomgått `823d1530` er uendret; main-kontraktene
-for URL, migrasjoner, import/sletting og adressebytte er bevart eksakt.
-Inventar er **1303/442/374**, med alle hele foreldrenavn bevart og null dubletter.
-Én lokal ordinærsuite består **1303/1303** og kombinerte Edge/Kestrel-regresjoner
-**111/111**, uten feil/hopp. SQL Server er bare bygget og oppdaget lokalt.
-CI krever 442 ekte SQL Server- og 374 Chromium-resultater uten feil/hopp med
-uendrede porter. [Sluttavstemmingen](acceptance/2026-10-29-kommende-liste.md#sluttavstemming-med-levert-140-og-ev08-29-oktober-2026)
-binder lokale prøver, foreldreblobber og det særskilte gamle SQLite-bevisavviket.
-Samlet Standards-/Spec-review og separat sikkerhetsaudit på `823d1530` hadde
-0 funn; det hevdes ingen nye attester på integrert tre. Faktisk kandidat-CI og
-publisering gjenstår hos orkestratoren. #136 og #139 beholdes åpne.
+er publisert i [PR #145](https://github.com/depmartin/Budsjettkalender/pull/145),
+med kommende Liste, 25 per side, separat historikk og fersk detaljtilgang med
+tømming ved lukking. I CI-løkken er faktisk levert EV09-main nå integrert med
+lokal forelder `43a091e` / publisert `b92081d`, samme tre `25a8796`.
+Alle sju egne produktblobber fra gjennomgått `823d1530`, alle 16 detaljregresjoner
+og historikkprøvens presise tre forventningsinnsettinger er bevart.
+Inventar er nøyaktig foreldreunion **1349/480/378**, uten tap eller dubletter.
+Én ny ordinærsuite består **1349/1349** og relevante Edge/Kestrel-forløp
+**115/115**, null feil/hopp; begge TRX består mains hemmelighetskontroll.
+CI 40885826810s Chromium **373/374** er bevart som rødt bevis. Ny faktisk full
+kandidat-CI krever tre grønne jobber før brukerautorisert merge. Mains
+hemmelighets-/artefakt-/utfalls-/hopp-/audit-/tidsvern er uendret; bare faktisk
+browserunion er økt til 378. SQL Server er bare bygget/oppdaget lokalt.
+[EV09-avstemmingen](acceptance/2026-10-29-kommende-liste.md#nodvendig-ev09-mainintegrasjon-i-ci-lokken-29-oktober-2026)
+binder lokale prøver og det gamle avviket med nøyaktig tre SQLite-bevisfiler.
+Standards/Spec/separat audit på `823d1530` beholder sin revisjonsgrense og er
+ingen ny attest på dette treet. #136 er åpen; #139 avventer faktisk #145-merge.
 
 ## UX18 – samlet akseptanse og publisering
 

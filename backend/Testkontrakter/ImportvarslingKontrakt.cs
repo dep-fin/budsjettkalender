@@ -41,7 +41,7 @@ public abstract partial class DagligEpostKontrakt
             Assert.Equal("https://www.regjeringen.no/no/ny140", JsonSerializer.Deserialize<Fristtilstand>(endret.FoerJson!)!.ManuellKildeUrl);
             Assert.Equal("https://www.regjeringen.no/no/ny140", JsonSerializer.Deserialize<Fristtilstand>(endret.EtterJson!)!.ManuellKildeUrl);
         }
-        await p.Jobb().KjorAsync(); Assert.Contains("Vesentlig endring: Importert kilde", Assert.Single(p.Post.Hent("a")).Tekst);
+        await p.Jobb().KjorAsync(); Assert.Contains("Vesentlig endring: Importert kilde", EposttekstBevis.UtenHemmelighet(Assert.Single(p.Post.Hent("a")).Tekst));
         p.Klokke.Flytt(TimeSpan.FromDays(1));
         await import.ImporterAsync(new() { Frister = [] });
         await using (var kontroll = db.Fabrikk().CreateDbContext())
@@ -53,8 +53,8 @@ public abstract partial class DagligEpostKontrakt
         }
         await p.Jobb().KjorAsync();
         var melding = p.Post.Hent("a").Last();
-        Assert.Contains("Fjernet frist: Importert kilde", melding.Tekst);
-        Assert.DoesNotContain("regjeringen.no", melding.Tekst); Assert.DoesNotContain("regjeringen.no", melding.Html);
+        Assert.Contains("Fjernet frist: Importert kilde", EposttekstBevis.UtenHemmelighet(melding.Tekst));
+        Assert.DoesNotContain("regjeringen.no", EposttekstBevis.UtenHemmelighet(melding.Tekst)); Assert.DoesNotContain("regjeringen.no", EposttekstBevis.UtenHemmelighet(melding.Html));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public abstract partial class DagligEpostKontrakt
         Assert.Equal(journal, await Varslingsjournal(db));
         await p.Jobb().KjorAsync();
         var melding = Assert.Single(p.Post.Hent("a"));
-        Assert.Contains("Fjernet frist: Historisk kilde", melding.Tekst); Assert.DoesNotContain("Beholdt kilde", melding.Tekst);
+        Assert.Contains("Fjernet frist: Historisk kilde", EposttekstBevis.UtenHemmelighet(melding.Tekst)); Assert.DoesNotContain("Beholdt kilde", EposttekstBevis.UtenHemmelighet(melding.Tekst));
     }
 
     [Fact]
@@ -92,10 +92,10 @@ public abstract partial class DagligEpostKontrakt
         var resultat = await import.ImporterAsync(new() { Frister = [uendret, endret with { Dato = new(2030, 12, 5) }, ny] });
         Assert.Equal(4, resultat.AntallErstattet); Assert.Equal(3, resultat.AntallImportert);
         await p.Jobb().KjorAsync(); var melding = Assert.Single(p.Post.Hent("a"));
-        Assert.Contains("Ny frist: Helt ny", melding.Tekst); Assert.Contains("Vesentlig endring: Endret", melding.Tekst);
-        Assert.Contains("Tidligere: 20.11.2030", melding.Tekst); Assert.Contains("05.12.2030", melding.Tekst);
-        Assert.Contains("Fjernet frist: Fjernet", melding.Tekst);
-        Assert.DoesNotContain("Uendret", melding.Tekst); Assert.DoesNotContain("Aldri publisert", melding.Tekst);
+        Assert.Contains("Ny frist: Helt ny", EposttekstBevis.UtenHemmelighet(melding.Tekst)); Assert.Contains("Vesentlig endring: Endret", EposttekstBevis.UtenHemmelighet(melding.Tekst));
+        Assert.Contains("Tidligere: 20.11.2030", EposttekstBevis.UtenHemmelighet(melding.Tekst)); Assert.Contains("05.12.2030", EposttekstBevis.UtenHemmelighet(melding.Tekst));
+        Assert.Contains("Fjernet frist: Fjernet", EposttekstBevis.UtenHemmelighet(melding.Tekst));
+        Assert.DoesNotContain("Uendret", EposttekstBevis.UtenHemmelighet(melding.Tekst)); Assert.DoesNotContain("Aldri publisert", EposttekstBevis.UtenHemmelighet(melding.Tekst));
         await using var kontroll = db.Fabrikk().CreateDbContext();
         Assert.Equal(3, await kontroll.Oppsummeringshendelser.CountAsync());
     }
@@ -137,7 +137,7 @@ public abstract partial class DagligEpostKontrakt
         };
         await import.ImporterAsync(new() { Frister = [etter] }); await p.Jobb().KjorAsync();
         Assert.Equal(varsles ? 1 : 0, p.Post.Hent("a").Count);
-        if (varsles) Assert.Contains("Vesentlig endring: Semantisk import", Assert.Single(p.Post.Hent("a")).Tekst);
+        if (varsles) Assert.Contains("Vesentlig endring: Semantisk import", EposttekstBevis.UtenHemmelighet(Assert.Single(p.Post.Hent("a")).Tekst));
     }
 
     [Theory]
@@ -156,7 +156,7 @@ public abstract partial class DagligEpostKontrakt
         await import.ImporterAsync(new() { Frister = [] }); await p.Jobb().KjorAsync();
         var antall = (liv == "sendt" ? 1 : 0) + (liv != "ny" && endringer ? 1 : 0);
         Assert.Equal(antall, p.Post.Hent("a").Count);
-        if (liv != "ny" && endringer) Assert.Contains("Fjernet frist: Kort livsløp", p.Post.Hent("a").Last().Tekst);
+        if (liv != "ny" && endringer) Assert.Contains("Fjernet frist: Kort livsløp", EposttekstBevis.UtenHemmelighet(p.Post.Hent("a").Last().Tekst));
         await using var kontroll = db.Fabrikk().CreateDbContext();
         if (liv == "ny") Assert.Empty(await kontroll.Oppsummeringshendelser.ToListAsync());
     }
@@ -180,7 +180,7 @@ public abstract partial class DagligEpostKontrakt
         if (endret) rad = rad with { Dato = new(2030, 12, 5) };
         await import.ImporterAsync(new() { Frister = [rad] }); await p.Jobb().KjorAsync();
         Assert.Equal(endret ? 1 : 0, p.Post.Hent("a").Count);
-        if (endret) { var post = Assert.Single(p.Post.Hent("a")); Assert.Contains("Vesentlig endring: Gjeninnført", post.Tekst); Assert.DoesNotContain("Fjernet", post.Tekst); }
+        if (endret) { var post = Assert.Single(p.Post.Hent("a")); Assert.Contains("Vesentlig endring: Gjeninnført", EposttekstBevis.UtenHemmelighet(post.Tekst)); Assert.DoesNotContain("Fjernet", EposttekstBevis.UtenHemmelighet(post.Tekst)); }
         Assert.Equal(rad.Id, Assert.Single((await import.EksporterAsync()).Frister).Id);
         await using var kontroll = db.Fabrikk().CreateDbContext();
         Assert.Equal(legacy ? 0 : 1, await kontroll.NyFristHendelser.CountAsync(h => h.Type == "Ny"));
@@ -261,8 +261,8 @@ public abstract partial class DagligEpostKontrakt
         await p.Aktiver("b");
         var b = await p.Abonnement.HentAsync("b"); await p.Abonnement.EndreValgAsync("b", false, true, b.Versjon, [2032], [Kategori.Regnskap]);
         await import.ImporterAsync(new() { Frister = [siste] }); await import.ImporterAsync(new() { Frister = [] }); await p.Jobb().KjorAsync();
-        var melding = Assert.Single(p.Post.Hent("b")); Assert.Contains("Siste publiserte", melding.Tekst);
-        Assert.DoesNotContain("Skjult historisk forklaring", melding.Tekst); Assert.DoesNotContain("Tidligere skjult tekst", melding.Tekst);
+        var melding = Assert.Single(p.Post.Hent("b")); Assert.Contains("Siste publiserte", EposttekstBevis.UtenHemmelighet(melding.Tekst));
+        Assert.DoesNotContain("Skjult historisk forklaring", EposttekstBevis.UtenHemmelighet(melding.Tekst)); Assert.DoesNotContain("Tidligere skjult tekst", EposttekstBevis.UtenHemmelighet(melding.Tekst));
         await using var kontroll = db.Fabrikk().CreateDbContext();
         var koblet = await kontroll.Oppsummeringshendelser.Where(k => k.Oppsummering.BrukerId == "b").Select(k => k.HendelseId).ToListAsync();
         Assert.Equal("Slettet", (await kontroll.NyFristHendelser.SingleAsync(h => h.Id == koblet.Single())).Type);
@@ -296,7 +296,7 @@ public abstract partial class DagligEpostKontrakt
         Assert.Equal(journal, await Varslingsjournal(db)); await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
         await using (var oppsett = db.Fabrikk().CreateDbContext()) await oppsett.Database.ExecuteSqlRawAsync("DROP TRIGGER TR_EV07_fail");
         await import.ImporterAsync(fil); await p.Jobb().KjorAsync();
-        var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains("Fjernet frist: EV07 original", melding.Tekst);
+        var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains("Fjernet frist: EV07 original", EposttekstBevis.UtenHemmelighet(melding.Tekst));
         Assert.Equal(!tom, melding.Tekst.Contains("Ny frist: EV07 kandidat", StringComparison.Ordinal));
     }
 
@@ -401,8 +401,8 @@ public abstract partial class DagligEpostKontrakt
         if (forventet is null) Assert.Empty(p.Post.Hent("a"));
         else
         {
-            var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains(forventet, melding.Tekst);
-            Assert.DoesNotContain("Upublisert hemmelig etterinnhold", melding.Tekst);
+            var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains(forventet, EposttekstBevis.UtenHemmelighet(melding.Tekst));
+            Assert.DoesNotContain("Upublisert hemmelig etterinnhold", EposttekstBevis.UtenHemmelighet(melding.Tekst));
         }
     }
 

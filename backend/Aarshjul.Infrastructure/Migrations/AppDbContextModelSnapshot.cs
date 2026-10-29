@@ -188,6 +188,13 @@ namespace Aarshjul.Infrastructure.Migrations
                     b.Property<long>("AktivertUtcTicks")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("AvmeldingsHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<long?>("Avmeldingssekvens")
+                        .HasColumnType("bigint");
+
                     b.Property<long?>("BekreftetUtcTicks")
                         .HasColumnType("bigint");
 
@@ -214,6 +221,9 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AvmeldingsHash")
+                        .HasFilter("[AvmeldingsHash] IS NOT NULL");
 
                     b.HasIndex("BrukerId", "LokalDato")
                         .IsUnique();

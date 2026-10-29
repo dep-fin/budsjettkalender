@@ -1,23 +1,26 @@
 # Utvikling
 
-Kandidaten for #138 er 29. oktober 2026 avstemt med faktisk levert #140 / PR #142
-og EV08 / PR #144 på main `12d12601b0fe8d83d0a4a84b88cff589bd954572`.
-Gjennomgått #138-forelder er `823d1530d3b2d278663a2b06c5b3147e8de5a416`,
-tre `f4d676b53b260aedeb1e96d42e1dd5b13948c90c`. Alle sju egne produktblobber
-og fem egne testblobber er uendret; main bidrar med sine leverte kontrakter.
-Fersk oppdagelse gir **1303 ordinære tester, 442 SQL Server-tilfeller og 374
-nettleserscenarioer**. Alle hele navn fra #138 (1229/379/368) og levert main
-(1302/442/350) er bevart eksakt, tegnsensitivt og uten dubletter.
-Én lokal ordinærsuite består 1303/1303. Kombinerte Edge/Kestrel-regresjoner
-består 111/111, inklusive alle tidligere 105 og seks nye main-tilfeller.
-CI krever nøyaktig **442 SQL- og 374 Chromium-resultater** uten feil/hopp.
-Tidsgrenser 15/20/45 minutter, aktiv audit og bare TRX-artefakter består.
-Se [sluttavstemmingen](acceptance/2026-10-29-kommende-liste.md#sluttavstemming-med-levert-140-og-ev08-29-oktober-2026)
-for lokale resultater, bevisavvik og skillet mellom revisjonsbundet review og
-ny faktisk kandidat-CI. Forelderens 1302/442/350 og tidligere #138-tall er
-daterte bevis; [kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md)
-bevarer foreldrenes tidligere integrasjonsprøver. SQL Server er bare bygget og
-oppdaget lokalt når `AARSHJUL_TEST_SQLSERVER` mangler. Ingen deploy inngår.
+PR #145 / #138 er 29. oktober 2026 avstemt med faktisk levert EV09 / PR #146
+på main `dd2a24c87aceb692c576eafa155d02ee0541b12b`. Lokal forelder er
+`43a091e333797216008e025a215287e7e0f042c9`; publisert `b92081d` har samme
+tre `25a8796ddd5702d517fd1d1914e4435758d2d702`. Alle sju egne produktblobber
+fra gjennomgått `823d1530` og alle backendblobber fra de to integrasjonsforeldrene
+er bevart. Historikkprøvens avtalte tre nye forventninger består: alle 71
+opprinnelige forventninger og handlinger er bevart, nå 74 forventninger.
+Fersk oppdagelse gir **1349 ordinære tester, 480 SQL Server-tilfeller og 378
+nettleserscenarioer**. Dette er nøyaktig unionen av foreldrenes 1303/442/374 og
+1348/480/354; alle hele navn er bevart tegnsensitivt uten dubletter.
+Én ny lokal ordinærsuite består **1349/1349** og ett samlet relevant
+Edge/Kestrel-utvalg **115/115**, alle tidligere 111 pluss fire EV09-forløp.
+Null feil/hopp; begge faktiske TRX består mains hemmelighetskontroll.
+CI krever nøyaktig **480 SQL- og 378 Chromium-resultater** uten feil/hopp.
+Mains hemmelighetssøk før TRX-opplasting, opplastingsvilkår, aktiv audit,
+utfalls-/hopp-/antallskontroller og tidsgrenser 15/20/45 minutter består.
+Se [EV09-avstemmingen](acceptance/2026-10-29-kommende-liste.md#nodvendig-ev09-mainintegrasjon-i-ci-lokken-29-oktober-2026)
+for nye lokale prøver, revisjonsbundet review og de tre historiske SQLite-
+filunntakene. CI 40885826810s 373/374 Chromium er bevart som rødt bevis;
+tre nye grønne kandidatjobber kreves før autorisert merge. SQL Server er bare
+bygget/oppdaget lokalt når `AARSHJUL_TEST_SQLSERVER` mangler. Ingen deploy inngår.
 
 EV08 bruker eksisterende abonnementslagring uten egen modellendring/migrasjon.
 Fra `/epostvarsling` kan Aktiv/Venter bytte egen adresse og Avmeldt uttrykkelig
@@ -53,13 +56,18 @@ Se [EV07-akseptansen](acceptance/2026-10-29-epost-ev07.md) og ADR-0010.
 
 Begge migrasjons-ID-er beholdes med samme timestamp. EF ordner på hele ID-en:
 `HistoriskSlettingssynlighet` før `ManuellKildelenke`. Førstes målmodell beskriver
-EV07; sistes målmodell og slutt-snapshot beskriver begge leveranser. Begges faktiske
+EV07; kildelenkens målmodell beskriver begge leveranser. EV09s senere
+`20261029143000_Avmeldingslenke` og slutt-snapshot beskriver i tillegg
+avmeldingshash/-sekvens med indeks. Alle leverte og EV09s faktiske
 Up/Down er uendret. SQL-prøvene starter både med bare levert EV07 og med bare den
 opprinnelige kildelenkemigrasjonen registrert i migrasjonshistorikken, og krever
-at normal `MigrateAsync` installerer akkurat den manglende migrasjonen idempotent.
+at normal `MigrateAsync` installerer den manglende leverte migrasjonen og EV09
+idempotent. Fra faktisk levert main er bare Avmeldingslenke ventende.
 Disse tilfellene krever ekte SQL Server i CI når lokal testvariabel mangler.
 Normal `Demoskjema.SikreAsync` oppgraderer EV02–EV05 og hver enkelt gren atomisk og
-idempotent. Tidlig retur krever begge skjemaendringer; ny demo bruker EnsureCreated.
+idempotent. Tidlig retur krever begge leverte skjemaendringer og begge EV09-
+kolonner; ny demo bruker EnsureCreated. En egen main→EV09-prøve bevarer faktiske
+kildelenker og ventende post med en fungerende snever avmeldingsrett.
 Demo-/SQL-prøvene bevarer lenke eller historisk publikum, hele datagrunnlaget og
 en ventende legacy-plan. Modellprøvene sammenlikner faktisk Up/Down og målmodeller
 og krever ingen ventende SQL Server-modellendringer.
@@ -353,13 +361,14 @@ grunnlaget; faktisk 962/130/328-CI bestod før EV04-integrasjonen. UX18-merge gj
 
 ## Obligatorisk nettleserakseptanse
 
-Gjeldende integrerte #138-kandidat krever nøyaktig **374 beståtte Chromium-scenarioer**
-uten hopp eller manglende TRX. **442 ekte SQL Server-tilfeller** kreves i den
+Gjeldende integrerte #138-kandidat krever nøyaktig **378 beståtte Chromium-scenarioer**
+uten hopp eller manglende TRX. **480 ekte SQL Server-tilfeller** kreves i den
 separate SQL-porten. De daterte kjøringene nedenfor viser tidligere kandidatgrunnlag.
 
 `backend/Aarshjul.BrowserTests` ligger utenfor den ordinære løsningen. Det krever ingen
-eksisterende app eller database: 374 scenarioer bruker disponible Kestrel-verter,
-inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06 og to fra EV07 og fire fra EV08,
+eksisterende app eller database: 378 scenarioer bruker disponible Kestrel-verter,
+inklusive fem fra EV02, tre fra EV03, fire fra EV04, fire fra EV05, seks fra EV06,
+to fra EV07, fire fra EV08 og fire fra EV09,
 sju fra UX17, seks fra UX18, to fra #140, åtte fra #138s listeutvalg og 16 fra
 felles detaljretting. De siste revaliderer synlighet, grupper og autentisering,
 håndterer sletting, tømmer dialog-DOM ved Lukk/Escape og verner mot sene svar
@@ -440,7 +449,7 @@ En kontrollert, gammel køfane er en UI-prøve; den deterministiske samtidighets
 for to operasjoner forblir i Application-/SQL-testene.
 
 CI-jobben `Nettleser – samlet akseptanse` bruker Chromium fra den låste Playwright-pakken,
-installerer systemavhengigheter og krever nøyaktig 374 beståtte scenarioer uten hopp.
+installerer systemavhengigheter og krever nøyaktig 378 beståtte scenarioer uten hopp.
 EV05/UX18-kandidaten beholder merget mains jobbgrense på 45 minutter.
 Begge greners første CI ble avbrutt ved 15 minutter uten fullført nettleser-TRX;
 EV02s lokale fulle kjøringer tok 23:03 og 30:08, og UX15s sluttkjøring tok 21:42.
@@ -451,7 +460,7 @@ Den målingen dekker ikke de 312 integrerte tilfellene etter UX16. UX15s tidlige
 20-minuttersforsøk er historisk kontekst; 45 minutter er en beholdt øvre grense,
 ingen påstand om nødvendig kjøretid eller garanti for det nye inventaret.
 Ingen forventningstimeout, antallskontroll eller kontroll av manglende TRX er svekket.
-Ny kandidat-CI må fullføre alle 350; et nytt tidsavbrudd krever diagnose før ytterligere økning.
+Ny integrert kandidat-CI må fullføre alle 378; et nytt tidsavbrudd krever diagnose før ytterligere økning.
 Bare TRX lastes opp. Feed-token og URL-er skrives ikke til rapportene; abonnementssidens
 unntak redigeres før de når TRX. Ikke last opp databaser, app-logger eller rå nettleserspor.
 `deploy.yml` gjenbruker CI og venter på ordinære tester, SQL Server og nettleserakseptanse.
@@ -551,7 +560,7 @@ gir feil. Ingen tester hopper over SQL-kravet eller erstatter det med SQLite.
 CI-jobben `SQL Server – godkjenning og rollback` starter
 [SQL Server 2022 CU22 GDR1](https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/tag/2022-CU22-GDR1-ubuntu-22.04)
 i en Linux-container med tilfeldig testpassord som maskeres sammen med tilkoblingsstrengen.
-Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 442 beståtte tester og null hopp.
+Den gjenoppretter låste pakker og krever en TRX-fil med nøyaktig 480 beståtte tester og null hopp.
 Containeren fjernes til slutt. `deploy.yml` kaller hele CI-arbeidsflyten; også SQL-jobben
 må lykkes før utrulling. Denne kontrollen dekker SQL Server, mens Azure SQL/Entra og
 driftsmiljøets nettverk fortsatt må testes separat.
@@ -586,3 +595,35 @@ dotnet ef migrations add <Navn> --project backend/Aarshjul.Infrastructure --star
 Produksjonsappen kjører foreløpig migrasjoner ved oppstart. Egen deploy-migrering,
 SQL/Entra-oppsett, Data Protection og Azure-nettverk må verifiseres i et driftsmiljø.
 Se `infra/README.md` og gjennomgangens åpne oppgaver før utrulling.
+
+## EV09 – levert avmeldingslenke
+
+[EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md) beskriver rød/grønn,
+1348 ordinære tilfeller, delte SQLite-/SQL Server-kontrakter, migrasjonskjede
+og anonym avmelding fra faktisk e-post. EV09 er levert i PR #146, merget som
+`dd2a24c87aceb692c576eafa155d02ee0541b12b`. Dens slutt-CI
+[40887998599](https://github.com/depmartin/Budsjettkalender/actions/runs/40887998599)
+bestod 1348/480/354; dette er forelderens bevis. Ny #138-union er 1349/480/378.
+Alle navn fra EV09 og #138 er bevart. Lokal Edge er et kontrollert
+nettleserbevis; faktisk SQL Server og full Chromium utføres i kandidat-CI.
+
+CI kontrollerer TRX for avmeldingsfragment og 64-tegns hexverdier før hver
+opplasting, og laster ingenting opp når kontrollen feiler. Innholdsassertions
+beholder forventningene og redigerer bare hemmelig avmeldings-URL før eventuell
+xUnit-feiltekst. Tokenets faktiske tilstedeværelse og rettighet prøves direkte
+med boolske assertions uten verdiutskrift. Bare TRX er tillatt som artefakt;
+databaser, app-logger, DOM og rå nettleserspor lastes ikke opp.
+
+Kjøreeksempler, i tillegg til de ordinære portene over:
+
+```powershell
+dotnet test backend/Aarshjul.Tests -c Release --no-build `
+  --filter 'FullyQualifiedName~DagligEpostTester|FullyQualifiedName~MigrasjonsmodellTester|FullyQualifiedName~EpostabonnementHttpTester'
+dotnet test backend/Aarshjul.BrowserTests -c Release --no-build `
+  --filter 'FullyQualifiedName~EpostabonnementTester|FullyQualifiedName~DagligEpostTester'
+python .github/scripts/kontroller-hemmeligheter.py TestResults
+```
+
+Ingen ekstra produksjonsadapter, tenant-/postbokstilgang eller utrulling
+aktiveres av EV09. Fremtidig e-postadapter må oppfylle den synkrone
+transportmottakskontrakten i ADR-0010 før den kan tas i bruk.

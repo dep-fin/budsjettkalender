@@ -73,6 +73,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.BrukerId).HasMaxLength(128);
             e.Property(x => x.Status).HasMaxLength(32).IsConcurrencyToken();
             e.Property(x => x.Utsettelsesgrunn).HasMaxLength(64);
+            e.Property(x => x.AvmeldingsHash).HasMaxLength(64);
+            e.HasIndex(x => x.AvmeldingsHash).HasFilter("[AvmeldingsHash] IS NOT NULL");
             e.Property(x => x.Versjon).IsConcurrencyToken();
             e.HasIndex(x => new { x.BrukerId, x.LokalDato }).IsUnique();
         });

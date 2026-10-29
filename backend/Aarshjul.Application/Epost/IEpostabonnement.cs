@@ -19,6 +19,8 @@ public interface IEpostabonnement
     Task<EpostabonnementDto> EndreAdresseAsync(string brukerId, string adresse, bool egenadresseSamtykke, Guid versjon, CancellationToken ct = default);
     Task<EpostabonnementDto> BekreftAsync(string brukerId, string token, CancellationToken ct = default);
     Task<EpostabonnementDto> MeldAvAsync(string brukerId, CancellationToken ct = default);
+    /// <summary>Uttrykkelig avmelding med en snever lenkerett. Gir aldri abonnement eller lesetilgang i retur.</summary>
+    Task MeldAvMedLenkeAsync(string? token, CancellationToken ct = default);
 }
 
 public sealed class EpostabonnementKonflikt() : Exception("Abonnementet ble endret samtidig. Last inn status og prøv igjen.");

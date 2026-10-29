@@ -13,6 +13,28 @@ namespace Aarshjul.SqlServerTests;
 
 public sealed class DagligEpostTester : DagligEpostKontrakt
 {
+    [Fact]
+    public async Task EV09_migrasjon_fra_levert_main140_bevarer_kildelenker_og_fullfoerer_med_snever_avmeldingsrett()
+    {
+        await using var database = new Sqldatabase(); await database.OpprettAsync("20261029092000_ManuellKildelenke");
+        var bekreftelsespost = await EpostoppgraderingBevis.LeggTilAsync(database);
+        var plan = await EpostoppgraderingBevis.LeggTilEV08PlanAsync(database);
+        await using (var oppsett = database.Fabrikk().CreateDbContext())
+            await oppsett.Database.ExecuteSqlRawAsync("UPDATE Frister SET ManuellKildeUrl = 'https://regjeringen.no/no/levert-main140'");
+        var foer = await EpostoppgraderingBevis.HentAsync(database);
+        var varsling = await EpostoppgraderingBevis.HentVarslingsdataAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            Assert.Equal(new[] { "20261029143000_Avmeldingslenke" }, await db.Database.GetPendingMigrationsAsync());
+            await db.Database.MigrateAsync(); await db.Database.MigrateAsync();
+            Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+            Assert.All(await db.Frister.ToListAsync(), f => Assert.Equal("https://regjeringen.no/no/levert-main140", f.ManuellKildeUrl));
+        }
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+        Assert.Equal(varsling, await EpostoppgraderingBevis.HentVarslingsdataAsync(database));
+        await EpostoppgraderingBevis.BekreftEV09PlanAsync(database, plan, bekreftelsespost, avmeld: true);
+    }
+
     [Theory]
     [InlineData(false)] [InlineData(true)]
     public async Task SQL_oppgradering_fra_hver_levert_gren_bevarer_lenke_eller_historisk_synlighet_og_ventende_plan(bool manuellFoerst)
@@ -25,7 +47,7 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
             : new Aarshjul.Infrastructure.Migrations.HistoriskSlettingssynlighet());
         await using (var oppsett = database.Fabrikk().CreateDbContext())
         {
-            Assert.Equal(new[] { manuellFoerst ? "20261029092000_HistoriskSlettingssynlighet" : "20261029092000_ManuellKildelenke" },
+            Assert.Equal(new[] { manuellFoerst ? "20261029092000_HistoriskSlettingssynlighet" : "20261029092000_ManuellKildelenke", "20261029143000_Avmeldingslenke" },
                 await oppsett.Database.GetPendingMigrationsAsync());
             if (manuellFoerst)
                 await oppsett.Database.ExecuteSqlRawAsync("UPDATE Frister SET ManuellKildeUrl = 'https://regjeringen.no/no/bevart-gren140'");
@@ -41,8 +63,8 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
         {
             await db.Database.MigrateAsync(); await db.Database.MigrateAsync();
             Assert.Empty(await db.Database.GetPendingMigrationsAsync());
-            Assert.Equal(new[] { "20261029092000_HistoriskSlettingssynlighet", "20261029092000_ManuellKildelenke" },
-                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(2));
+            Assert.Equal(new[] { "20261029092000_HistoriskSlettingssynlighet", "20261029092000_ManuellKildelenke", "20261029143000_Avmeldingslenke" },
+                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(3));
             Assert.All(await db.Frister.ToListAsync(), f => Assert.Equal(manuellFoerst ? "https://regjeringen.no/no/bevart-gren140" : null, f.ManuellKildeUrl));
             Assert.Equal(manuellFoerst ? 0 : 1, await db.Set<FristHendelsessynlighet>().CountAsync());
             Assert.Equal(await db.Database.SqlQueryRaw<long>("SELECT Verdi AS Value FROM Epostrekkefolge WHERE Id = 1").SingleAsync(),
@@ -75,6 +97,23 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
         Assert.Equal("https://regjeringen.no/no/sql140", (await skriving.HentForRedigeringAsync(id))!.ManuellKildeUrl);
         Aarshjul.Application.Frister.IFristlesing lesing = new Aarshjul.Infrastructure.Frister.FristTjeneste(database.Fabrikk(), TimeProvider.System);
         Assert.Equal("https://regjeringen.no/no/sql140", (await lesing.HentEnAsync(new Aarshjul.Application.Synlighet.Synlighetskontekst(false, ["FA"]), id))!.KildeUrl);
+    }
+    [Fact]
+    public async Task EV09_migrasjon_fra_EV08_bevarer_data_og_ventende_plan_og_fullfoerer_med_avmeldingslenke()
+    {
+        await using var database = new Sqldatabase(); await database.OpprettAsync("20261029092000_HistoriskSlettingssynlighet");
+        var bekreftelsespost = await EpostoppgraderingBevis.LeggTilAsync(database);
+        var plan = await EpostoppgraderingBevis.LeggTilEV08PlanAsync(database);
+        var foer = await EpostoppgraderingBevis.HentAsync(database);
+        var varsling = await EpostoppgraderingBevis.HentVarslingsdataAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            await db.Database.MigrateAsync(); await db.Database.MigrateAsync();
+            Assert.Equal("20261029143000_Avmeldingslenke", (await db.Database.GetAppliedMigrationsAsync()).Last());
+        }
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+        Assert.Equal(varsling, await EpostoppgraderingBevis.HentVarslingsdataAsync(database));
+        await EpostoppgraderingBevis.BekreftEV09PlanAsync(database, plan, bekreftelsespost);
     }
     [Fact]
     public async Task EV07_migrasjon_fra_EV05_bevarer_data_og_planer_uten_historisk_tilbakefylling()
@@ -150,8 +189,8 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
         await using (var db = database.Fabrikk().CreateDbContext())
         {
             await db.Database.MigrateAsync();
-            Assert.Equal(new[] { "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering", "20261028165341_VarseltyperOgEndringer", "20261028193853_Abonnementsutvalg", "20261029092000_HistoriskSlettingssynlighet", "20261029092000_ManuellKildelenke" },
-                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(6));
+            Assert.Equal(new[] { "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering", "20261028165341_VarseltyperOgEndringer", "20261028193853_Abonnementsutvalg", "20261029092000_HistoriskSlettingssynlighet", "20261029092000_ManuellKildelenke", "20261029143000_Avmeldingslenke" },
+                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(7));
         }
         Assert.True(foer == await EpostoppgraderingBevis.HentAsync(database), "Leverte UX16-/EV02-data må bevares gjennom EV03-oppgraderingen.");
         await EpostoppgraderingBevis.BekreftInternvern(database);

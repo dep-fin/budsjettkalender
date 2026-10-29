@@ -15,8 +15,9 @@ publiseringssekvens eller egen aktiveringsrad. Rollback omfatter også koordiner
 En senere vellykket transaksjon kan dermed ikke passere en tidligere nummerert
 transaksjon på verken SQLite eller SQL Server, heller ikke mellom prosesser.
 Forespørselens UTC-ticks beholdes som metadata; de avgjør ikke utvalget.
-Dette serialiserer de to korte skriveoperasjonene; tilgangsoppslag og posttransport
-kjøres utenfor koordineringstransaksjonen.
+Dette serialiserer de to korte skriveoperasjonene; tilgangsoppslag og venting på
+transportkvittering kjøres utenfor koordineringstransaksjonen. EV09 utvider den
+korte koordinerte grensen til selve det synkrone transportmottaket, se nedenfor.
 
 Abonnentens aktiveringssekvens er en eksklusiv nedre grense. Like klokkeslett og
 forespørsler startet før, men fullført etter aktivering, behandles etter databasens
@@ -235,3 +236,60 @@ innholdsoverlevering. Adressebytte stanser kølagt, ennå ikke overlevert innhol
 til begge adresser. Det rydder ingen UnderSending/Uavklart-planer og tillater
 ingen blind gjentakelse av mulig allerede overlevert post. Ingen adressehistorikk,
 parallelle abonnementer, modellendring eller ny migrasjon innføres.
+
+## EV09: snever avmeldingsrett og grensen for overlevering
+
+Hver faktisk tekst-/HTML-oppsummering får en egen tilfeldig 32-bytes avmeldingsrett.
+Råverdien finnes bare i meldingen og som URL-fragment på `/epostvarsling/avmeld`.
+Planen lagrer SHA-256-hash og den gjeldende Livssyklussekvensen før mulig
+transportmottak. Hashen beholdes for Bekreftet/Uavklart og ved avbrutt
+UnderSending. Bare sikkert usendt Planlagt kan få en ny hash ved nytt forsøk.
+Indeksen på ikke-null hash gir et avgrenset oppslag uten abonnementsliste.
+
+En anonym lesing viser alltid den samme generelle bekreftelsessiden uten
+oppslag eller mutasjon. Klienten leser og fjerner fragmentet fra historikken.
+Bare uttrykkelig JSON-POST til den egne anonyme inngangen kaller
+`IEpostabonnement.MeldAvMedLenkeAsync`. Den returnerer ingen DTO. Ukjent, gammel
+og allerede brukt rett får samme generiske kvittering; ingen adresse, identitet,
+valg, versjon eller fristdata sendes til den anonyme klienten. Inngangen har
+no-store og ingen CORS. Den vanlige innloggede avmeldingen består.
+
+Lenken følger én bekreftet livssyklus, uavhengig av senere filterendring og
+oppsummeringer. VenterPaaBekreftelse godtas aldri. Ny full adressebekreftelse
+eller gjenpåmelding får en ny databaseordnet livssyklus selv ved like eller
+bakovergående UTC-ticks, og gamle lenker kan da ikke stoppe den. Legacy-aktive
+abonnementer uten aktiveringsrad bruker grense 0. Ingen token gjenbrukes fra
+adressebekreftelse eller kalenderfeed. Samtidige avmeldinger serialiseres og
+leser gjeldende status/livssyklus etter låsen; det finnes ingen blind retry over
+ny aktivering.
+
+Den siste abonnementslesingen alene kunne tidligere etterfølges av avmelding
+før transportkallet. EV09 bruker derfor en kort transaksjon med skrivelås på
+Epostrekkefolge og deretter abonnementsraden, i samme rekkefølge som aktivering.
+UPDATE-ene er uten verdiendring. Etter låsen leses abonnementet på nytt, og
+transporten tar meldingen imot synkront mens låsen fortsatt holdes. Innlogget
+avmelding tar den samme rekkefølgelåsen ved sin endelige lagring, og beholder
+tidligere optimistisk versjonsvern. Anonym avmelding tar låsen før status og
+livssyklus leses. Dette gjelder separate kontekster og prosesser på SQLite og
+SQL Server; ingen prosesslokal lås er grunnlaget.
+
+`IOppsummeringspost.StartOverlevering` returnerer en Overleveringskvittering,
+ikke en Task, og kan derfor ikke være en async-metode. Den må ta eierskap til
+meldingen synkront før retur. Den kontrollerte adapterens faktiske mottak er
+innsetting i dens mottakskø. Bare kvitteringens senere utfall er asynkront og
+ventes uten database-/rekkefølgelås. Adapteren kan ikke planlegge en ennå ikke
+mottatt melding i en bakgrunnsoppgave bak denne grensen. Fremtidig
+produksjonsadapter må oppfylle og prøve denne kontrakten; dette er ingen
+påstand om at et nettverkskall eller M365-levering er atomisk med SQL.
+
+Dermed stanser en avmelding som committer før mottaket meldingen. Dersom
+mottaket vinner, er meldingen allerede overlevert og kan ikke tilbakekalles.
+UnderSending/Uavklart og hendelseskoblingene bevares; senere kvittering kan
+bekrefte en allerede overlevert melding etter avmelding. Feil eller avbrudd
+etter mulig mottak gir fortsatt ingen automatisk gjentakelse.
+
+Avmeldingslenken har ingen autentiserings-, frist-, eksport-, adresse-,
+filter- eller administrasjonsrett. Kontrollert tekstforhåndsvisning redigerer
+rålenken, og nettleserfeil/CI-artefakter har særskilt vern mot hemmeligheter.
+Migrasjonen Avmeldingslenke er additiv og nullable; EV02–EV08-oppgradering
+oppretter ingen historiske hendelser og bevarer ventende og overleverte planer.

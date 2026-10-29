@@ -36,13 +36,15 @@ else
     {
         <article aria-label="Daglig oppsummering">
             <p>Til: @melding.Adresse</p>
-            <pre>@melding.Tekst</pre>
+            <pre>@TryggTekst(melding.Tekst)</pre>
             @((MarkupString)melding.Html)
         </article>
     }
 }
 
 @code {
+    private static string TryggTekst(string tekst)
+        => System.Text.RegularExpressions.Regex.Replace(tekst, @"https?://[^\s]*?/epostvarsling/avmeld#[^\s]+", "[Avmeldingslenke – bruk knappen under]");
     private Bekreftelsesmelding? _melding;
     private IReadOnlyList<Oppsummeringsmelding> _oppsummeringer = [];
     private bool ErDemo => Miljoe.IsDevelopment() && Konfigurasjon.GetValue<bool>("Demo") || Miljoe.IsEnvironment("Demo") || Miljoe.IsEnvironment("Testing");

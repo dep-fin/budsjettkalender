@@ -69,6 +69,12 @@ ny-og-fjernet uavhengig av valgte typer. Gjeninnført identitet får aldri en ek
 Ny; gamle slettingshendelser brukes ikke når fristen er publisert igjen.
 Se [EV07-akseptansen](acceptance/2026-10-29-epost-ev07.md).
 
+En oppsummerings egen avmeldingsrett går gjennom den samme IEpostabonnement-
+grensen og en avgrenset anonym JSON-inngang. Bare hash og livssyklus lagres.
+GET/HEAD leser ingen rett og endrer ingenting. Siste abonnementslesing og
+synkront transportmottak deler en kort databaselås med avmelding; venting på
+kvittering skjer uten låsen. Tidligere overlevert post kan ikke tilbakekalles.
+Se EV09-delen av ADR-0010 og [EV09-akseptansen](acceptance/2026-10-29-epost-ev09.md).
 HTTP-policyer og Blazor-sideautorisasjon er tilgangsgrensen for skrivetjenestene.
 Tjenestegrensesnittene i seg selv er ikke en ekstra autorisasjonsgrense.
 Ved nye innganger må policyene håndheves og testes der.

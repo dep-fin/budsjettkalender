@@ -1,6 +1,6 @@
 # Kalender → Liste: kommende frister og historikk
 
-Gjeldende integrasjonsbevis står under [sluttavstemmingen med levert main](#sluttavstemming-med-levert-140-og-ev08-29-oktober-2026).
+Gjeldende integrasjonsbevis står under [EV09-mainintegrasjonen i CI-løkken](#nodvendig-ev09-mainintegrasjon-i-ci-lokken-29-oktober-2026).
 Sikkerhetsrettingen, den tidligere main-integrasjonen og den opprinnelige rapportdelen
 er daterte bevis fra sine oppgitte revisjoner.
 Den opprinnelige rapportdelen nedenfor gjelder checkpoint `7a22d3a` på basen
@@ -599,3 +599,153 @@ Rettede lokale prøver erstatter ikke ny full kandidat-CI med **1303 ordinære,
 442 ekte SQL Server- og 374 Chromium-tilfeller** uten feil/hopp. Ingen ny review,
 sikkerhetsaudit, commit, push, GitHub-mutasjon eller deploy er utført i denne
 avgrensede CI-løkken. Andre arbeidsflater og deres prosesser/databaser er urørt.
+
+<a id="nodvendig-ev09-mainintegrasjon-i-ci-lokken-29-oktober-2026"></a>
+
+## Nødvendig EV09-mainintegrasjon i CI-løkken, 29. oktober 2026
+
+PR #145s korrigerte publiserte forelder er
+`b92081dbeb2ce6367fd1b4aaf04e9417b0b59e64`, med samme tre
+`25a8796ddd5702d517fd1d1914e4435758d2d702` som ren lokal
+`43a091e333797216008e025a215287e7e0f042c9`. Den nødvendige integrasjonen bruker
+bare faktisk merget `origin/main` / EV09 / PR #146:
+`dd2a24c87aceb692c576eafa155d02ee0541b12b`, tre
+`85d754483edc7f6f7fccd15b2dba5788d7f64111`. Felles base er levert
+`12d12601b0fe8d83d0a4a84b88cff589bd954572`. `git merge --no-commit origin/main`
+er brukt i samme isolerte #138-checkout; ingen umerget gren er tatt inn.
+
+Hele #138, #136 og EV09/#119 med kommentarer, gjeldende AGENTS/GLOSSARY,
+relevante ADR-er og leverte kontrakter/status er lest. EV09s
+[leveransejournal](https://github.com/depmartin/Budsjettkalender/issues/119#issuecomment-6499618378)
+oppgir grønn slutt-CI 40887998599 med 1348/480/354. Dette er forelderens bevis.
+Den nye sammensatte kandidaten trenger egen full CI.
+
+### Konflikter, kildebevaring og samspill
+
+Bare `.github/workflows/ci.yml`, `docs/development.md` og `docs/status.md` hadde
+tekstkonflikter. CI er eksakt faktisk main med bare de tre browserantallslinjene
+endret fra 354 til den oppdagede unionen 378. SQL-kravet 480, alle tre
+hemmelighetskontroller før opplasting og deres opplastingsvilkår, TRX-stier,
+utfalls-/hopp-/utført-kontroller, audit og 15/20/45 minutter er uendret.
+
+Alle sju egne produktblobber fra gjennomgått/auditert
+`823d1530d3b2d278663a2b06c5b3147e8de5a416` er bevart eksakt. De fem egne
+testfilene er bevart fra lokal forelder; fire er også identiske med 823.
+`KalenderlisteTester.cs` er fortsatt originalen med nøyaktig tre avtalte
+forventningsinnsettinger etter den røde CI-en: alle 71 opprinnelige
+forventninger og handlinger er bevart, nå 74 forventninger. Alle 16 nye
+detaljtilgangstilfeller, testnavn, teoriargumenter og prøvegrenser består.
+All backendkode kommer fra de to foreldrene; ingen ytterligere produktkode,
+testtilfeller eller produktvalg er innført her.
+
+Alle 31 backendfiler som EV09-main endret siden felles base er eksakte main-
+blobber, inklusive delt `Nettleser`, e-postoverlevering, anonyme handlinger,
+demooppgradering, migrasjon/Designer/snapshot og testkontrakter. Hele
+migrasjonstreet og hemmelighetsskriptet er eksakt main. Den smale avmeldings-
+retten, GET/HEAD uten mutasjon, eksplisitt idempotent bekreftelse, synkront
+transportmottak og videre kvittering uten lås er beholdt. Detaljtilgang og
+kalenderens vanlige import-/slettingslenker bruker fortsatt den ferske,
+serverfiltrerte lesegrensen. Dette samspillet prøves gjennom eksisterende
+ordinære kontrakter og faktiske nettleserforløp; ingen ny transportmodell inngår.
+
+`merge-preservation.json` binder alle 552 staged filer til begge foreldres
+blobber/filmodus. Bare CI og de tre oppdaterte dokumentene får nye sammensatte
+blobber. `migration-preservation.json` og `revision-boundaries.json` avgrenser
+skjema- og revisjonsbevisene. `candidate-files.json` binder endelig staged tre,
+råfilhasher, foreldre, resultater og ny evidens. `git write-tree` er ingen commit.
+
+### Hele navn og ny lokal verifikasjon
+
+Faktisk main er arkivert fra den faste revisjonen i denne rundens nye disponible
+evidensmappe og bygget/oppdaget der. Kandidaten er deretter bygget/oppdaget i
+#138-checkoutet. Sammenlikningen bruker hele navn inklusive teoriargumenter,
+`StringComparer.Ordinal` og separat dublettkontroll. De tidligere 823-navnene
+beholdes også som en egen revisjonsbundet kontroll.
+
+| Inventar | Gjennomgått 823 | Korrigert lokal forelder | Faktisk EV09-main | Ny kandidat |
+| --- | ---: | ---: | ---: | ---: |
+| Ordinær | 1229 | 1303 | 1348 | **1349** |
+| SQL Server | 379 | 442 | 480 | **480** |
+| Nettleser | 368 | 374 | 354 | **378** |
+
+Den nye kandidaten er nøyaktig unionen av de to integrasjonsforeldrene i alle
+tre suiter, uten tap, navneendring eller dubletter. Ingen forventning er senket
+for å få CI grønn. Hele navnelister og resultater ligger i
+`TestResults/138-ev09-main-integration/inventory-comparison.json`.
+
+Tre låste restore og tre Release-bygg med SDK 10.0.402 består med null
+advarsler/feil og audit `true` / `all` / `low`. Første sandboxforsøk på main fikk
+NU1900 ved utilgjengelig sårbarhetskilde og en oppdagelse uten fullført resultat;
+det ble stanset på sin egen prosess. De ferdige kontrollene brukte samme faste
+kilder og låste cache med nødvendig nettverk/testvert. De avbrutte loggene er
+bevart som miljøavvik, uten påstand om faktisk testkjøring fra dette forsøket.
+De første main-byggene gjenbrukte NU1900 fra disse assets. En eksplisitt låst
+`--force-evaluate`-oppfrisking av main-audit og bygg fjernet advarslene;
+`build-audit-summary.json` binder de rene sluttloggene. Kandidatens tre
+restore/bygg var allerede rene og ble ikke gjentatt; ingen tester ble gjentatt.
+
+| Kontroll på det samme ferdige bygget | Resultat | Nytt bevis |
+| --- | --- | --- |
+| Én full ordinærsuite | **1349/1349**, null feil/hopp; TRX 30,953 / prosess 32,227 sekunder | `ordinary.trx` |
+| Ett relevant faktisk Edge/Kestrel-utvalg | **115/115**, null feil/hopp; TRX 733,511 / prosess 734,348 sekunder | `browser-targeted.trx` |
+| Begge faktiske TRX med mains uendrede hemmelighetsskript | Bestått, ingen hemmelige lenker | `secrets-trx.log`, `secrets-trx-summary.json` |
+| SQL Server | **480** bygget/oppdaget; ingen lokal kjøring | `sql-availability.json`, inventar-/bygglogger |
+
+Nettleserutvalget omfatter alle tidligere 111 relevante navn og de fire nye
+EV09-forløpene på 390/1280. Det dekker liste/paginering/historikk, perioder,
+filtre, Oslo-midnatt, tentative frister, fokus/kilde og alle 16 ferske detalj-
+tilgangsprøver. E-post/import/sletting og adressebytte følger samme runtime.
+EV09 prøver faktisk mottatt lenke, anonym tastaturbekreftelse, GET/HEAD,
+idempotens, ukjent/gammel lenke, ny livssyklus, ventende adressebytte, omstart,
+sendestans og hemmelighet i app-/klientlogger. Hvert forløp bruker nye disponible
+databaser/porter; ingen gammel auditdatabase åpnes med SQLite.
+
+TRX er avstemt mot forventede hele navn, tegnsensitivt, inklusive
+teoriargumenter. Alle tidligere **111/111** relevante navn og nye **4/4** EV09-
+navn er utført én gang og bestått. Executed er lik antall resultatnoder,
+notExecuted er null og ingen navn er duplisert. Det gamle internkalendertilfellet
+som følger det eksisterende KalenderTester-filteret er også bevart.
+`test-summary.json` og de utførte navnelistene binder kontrollen.
+
+Tre nye bilder er visuelt lest enkeltvis: kommende side 2 av 2 på 1440,
+detalj/kildelenke på 390 og anonym EV09-bekreftelse på 390. Sidestatus,
+handlinger, kildelenke og generell avmelding er lesbare uten observert
+horisontalt overløp eller synlig hemmelighet. `inspected-images.json` binder
+råfilhash og observasjon. Øvrige bilder er testartefakter uten påstand om
+individuell bildeinspeksjon.
+
+### Uendrede historiske bevisgrenser og gjenstående CI
+
+Den tidligere faktiske kandidat-CI
+[40885826810](https://github.com/depmartin/Budsjettkalender/actions/runs/40885826810)
+på `70e6c21` / tre `a3f351e` beholder **1303/1303 ordinære, 442/442 SQL og
+373/374 Chromium, én feil, null hopp**. Den er rødt bevis, ikke grønn CI.
+Den dokumenterte render-/CheckAsync-kappløpsdiagnosen og rettingens ti separate
+historikkprøver samt 15 kalenderregresjoner tilhører sine tidligere revisjoner.
+Denne integrasjonen bevarer rettingen uten ny metodegjentakingsrunde eller
+endring av appkode, tester, antallskontroller eller timeouter.
+
+Standards-/Spec-/separat sikkerhetsaudit med null funn på 823 beholder den
+uttrykkelige revisjonsgrensen; EV09s egne etterkontroller tilhører dens leverte
+tre. Ingen ny review eller sikkerhetsaudit er utført på dette sammensatte treet.
+Nye lokale prøver erstatter ikke tre faktiske grønne kandidatjobber med
+**1349 ordinære, 480 ekte SQL Server og 378 Chromium** uten feil/hopp.
+`AARSHJUL_TEST_SQLSERVER` er ikke satt; SQL er ikke forsøkt erstattet av SQLite.
+Brukerens mergeautorisasjon for PR #145 gjelder først etter de tre grønne
+sluttjobbene. #139 avventer faktisk merge av #145; #136 beholdes åpen.
+
+Den gamle bevisjournalen
+`TestResults/138-final-main-integration/historical-evidence-incident.json` og
+alle opprinnelige manifestverdier er beholdt. Nøyaktig tre historiske unntak
+består: `probe.db` i `138-security-audit-fixed/probe-6b4034f7-27b4-4b1b-89a5-10fc33161b34`
+har endret fysisk hash etter den tidligere auditen, og dens `-wal`/`-shm` mangler.
+Ingen av disse opprinnelige bytes er rekonstruert eller attestert bevart.
+Denne rundens kontroll hasher bare råfiler mot sin egen starttilstand.
+Etter den siste faktiske prøven er **454 backendkildefiler, 1518 runtimefiler
+og 8998 eldre bevisfiler uten ytterligere drift** mot denne rundens baseline.
+`hash-summary.json` og før-/etterlistene binder kontrollen. Den allerede
+endrede databasefilen inngår i denne starttilstanden; tallet attesterer ikke
+dens opprinnelige bytes, og de nøyaktig tre historiske unntakene består.
+Lokal SQLite/Edge med kontrollerte adaptere beviser ikke Entra, Azure SQL,
+M365-levering eller produksjon. Ingen commit, push, GitHub-mutasjon eller deploy
+er utført; andre arbeidsflater og prosesser/databaser er urørt.
