@@ -1,5 +1,12 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
 <div class="filterpanel kalenderfilter">
-    <label>Søk i tittel og notat<input type="search" @bind="Tilstand.Soek" @bind:event="oninput" @bind:after="Endret.InvokeAsync" /></label>
+    <label>Søk i tittel og notat<input type="search" @bind="Tilstand.Soek" @bind:event="oninput" @bind:after="Endret.InvokeAsync" @onkeydown="SoeketastAsync" /></label>
+    @if (SoekAlleDatoer.HasDelegate)
+    {
+        <button class="knapp" @onclick="SoekAlleDatoer">Søk i alle datoer</button>
+    }
     <fieldset>
         <legend>Kategori</legend>
         @foreach (var kategori in AlleKategorier)
@@ -12,12 +19,12 @@
             <button class="knapp-lenke" @onclick="() => VelgAsync(Tilstand.Kategorier, [])">Fjern alle</button>
         </div>
     </fieldset>
-    <fieldset>
+    <fieldset tabindex="-1" @ref="_aarsvalg">
         <legend>Budsjettår</legend>
         @foreach (var aar in TilgjengeligeAar)
         {
-            <label class="filtervalg"><input type="checkbox" checked="@Tilstand.Budsjettaar.Contains(aar)"
-                @onchange="e => VekslAsync(Tilstand.Budsjettaar, aar, e)" />@aar</label>
+            <label @key="aar" class="filtervalg"><input type="checkbox" data-budsjettaar="@aar" checked="@Tilstand.Budsjettaar.Contains(aar)"
+                @onchange="e => VeksleAarAsync(aar, e)" />@aar</label>
         }
         @if (TilgjengeligeAar.Count == 0) { <p class="hint">Ingen tilgjengelige budsjettår.</p> }
         <div class="filterhandlinger">
@@ -34,6 +41,40 @@
     [Parameter, EditorRequired] public Kalendertilstand Tilstand { get; set; } = default!;
     [Parameter] public IReadOnlyList<int> TilgjengeligeAar { get; set; } = [];
     [Parameter] public EventCallback Endret { get; set; }
+    [Parameter] public EventCallback SoekAlleDatoer { get; set; }
+    private ElementReference _aarsvalg;
+    private int? _gjenopprettAarsfokus;
+    private int _aarsfokusversjon;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_gjenopprettAarsfokus is not { } aar) return;
+        _gjenopprettAarsfokus = null;
+        try
+        {
+            await using var modul = await JS.InvokeAsync<IJSObjectReference>("import", "./kalenderfilterfokus.js");
+            await modul.InvokeVoidAsync("gjenopprett", _aarsvalg, aar);
+        }
+        catch (JSDisconnectedException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    private async Task VeksleAarAsync(int aar, ChangeEventArgs e)
+    {
+        var versjon = ++_aarsfokusversjon;
+        var bevarFokus = false;
+        try
+        {
+            await using var modul = await JS.InvokeAsync<IJSObjectReference>("import", "./kalenderfilterfokus.js");
+            bevarFokus = await modul.InvokeAsync<bool>("forbered", _aarsvalg, aar);
+        }
+        catch (JSDisconnectedException) { }
+        catch (ObjectDisposedException) { }
+        await VekslAsync(Tilstand.Budsjettaar, aar, e);
+        if (versjon == _aarsfokusversjon && bevarFokus) _gjenopprettAarsfokus = aar;
+    }
+
+    private Task SoeketastAsync(KeyboardEventArgs e) => e.Key == "Enter" ? SoekAlleDatoer.InvokeAsync() : Task.CompletedTask;
 
     private Task NullstillAsync()
     {

@@ -20,7 +20,11 @@ public sealed class Kalendertilstand
     public bool VisListehistorikk { get; set; }
     private readonly Listespor _kommende = new();
     private readonly Listespor _historikk = new();
-    private Listespor AktivListe => VisListehistorikk ? _historikk : _kommende;
+    private readonly Listespor _soeketreff = new();
+    public bool VisSoeketreff { get; private set; }
+    public bool HarAapnetSoek { get; private set; }
+    private (DateOnly? Dato, Kalenderpresentasjon Visning, Kalenderperiode Periode)? _soekretur;
+    private Listespor AktivListe => VisSoeketreff ? _soeketreff : VisListehistorikk ? _historikk : _kommende;
     public int Listeside => AktivListe.Side;
     public bool ListeOppdatert { get; private set; }
     public DateOnly? Listedato => AktivListe.Dato;
@@ -32,12 +36,27 @@ public sealed class Kalendertilstand
     public FristDto? OverfoertFrist { get; set; }
     private bool _aarsvalgInitialisert;
 
+    public void AapneSoek()
+    {
+        if (!VisSoeketreff) _soekretur = (ValgtDato, Visning, Periode);
+        VisSoeketreff = true;
+        HarAapnetSoek = true;
+    }
+
+    public void ForlatSoek()
+    {
+        if (VisSoeketreff && _soekretur is { } retur)
+            (ValgtDato, Visning, Periode) = retur;
+        VisSoeketreff = false;
+    }
+
     public IReadOnlyList<FristDto> HentListeside(IReadOnlyList<FristDto> frister, DateOnly idag, int sidesteg)
     {
-        var utvalg = frister.Where(f => (f.ErTentativ
+        var utvalg = frister.Where(f => VisSoeketreff || (f.ErTentativ
                 ? Kalendervisning.SisteDag(f.Dato) < idag : f.Dato < idag) == VisListehistorikk);
-        var datoordnet = VisListehistorikk ? utvalg.OrderByDescending(f => f.Sorteringsdag) : utvalg.OrderBy(f => f.Sorteringsdag);
-        var tidsordnet = VisListehistorikk
+        var historikk = VisListehistorikk && !VisSoeketreff;
+        var datoordnet = historikk ? utvalg.OrderByDescending(f => f.Sorteringsdag) : utvalg.OrderBy(f => f.Sorteringsdag);
+        var tidsordnet = historikk
             ? datoordnet.ThenBy(f => f.HarKlokkeslett).ThenByDescending(f => f.Klokkeslett)
             : datoordnet.ThenBy(f => f.Klokkeslett);
         var ordnet = tidsordnet
@@ -54,7 +73,7 @@ public sealed class Kalendertilstand
 
     public void NullstillListesider()
     {
-        foreach (var spor in new[] { _kommende, _historikk })
+        foreach (var spor in new[] { _kommende, _historikk, _soeketreff })
         {
             spor.Side = 1;
             spor.Ider = null;

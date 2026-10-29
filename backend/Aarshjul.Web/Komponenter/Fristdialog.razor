@@ -147,6 +147,8 @@
 
 @code {
     [Parameter] public EventCallback<FristDto> VisIKalenderen { get; set; }
+    [Parameter] public EventCallback FristUtilgjengelig { get; set; }
+    [Parameter] public EventCallback UtilgjengeligLukket { get; set; }
     [Parameter] public int? Startbudsjettaar { get; set; }
     [Parameter] public bool Lesemodus { get; set; }
     [Parameter] public string? Innsynsgruppe { get; set; }
@@ -196,6 +198,14 @@
         return HentFristAsync(frist.Id);
     }
 
+    public Task VisUtilgjengeligAsync()
+    {
+        ToemDialog();
+        _detaljmelding = "Fristen er ikke lenger tilgjengelig.";
+        BeOmVisning();
+        return InvokeAsync(StateHasChanged);
+    }
+
     private Task VisFraAgendaAsync(FristDto frist) => HentFristAsync(frist.Id);
 
     private async Task HentFristAsync(Guid id)
@@ -240,6 +250,7 @@
                 _detaljLaster = false;
                 BeOmVisning();
                 await InvokeAsync(StateHasChanged);
+                if (_frist is null) await FristUtilgjengelig.InvokeAsync();
             }
         }
     }
@@ -271,20 +282,23 @@
     private async Task LukkAsync()
     {
         if (_sender) return;
+        var utilgjengelig = _detaljmelding is not null && !_detaljLaster;
         ToemDialog();
         if (_modul is not null) await _modul.InvokeVoidAsync("lukk", _dialog);
+        if (utilgjengelig) await UtilgjengeligLukket.InvokeAsync();
     }
 
     [JSInvokable]
-    public Task LukketAsync(long aapning)
+    public async Task LukketAsync(long aapning)
     {
         // Native Escape kan kvitteres etter at en ny dialog allerede er åpnet.
         if (!_avsluttet && aapning == _aapning)
         {
+            var utilgjengelig = _detaljmelding is not null && !_detaljLaster;
             ToemDialog();
-            return InvokeAsync(StateHasChanged);
+            await InvokeAsync(StateHasChanged);
+            if (utilgjengelig) await UtilgjengeligLukket.InvokeAsync();
         }
-        return Task.CompletedTask;
     }
 
     private void ToemDialog()
