@@ -34,7 +34,7 @@ jobs:
         run: python3 .github/scripts/kontroller-hemmeligheter.py TestResults
       - name: Last opp testresultater
         if: always() && steps.hemmeligheter.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: testresultater
           path: TestResults/*.trx
@@ -93,7 +93,7 @@ jobs:
         run: python3 .github/scripts/kontroller-hemmeligheter.py SqlServerTestResults
       - name: Last opp SQL-testresultater
         if: always() && steps.hemmeligheter.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sqlserver-testresultater
           path: SqlServerTestResults/*.trx
@@ -151,7 +151,7 @@ jobs:
         run: python3 .github/scripts/kontroller-hemmeligheter.py BrowserTestResults
       - name: Last opp nettleserresultater
         if: always() && steps.hemmeligheter.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nettleser-testresultater
           path: BrowserTestResults/*.trx
