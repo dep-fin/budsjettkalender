@@ -13,6 +13,8 @@ using Aarshjul.Infrastructure.Brukerforslag;
 using Aarshjul.Infrastructure.Godkjenningsko;
 using Aarshjul.Infrastructure.Varsler;
 using Aarshjul.Infrastructure.Generering;
+using Aarshjul.Application.Datautveksling;
+using Aarshjul.Infrastructure.Datautveksling;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -21,8 +23,44 @@ using Xunit;
 
 namespace Aarshjul.Testkontrakter;
 
-public abstract class DagligEpostKontrakt
+public abstract partial class DagligEpostKontrakt
 {
+    [Fact]
+    public async Task Import_publiserer_nye_frister_og_identisk_gjenimport_gir_ingen_ekstra_post()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db); await p.Aktiver();
+        IFristDatautveksling import = new FristDatautveksling(db.Fabrikk(), p.Klokke);
+        var fil = new FristDatabase { Frister = [Importrad("Importert <frist>")] };
+        await import.ForhaandsvisAsync(fil); await p.Jobb().KjorAsync(); Assert.Empty(p.Post.Hent("a"));
+        await import.ImporterAsync(fil); await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a")); Assert.Contains("Ny frist: Importert <frist>", melding.Tekst);
+        Assert.Contains("&lt;frist&gt;", melding.Html);
+        p.Klokke.Flytt(TimeSpan.FromDays(1));
+        await import.ImporterAsync(fil); await import.ImporterAsync(fil); await p.Jobb().KjorAsync();
+        Assert.Single(p.Post.Hent("a"));
+    }
+
+    [Fact]
+    public async Task Import_sletting_varsler_siste_publiserte_metadata_og_historisk_synlighet()
+    {
+        await using var db = await OpprettAsync(); var p = await Proeve.Opprett(db);
+        await p.Skriv.OpprettAsync(Inndata("Etablert <frist>")); await p.Aktiver();
+        await VelgUtvalg(p, null, null, false, true);
+        await new FristDatautveksling(db.Fabrikk(), p.Klokke).ImporterAsync(new() { Frister = [] });
+        await p.Jobb().KjorAsync();
+        var melding = Assert.Single(p.Post.Hent("a"));
+        Assert.Contains("Fjernet frist: Etablert <frist>", melding.Tekst);
+        Assert.Contains("20.11.2030 kl. 13:45", melding.Tekst); Assert.Contains("Budsjettår 2031", melding.Tekst);
+        Assert.Contains("fjernet=1", melding.Tekst); Assert.DoesNotContain("Nå:", melding.Tekst);
+        Assert.Contains("&lt;frist&gt;", melding.Html);
+    }
+
+    private static FristEksport Importrad(string tittel) => new()
+    {
+        Id = Guid.NewGuid(), Tittel = tittel, Dato = new(2030, 11, 20), Budsjettaar = 2031,
+        Status = FristStatus.Godkjent, Kategori = Kategori.Budsjett, SynligFor = ["FAG"]
+    };
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -57,6 +57,18 @@ og køen, uten egen kontekst eller lagring. Forslagets konkurransetoken og
 fristinnholdets samtidighetspredikater verner samme atomiske operasjon.
 Se [EV06-akseptansen](acceptance/2026-10-29-epost-ev06.md).
 
+Fristimport sammenlikner godkjent før-/ettertilstand per Frist.Id i den samme
+erstatt-alt-transaksjonen. Første publisering er Ny; semantisk vesentlig forskjell
+bruker den felles hendelsesbyggeren. Faktisk bortfall er Slettet med siste
+publiserte metadata og relasjonelle historiske gruppekoder, uten avhengighet til
+dagens fristrad eller grupperegister. Oppsummeringen filtrerer disse kodene i SQL
+før historisk metadata materialiseres, med fersk mottakerrolle/grupper ved begge
+innholdskontroller. Andre hendelser krever dagens godkjente, synlige frist.
+En særskilt aktiveringssekvens og allerede bekreftede plankoblinger avgjør
+ny-og-fjernet uavhengig av valgte typer. Gjeninnført identitet får aldri en ekstra
+Ny; gamle slettingshendelser brukes ikke når fristen er publisert igjen.
+Se [EV07-akseptansen](acceptance/2026-10-29-epost-ev07.md).
+
 HTTP-policyer og Blazor-sideautorisasjon er tilgangsgrensen for skrivetjenestene.
 Tjenestegrensesnittene i seg selv er ikke en ekstra autorisasjonsgrense.
 Ved nye innganger må policyene håndheves og testes der.

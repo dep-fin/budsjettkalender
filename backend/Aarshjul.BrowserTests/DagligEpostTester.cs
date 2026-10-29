@@ -3,7 +3,7 @@ using static Microsoft.Playwright.Assertions;
 
 namespace Aarshjul.BrowserTests;
 
-public sealed class DagligEpostTester
+public sealed partial class DagligEpostTester
 {
     [Theory]
     [InlineData(false, 390)]

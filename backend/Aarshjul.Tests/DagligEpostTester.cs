@@ -13,6 +13,29 @@ namespace Aarshjul.Tests;
 public sealed class DagligEpostTester : DagligEpostKontrakt
 {
     [Fact]
+    public async Task EV07_demooppgradering_fra_EV05_bevarer_data_og_planer_uten_historisk_tilbakefylling()
+    {
+        await using var database = new Sqlitedatabase(); await database.OpprettEV05SkjemaAsync();
+        await EpostoppgraderingBevis.LeggTilAsync(database);
+        const string utvalg = """{"Budsjettaar":null,"Kategorier":null,"Grenser":[{"Budsjettaar":null,"Kategorier":null,"Sekvens":0}]}""";
+        await using (var oppsett = database.Fabrikk().CreateDbContext())
+            await oppsett.Database.ExecuteSqlInterpolatedAsync($"UPDATE Epostabonnementer SET UtvalgJson = {utvalg} WHERE BrukerId = 'eldre'");
+        var plan = await EpostoppgraderingBevis.LeggTilEV04PlanAsync(database);
+        var foer = await EpostoppgraderingBevis.HentAsync(database);
+        var varsling = await EpostoppgraderingBevis.HentVarslingsdataAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            await Demoskjema.SikreAsync(db); await Demoskjema.SikreAsync(db);
+            Assert.Empty(await db.Set<FristHendelsessynlighet>().ToListAsync());
+            Assert.Equal(utvalg, await db.Epostabonnementer.Where(a => a.BrukerId == "eldre").Select(a => a.UtvalgJson).SingleAsync());
+            Assert.Equal(await db.Database.SqlQueryRaw<long>("SELECT Verdi AS Value FROM Epostrekkefolge WHERE Id = 1").SingleAsync(),
+                await db.Database.SqlQueryRaw<long>("SELECT Livssyklussekvens AS Value FROM Epostaktiveringer WHERE BrukerId = 'eldre'").SingleAsync());
+        }
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+        Assert.Equal(varsling, await EpostoppgraderingBevis.HentVarslingsdataAsync(database));
+        await EpostoppgraderingBevis.BekreftEV05PlanAsync(database, plan);
+    }
+    [Fact]
     public async Task EV05_demooppgradering_bevarer_EV04_og_fullfoerer_ventende_plan_med_legacy_metadata()
     {
         await using var database = new Sqlitedatabase(); await database.OpprettEV04SkjemaAsync();
@@ -84,6 +107,11 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
             await using var db = new EV04Kontekst(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_tilkobling).Options);
             await db.Database.EnsureCreatedAsync();
         }
+        public async Task OpprettEV05SkjemaAsync()
+        {
+            await using var db = new EV05Kontekst(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_tilkobling).Options);
+            await db.Database.EnsureCreatedAsync();
+        }
         protected override DbContextOptions<AppDbContext> Alternativer(SaveChangesInterceptor? port)
         {
             var builder = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_tilkobling);
@@ -99,6 +127,7 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
             base.OnModelCreating(b);
             b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson);
             b.Ignore<NyFristHendelse>();
+            b.Ignore<FristHendelsessynlighet>();
             b.Ignore<Epostoppsummering>();
             b.Ignore<Oppsummeringshendelse>();
             b.Ignore("Aarshjul.Infrastructure.Epost.Epostrekkefolge");
@@ -112,6 +141,8 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
             base.OnModelCreating(b);
             b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson);
             var hendelse = b.Entity<NyFristHendelse>();
+            b.Ignore<FristHendelsessynlighet>();
+            b.Entity("Aarshjul.Infrastructure.Epost.Epostaktivering").Ignore("Livssyklussekvens");
             hendelse.Ignore(x => x.Type); hendelse.Ignore(x => x.FoerJson); hendelse.Ignore(x => x.EtterJson); hendelse.Ignore(x => x.Forklaring);
             hendelse.HasIndex(x => x.FristId).IsUnique().HasFilter(null);
             b.Entity("Aarshjul.Infrastructure.Epost.Epostaktivering").Ignore("Endringssekvens");
@@ -120,6 +151,15 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
     private sealed class EV04Kontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
     {
         protected override void OnModelCreating(ModelBuilder b)
-        { base.OnModelCreating(b); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson); }
+        { base.OnModelCreating(b); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson);
+            b.Ignore<FristHendelsessynlighet>(); b.Entity("Aarshjul.Infrastructure.Epost.Epostaktivering").Ignore("Livssyklussekvens"); }
+    }
+    private sealed class EV05Kontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
+    {
+        protected override void OnModelCreating(ModelBuilder b)
+        {
+            base.OnModelCreating(b); b.Ignore<FristHendelsessynlighet>();
+            b.Entity("Aarshjul.Infrastructure.Epost.Epostaktivering").Ignore("Livssyklussekvens");
+        }
     }
 }
