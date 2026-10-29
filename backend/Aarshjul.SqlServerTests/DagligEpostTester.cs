@@ -131,7 +131,8 @@ public sealed partial class DagligEpostTester : DagligEpostKontrakt
         await using (var db = database.Fabrikk().CreateDbContext())
         {
             await db.Database.MigrateAsync(); await db.Database.MigrateAsync();
-            Assert.Equal("20261029170000_Epostadministratorstans", (await db.Database.GetAppliedMigrationsAsync()).Last());
+            Assert.Equal(new[] { "20261029170000_Epostadministratorstans", "20261029201600_Epostdriftsvern" },
+                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(2));
         }
         Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
         Assert.Equal(varsling, await EpostoppgraderingBevis.HentVarslingsdataAsync(database));
