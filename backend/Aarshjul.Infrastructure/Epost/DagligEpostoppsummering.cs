@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Security.Cryptography;
 
 namespace Aarshjul.Infrastructure.Epost;
 
@@ -93,6 +94,9 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         var synlige = frister.Select(x => x.Id).ToHashSet();
         foreach (var hendelse in hendelser.Where(x => synlige.Contains(x.FristId)))
             plan.Hendelser.Add(new() { HendelseId = hendelse.Id });
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        plan.AvmeldingsHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+        plan.Avmeldingssekvens = grenser?.Livssyklussekvens ?? 0;
         plan.Versjon = Guid.NewGuid();
         await db.SaveChangesAsync(ct);
         rett = await HentTilgangAsync(id, ct);
@@ -100,13 +104,27 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
             return await UtsettAsync(db, plan, "UavklartTilgang", ct);
         var (sisteFrister, sisteHendelser) = await HentInnholdAsync(db, id, hendelseIder, rett.Synlighet,
             utvalg, grenser?.Livssyklussekvens ?? 0, ct);
-        var sisteAbonnement = await db.Epostabonnementer.AsNoTracking().SingleOrDefaultAsync(x => x.BrukerId == id, ct);
-        if (sisteAbonnement?.Versjon != gjeldende.Versjon || !frister.SequenceEqual(sisteFrister)
-            || !hendelser.Select(h => h.Id).SequenceEqual(sisteHendelser.Select(h => h.Id))
-            || !post.Tilgjengelig || Datohjelp.Idag(klokke) != dato)
-            return await UtsettAsync(db, plan, "EndretFoerOverlevering", ct);
-        var melding = LagMelding(plan.Id, id, gjeldende.Adresse, frister, hendelser, lenke);
-        try { await post.SendAsync(melding, ct); }
+        Task overlevering;
+        await using (var grense = await Epostoverlevering.LaasAsync(db, id, ct))
+        {
+            var sisteAbonnement = await db.Epostabonnementer.AsNoTracking().SingleOrDefaultAsync(x => x.BrukerId == id, ct);
+            if (sisteAbonnement?.Versjon != gjeldende.Versjon || sisteAbonnement.Status != "Aktiv"
+                || !frister.SequenceEqual(sisteFrister)
+                || !hendelser.Select(h => h.Id).SequenceEqual(sisteHendelser.Select(h => h.Id))
+                || !post.Tilgjengelig || Datohjelp.Idag(klokke) != dato)
+            {
+                await grense.DisposeAsync();
+                return await UtsettAsync(db, plan, "EndretFoerOverlevering", ct);
+            }
+            var avmeldingslenke = new Uri(lenke, "/epostvarsling/avmeld#" + token);
+            var melding = LagMelding(plan.Id, id, gjeldende.Adresse, frister, hendelser, lenke, avmeldingslenke);
+            // Transporten tar eierskap synkront. Bare kvitteringen kan vente.
+            // Ingen avmelding kan committe mellom denne lesingen og mottaket.
+            try { overlevering = post.StartOverlevering(melding, ct).Utfall; }
+            catch (Exception) { overlevering = Task.FromException(new InvalidOperationException("Uavklart overlevering.")); }
+            await grense.CommitAsync(CancellationToken.None);
+        }
+        try { await overlevering; }
         catch (Exception)
         {
             // Også avbrudd kan skje etter overlevering. Behold ingen leverandørtekst/innhold i status.
@@ -205,7 +223,7 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
     }
 
     private static Oppsummeringsmelding LagMelding(Guid planId, string id, string adresse, List<Fristinnhold> frister,
-        List<NyFristHendelse> hendelser, Uri lenke)
+        List<NyFristHendelse> hendelser, Uri lenke, Uri avmeldingslenke)
     {
         var tekst = new StringBuilder("Fristoppdateringer i budsjettkalenderen\n\n");
         var html = new StringBuilder("<h2>Fristoppdateringer i budsjettkalenderen</h2><ul>");
@@ -240,6 +258,8 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         }
         tekst.AppendLine().Append("Åpne kalenderen (krever innlogging): ").Append(lenke.AbsoluteUri);
         html.Append("</ul><p><a href=\"").Append(WebUtility.HtmlEncode(lenke.AbsoluteUri)).Append("\">Åpne kalenderen (krever innlogging)</a></p>");
+        tekst.AppendLine().AppendLine().Append("Meld deg av e-postvarsling: ").Append(avmeldingslenke.AbsoluteUri);
+        html.Append("<p><a href=\"").Append(WebUtility.HtmlEncode(avmeldingslenke.AbsoluteUri)).Append("\">Meld deg av e-postvarsling</a></p>");
         return new(planId, id, adresse, tekst.ToString(), html.ToString());
     }
     private static string Tekstendring(string felt, string? foer, string? etter)

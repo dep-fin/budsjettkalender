@@ -14,9 +14,11 @@ public static class Demoskjema
         var tabeller = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM sqlite_master WHERE type = 'table'").ToListAsync(ct);
         var hendelseskolonner = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('NyFristHendelser')").ToListAsync(ct);
         var abonnementskolonner = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('Epostabonnementer')").ToListAsync(ct);
+        var plankolonner = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('Epostoppsummeringer')").ToListAsync(ct);
         var fristkolonner = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('Frister')").ToListAsync(ct);
         if (hendelseskolonner.Contains("Type") && abonnementskolonner.Contains("UtvalgJson")
-            && tabeller.Contains("FristHendelsessynlighet") && fristkolonner.Contains("ManuellKildeUrl")) return;
+            && tabeller.Contains("FristHendelsessynlighet") && fristkolonner.Contains("ManuellKildeUrl")
+            && plankolonner.Contains("AvmeldingsHash") && plankolonner.Contains("Avmeldingssekvens")) return;
         if (!tabeller.Contains("Epostabonnementer"))
             throw new InvalidOperationException("Demo-databasen er eldre enn EV02. Bruk en ny disponibel demo-database; eksisterende data er ikke endret.");
         await using var transaksjon = await db.Database.BeginTransactionAsync(ct);
@@ -27,6 +29,7 @@ public static class Demoskjema
         if (!abonnementskolonner.Contains("UtvalgJson")) migrasjoner.Add(new Migrations.Abonnementsutvalg());
         if (!tabeller.Contains("FristHendelsessynlighet")) migrasjoner.Add(new Migrations.HistoriskSlettingssynlighet());
         if (!fristkolonner.Contains("ManuellKildeUrl")) migrasjoner.Add(new Migrations.ManuellKildelenke());
+        if (!plankolonner.Contains("AvmeldingsHash") || !plankolonner.Contains("Avmeldingssekvens")) migrasjoner.Add(new Migrations.Avmeldingslenke());
         foreach (var migrasjon in migrasjoner)
         {
             // Migrasjonene genereres for produksjonens SQL Server. SQLite bruker

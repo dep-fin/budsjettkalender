@@ -16,6 +16,8 @@ internal sealed class EpostrekkefolgeLagring : SaveChangesInterceptor
     {
         if (!Aktiv) return result;
         var db = (AppDbContext)data.Context!;
+        var avmelding = db.ChangeTracker.Entries<Epostabonnement>().Any(x => x.State == EntityState.Modified
+            && x.Entity.Status == "Avmeldt" && x.Property(r => r.Status).OriginalValue != "Avmeldt");
         var hendelser = db.ChangeTracker.Entries<NyFristHendelse>().Where(x => x.State == EntityState.Added).ToList();
         var aktiveringer = db.ChangeTracker.Entries<Epostabonnement>().Where(x => x.Entity.Status == "Aktiv"
             && (x.State == EntityState.Added || x.State == EntityState.Modified &&
@@ -23,11 +25,13 @@ internal sealed class EpostrekkefolgeLagring : SaveChangesInterceptor
                  || x.Entity.NyeFrister && !x.Property(r => r.NyeFrister).OriginalValue
                  || x.Entity.VesentligeEndringer && !x.Property(r => r.VesentligeEndringer).OriginalValue
                  || x.Entity.UtvalgJson != x.Property(r => r.UtvalgJson).OriginalValue))).ToList();
-        if (hendelser.Count == 0 && aktiveringer.Count == 0) return result;
+        if (hendelser.Count == 0 && aktiveringer.Count == 0 && !avmelding) return result;
         try
         {
             if (db.Database.CurrentTransaction is null) _egenTransaksjon = await db.Database.BeginTransactionAsync(ct);
-            var antall = await db.Database.ExecuteSqlRawAsync("UPDATE Epostrekkefolge SET Verdi = Verdi + 1 WHERE Id = 1", ct);
+            var antall = await db.Database.ExecuteSqlRawAsync(hendelser.Count == 0 && aktiveringer.Count == 0
+                ? "UPDATE Epostrekkefolge SET Verdi = Verdi WHERE Id = 1"
+                : "UPDATE Epostrekkefolge SET Verdi = Verdi + 1 WHERE Id = 1", ct);
             if (antall != 1) throw new InvalidOperationException("Databasens e-postrekkefølge mangler.");
             // UPDATE holder skrivelåsen frem til commit på begge SQL-leverandører.
             // Nummeret er ingen klokke og kan ikke passeres av en senere commit.

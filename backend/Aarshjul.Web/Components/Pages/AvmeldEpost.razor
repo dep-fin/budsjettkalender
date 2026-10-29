@@ -1,0 +1,69 @@
+@page "/epostvarsling/avmeld"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@implements IDisposable
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>Avslutt e-postvarsling</PageTitle>
+<h1>Avslutt e-postvarsling</h1>
+<p>Bekreft hvis du ønsker å stanse e-postvarslingen som denne lenken gjelder. Å åpne siden endrer ikke abonnementet.</p>
+<p>Lenken gir bare rett til avmelding. Logg inn i kalenderen hvis du vil se eller endre egne innstillinger.</p>
+@if (_feil is not null) { <p class="feil" role="alert">@_feil</p> }
+@if (_ferdig)
+{
+    <p class="melding" role="status">Hvis lenken gjelder dette abonnementet, er videre e-postvarsling stanset. Allerede overlevert e-post kan ikke tilbakekalles.</p>
+}
+else
+{
+    <button class="knapp primaer" @onclick="MeldAv" disabled="@(!_klar || _arbeider)">Bekreft avmelding</button>
+}
+<p><a href="/epostvarsling">Til e-postvarsling (krever innlogging)</a></p>
+
+@code {
+    private string? _token, _feil;
+    private bool _klar, _arbeider, _ferdig;
+    protected override void OnInitialized() => Nav.LocationChanged += VedNavigasjon;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await HentLenke();
+    }
+    private async void VedNavigasjon(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs args)
+    {
+        if (new Uri(args.Location).AbsolutePath != "/epostvarsling/avmeld") return;
+        await InvokeAsync(HentLenke);
+    }
+    private async Task HentLenke()
+    {
+        _klar = false; _ferdig = false; _token = null; _feil = null;
+        try
+        {
+            var modul = await JS.InvokeAsync<IJSObjectReference>("import", "./epostbekreftelse.js");
+            await using (modul) { _token = await modul.InvokeAsync<string>("hentOgFjern"); }
+            _klar = true;
+        }
+        catch (Exception) { _feil = "Avmeldingslenken kunne ikke åpnes. Prøv igjen fra e-posten."; }
+        StateHasChanged();
+    }
+    public void Dispose() => Nav.LocationChanged -= VedNavigasjon;
+    private async Task MeldAv()
+    {
+        if (!_klar || _arbeider) return;
+        _arbeider = true; _feil = null;
+        try
+        {
+            var modul = await JS.InvokeAsync<IJSObjectReference>("import", "./epostbekreftelse.js");
+            await using (modul)
+            {
+                if (!await modul.InvokeAsync<bool>("meldAv", _token))
+                {
+                    _feil = "Avmeldingen kunne ikke behandles. Prøv igjen fra e-posten.";
+                    return;
+                }
+            }
+            _token = null; _ferdig = true;
+        }
+        catch (Exception) { _feil = "Avmeldingen kunne ikke behandles. Prøv igjen fra e-posten."; }
+        finally { _arbeider = false; }
+    }
+}
