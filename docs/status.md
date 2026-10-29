@@ -10,6 +10,15 @@ publiserte head, faktisk CI, mergecommit, verifisert main og oppgavenes livsløp
 testtall er bevart som [datert historikk](archive/status-foer-ux18-2026-10-28.md),
 og gjelder den revisjonen som er oppgitt der.
 
+[EV01 – driftskontrakt for e-postvarsling](operations/epostvarsling-ev01.md) er
+oppdatert mot faktisk EV11-merge `859f34959a408097d66f91debd0d06d9ff62f22c`.
+Den samler anbefalt Graph/Exchange-kandidat, autoritativ identitetskontrakt,
+operatørsteg og forskjellen mellom levert kode, tekniske standarder og åpne
+produksjonsvalg. D1–D5 står åpne: faktisk tjeneste/avsender, tenant-/principal-/
+client-/postboksidentitet, tilgangskilde/ferskhet, produksjonsdrift/retensjon/
+navngitte operatører og senere samlet miljøaksept er ikke etablert.
+#111 kan avsluttes som undersøkelse; #122–#124 forblir utsatt og #110/#136 åpne.
+
 Atelier UX01–UX17 / #76–#92 er levert og merget. UX17/PR #131 ble levert som
 `959060c898048da5ebd26bfb2cd5cdb68a1c2271` med grønn
 [CI 40717209832](https://github.com/depmartin/Budsjettkalender/actions/runs/40717209832):
@@ -158,9 +167,9 @@ og bevisgrenser i `TestResults/139-focusfix/`. Alle tre porter bestod i
 1349 ordinære, 480 SQL Server og 409 Chromium. Dette er forelderens bevis ved
 EV10-integrasjonen. #136 forblir åpen. Ingen deploy inngår.
 
-EV10 ([#120](https://github.com/depmartin/Budsjettkalender/issues/120)) videreføres i
-eksisterende [PR #147](https://github.com/depmartin/Budsjettkalender/pull/147), fortsatt
-umerget. Den opprinnelige kandidaten på EV09-basen har tree
+EV10 ([#120](https://github.com/depmartin/Budsjettkalender/issues/120)) er faktisk levert i
+[PR #147](https://github.com/depmartin/Budsjettkalender/pull/147), merget som
+`461edae60a2ad335e9376612a636e16dbd85b395`. Den opprinnelige kandidaten på EV09-basen har tree
 `dd9c9973cd84c30c9db357e36cccefa28970eb4b` og bestod 1403/510/359 i
 [CI 40901718289](https://github.com/depmartin/Budsjettkalender/actions/runs/40901718289),
 med samlet Standards-/Spec-review og separat sikkerhetsaudit uten funn.
@@ -173,7 +182,11 @@ tilfeller, uten feil/hopp. Første nettleserkjøring hadde ett EV08-avvik som ik
 gjentok seg i isolerte 2/2 eller den nye samlede 132/132-kjøringen på uendrede
 kilder/binærer; årsaken er ikke fastslått og rødt bevis er bevart. Samspillprøver og bevisgrenser står i
 [EV10-akseptansen](acceptance/2026-10-29-epost-ev10.md#integrasjon-med-levert-kalenderliste-og-søk).
-Ny full kandidat-CI gjenstår. Abonnentoversikt, faktiske valg og versjonsbeskyttet
+Senere [slutt-CI 40939501402](https://github.com/depmartin/Budsjettkalender/actions/runs/40939501402)
+bestod 1404 ordinære / 510 ekte SQL Server / 414 Chromium, null feil/hopp.
+Head, faktisk CI-checkout og merge har tree `645297ac57c75f97f3cb4cb66b150df6f09b308e`;
+[full resultatjournal](https://github.com/depmartin/Budsjettkalender/issues/110#issuecomment-6507061083).
+Abonnentoversikt, faktiske valg og versjonsbeskyttet
 administratorstans med serverbundet aktør og atomisk revisjonsspor er bevart.
 EV09s overleveringslås, UnderSending/Uavklart og konservativ retry består,
 og ny egen påmelding krever bekreftelse uten etterslep. Ingen produksjonsutsending
@@ -252,7 +265,8 @@ ekstern e-post sendes av EV02. Mergede EV03 bevarer atomiske nye-frist-hendelser
 varig daglig oppsummering, databaseordnet aktivering og kontrollert demotransport.
 Produksjonens e-postadaptere er fortsatt utilgjengelige. Senere EV-arbeid under
 #110 inngår ikke i UX18.
-EV03/PR #130 og EV04/PR #133 er bevart fra faktisk main; separat PR #128 er ikke integrert.
+EV03/PR #130 og EV04/PR #133 er bevart fra faktisk main. EV01/PR #128 var ikke
+integrert i dette daterte UX18-grunnlaget; oppdatert EV01-status står øverst.
 
 ## Prototype, videre oppgaver og miljøporter
 
@@ -275,31 +289,46 @@ en portabel lokal demo med ny database på 5093, bevisgrenser, grener/worktrees 
 kopierbar oppstart for en ny chat. Arbeidet stopper etter #93. Tidligere demoer,
 andre uferdige checkouter, PR #65 og plan-/prototypegrener er bevart.
 
-## EV11 / #121 – lokal kandidat
+## EV11 / #121 – bekreftet levert
 
-Lokal sluttprøve etter rettingen: 1449/1449 ordinære og 4/4 berørte
-Edge/Kestrel/SQLite-forløp, null feil/hopp. Uavhengig lokal/invariant discovery
-bevarer hele basen og gir 1449 ordinære / 539 SQL Server / 418 browser.
-CI krever 539 SQL- og 418 Chromium-resultater. SQL er bygget/oppdaget lokalt;
-ny ekte SQL-/full Chromium-CI på den rettede kandidaten gjenstår. Tidligere
-kandidattall og bevis er bevart som historikk i akseptansen.
+EV11 er faktisk levert i [PR #149](https://github.com/depmartin/Budsjettkalender/pull/149),
+merget som `859f34959a408097d66f91debd0d06d9ff62f22c`. Slutt-head
+`8a70d509ccd7ccc9e62a00f3ba381f8b0b582e63`, faktisk CI-checkout
+`0f2cc65894266e5f9a29b87167e9cb03e3c19fb0` og merge har tree
+`c7759abd0c69cb05936e0118af19820504e7feef`.
+[CI 40959857187](https://github.com/depmartin/Budsjettkalender/actions/runs/40959857187),
+forsøk 1, bestod **1449 ordinære / 539 ekte SQL Server / 418 Chromium**, null
+feil/hopp. Fullførte jobber/steg, TRX, strenge uavhengige navneinventar,
+migrasjons-/databevaringsassertions, hemmelighetsvern og artefakthasher er kontrollert
+i [sluttjournalen](https://github.com/depmartin/Budsjettkalender/issues/110#issuecomment-6509619752)
+og [port-/hashrapporten](https://github.com/depmartin/Budsjettkalender/pull/149#issuecomment-6509605887).
+Ren lokal hovedcheckout er ff-only-synkronisert til denne mergen.
 
-EV10/#120 er faktisk levert i PR #147 som
-`461edae60a2ad335e9376612a636e16dbd85b395`, med tree
-`645297ac57c75f97f3cb4cb66b150df6f09b308e` og slutt-CI 40939501402
-(1404 ordinære / 510 ekte SQL Server / 414 Chromium).
-EV11-kandidaten bygger på denne main i egen isolert arbeidsflate.
+Leveransen gir varig driftsstans med beskyttet HTTP/Blazor-status,
+versjonsstyrt stans/gjenopptakelse, forsøksjournal og grenser for retry,
+tilgangsoppslag og kvitteringsventing. Standardene er tre forsøk totalt per plan
+over instanser/dager, fem minutters retrypause, ett minutts oppslagspause,
+15 sekunder per tilgangsoppslag og 30 sekunders kvitteringsventing.
+Bare uttrykkelig sikkert-usendt-garanti gir retry. Mulig mottak bevares
+konservativt som Uavklart; Bekreftet betyr transportaksept, aldri bevist
+postkasselevering. Stansen gjelder dagsoppsummering; adressebekreftelse fortsetter.
 
-Kandidaten gir varig felles driftsstans med beskyttet HTTP/Blazor-status,
-versjonsstyrt stans/gjenopptakelse, varig forsøksjournal og grenser for retry,
-oppslag og kvitteringsventing. Mulig mottak bevares konservativt som Uavklart;
-Bekreftet betyr transportaksept. Retensjon rydder begrensede atomiske batcher
-med eksplisitte unntak for ubehandlet, sikkert feilet og uavklart, siste nødvendige
-historiske tilstand, gjeldende avmeldingslenker og varige behandlingsmarkører.
-Se [EV11-akseptansen](acceptance/2026-10-29-epost-ev11.md) og ADR-0010.
+Retensjon rydder begrensede atomiske batcher, med 30 dager for trygt avklarte
+forsøksdetaljer/foreldede avmeldingshasher og 90 dager for trygt overflødig
+historisk innhold. Ubehandlet, sikkert feilet og uavklart, siste nødvendige
+historiske tilstand/slettingssynlighet, gjeldende avmeldingslenker og varige
+behandlings-/dedupliseringsmarkører beholdes. Standardene er konfigurerbare
+tekniske valg, ikke godkjent produksjonspolicy.
+[ADR-0010](adr/0010-varig-daglig-epostoppsummering.md) beskriver kontrakten.
 
-Samlet review og separat sikkerhetsaudit er gjennomført. Ny ekte SQL Server-/full
-Chromium-CI og publisering/merge gjenstår. #110/#136 og D1–D5 beholdes åpne.
-Ingen produksjonsutrulling, ekstern prøvepost, tilgangsendring eller reell
-Entra/M365-aksept inngår. #111 følger først etter faktisk EV11-merge; EV12–EV14
-inngår ikke i denne kandidaten.
+Samlet review og separat sikkerhetsaudit, rettet konkurransefunn og ny relevant
+gjennomgang er dokumentert i sluttjournalen. CI-runden rettet to foreldede
+migrasjonsforventninger uten nye review/audit eller svekkede assertions.
+[EV11-akseptansen](acceptance/2026-10-29-epost-ev11.md) bevarer de tidligere lokale
+og røde bevisene, inklusive CI 40956531040; de er ikke erstattet av nye grønne
+påstander. Den senere journalen binder den faktisk grønne sluttkandidaten.
+
+Produksjonens identitets-, bekreftelses- og oppsummeringsadaptere er fortsatt
+utilgjengelige. D1–D5 og senere EV12–EV14 er åpne. Ingen produksjonsutrulling,
+ekstern prøvepost, tilgangsendring eller reell Azure/Entra/M365-aksept er utført.
+#111/PR #128 er den særskilte dokumentleveransen etter EV11; #110/#136 beholdes åpne.
