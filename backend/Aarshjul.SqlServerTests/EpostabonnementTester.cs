@@ -18,7 +18,7 @@ public sealed class EpostabonnementTester : EpostabonnementKontrakt
         await using var database = new Sqldatabase();
         await database.OpprettAsync("20261027205350_FellesFasemal");
         await FasedataBevis.LeggTilHistorikkAsync(database.Fabrikk());
-        var foer = await FasedataBevis.HentAsync(database.Fabrikk());
+        var foer = await FasedataBevis.HentAsync(FasedataBevis.HistoriskFristFabrikk(database.Fabrikk()));
         await using (var db = database.Fabrikk().CreateDbContext()) await db.Database.MigrateAsync();
         Assert.Equal(foer, await FasedataBevis.HentAsync(database.Fabrikk()));
         var post = new KontrollertBekreftelsespost();

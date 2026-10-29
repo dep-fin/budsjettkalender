@@ -132,6 +132,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Loep).IsConcurrencyToken();
             e.Property(x => x.Kilde).IsConcurrencyToken();
             e.Property(x => x.DokumentId).IsConcurrencyToken();
+            e.Property(x => x.ManuellKildeUrl).IsConcurrencyToken();
             e.Property(x => x.Status).IsConcurrencyToken();
             e.Property(x => x.Tittel).HasMaxLength(512);
             e.Property(x => x.Loep).HasMaxLength(128);

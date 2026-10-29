@@ -43,6 +43,9 @@ public class Frist
     /// <summary>Kobling til behandlet kildedokument, hvis fristen stammer fra et rundskriv.</summary>
     public Guid? DokumentId { get; set; }
 
+    /// <summary>Valgfri manuell overstyring av kildedokumentets offentlige lenke.</summary>
+    public string? ManuellKildeUrl { get; set; }
+
     public FristStatus Status { get; set; } = FristStatus.Godkjent;
 
     public Opphav Opphav { get; set; } = Opphav.Admin;

@@ -105,6 +105,7 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory, Ti
             Kategori = frist.Kategori,
             Loep = frist.Loep,
             Notat = frist.Notat,
+            ManuellKildeUrl = frist.ManuellKildeUrl,
             Synlighetskoder = frist.Synlighet.Select(s => s.GruppeKode).ToList()
         };
     }
@@ -122,6 +123,7 @@ public class FristskrivingTjeneste(IDbContextFactory<AppDbContext> dbFactory, Ti
         frist.Kategori = inndata.Kategori;
         frist.Loep = string.IsNullOrWhiteSpace(inndata.Loep) ? null : inndata.Loep.Trim();
         frist.Notat = string.IsNullOrWhiteSpace(inndata.Notat) ? null : inndata.Notat.Trim();
+        frist.ManuellKildeUrl = Kildelenke.ForLagring(inndata.ManuellKildeUrl);
     }
 
     /// <summary>Validerer skjemaet og returnerer normaliserte, gyldige gruppekoder.</summary>

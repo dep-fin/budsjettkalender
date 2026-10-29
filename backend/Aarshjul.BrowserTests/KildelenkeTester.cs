@@ -8,6 +8,94 @@ public sealed class KildelenkeTester
 {
     private const string Url = "https://www.regjeringen.no/no/kilde69?a=1&tekst=%22%3E%3Cscript%3E";
 
+    [Theory]
+    [InlineData(false, 1440)]
+    [InlineData(true, 390)]
+    public Task Administrator_lagrer_endrer_fjerner_og_bevarer_manuell_kildelenke_etter_endringsforslag(bool juster, int bredde)
+        => Nettleser.Kjor(async n =>
+    {
+        const string tittel = "KILDE140 manuelt registrert";
+        await n.LoggInn("demo-admin"); await n.Side.SetViewportSizeAsync(bredde, 1000);
+        await n.Gaa("/admin/frist/ny");
+        var felt = n.Side.GetByLabel("Kildelenke (valgfritt)", new() { Exact = true });
+        await Expect(felt).ToBeVisibleAsync();
+        await n.Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync(tittel);
+        await n.Side.GetByLabel("Dato", new() { Exact = true }).FillAsync("2030-11-20");
+        await n.Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync("2031");
+        await n.Side.GetByRole(AriaRole.Checkbox, new() { NameRegex = new("\\(FA\\)$") }).CheckAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Checkbox, new() { NameRegex = new("\\(POL\\)$") })).Not.ToBeCheckedAsync();
+        await felt.FillAsync("https://regjeringen.no.example.org/avvist140");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).PressAsync("Enter");
+        await Expect(n.Side.GetByRole(AriaRole.Alert)).ToContainTextAsync("Kildelenke må være");
+        await Expect(felt).ToHaveAttributeAsync("aria-invalid", "true");
+        Assert.DoesNotContain(await n.Frister(), f => (string?)f!["tittel"] == tittel);
+        await felt.FillAsync(Url);
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).PressAsync("Enter");
+        await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Frister", Exact = true })).ToBeVisibleAsync();
+        var frist = Assert.Single(await n.Frister(), f => (string?)f!["tittel"] == tittel)!;
+        var id = (string)frist["id"]!;
+        Assert.Equal(Url, (string?)frist["kildeUrl"]);
+        using var db = new SqliteConnection($"Data Source={Path.Combine(n.Mappe, "demo.db")}");
+        await db.OpenAsync(); await KnyttDokument(db, tittel, "https://regjeringen.no/no/fallback140");
+        await n.Gaa($"/admin/frist/{id}");
+        await Expect(felt).ToHaveValueAsync(Url);
+        await Expect(n.Side.Locator("form")).ToContainTextAsync("Tomt felt fjerner den manuelle lenken");
+        Assert.True(await n.Side.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth"));
+        await n.Side.ScreenshotAsync(new() { Path = Path.Combine(n.Mappe, $"kilde140-admin-{bredde}.png"), FullPage = true });
+        await felt.FillAsync("https://regjeringen.no/no/endret140");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).PressAsync("Enter");
+        await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Frister", Exact = true })).ToBeVisibleAsync();
+        await n.Gaa($"/admin/frist/{id}");
+        await Expect(felt).ToHaveValueAsync("https://regjeringen.no/no/endret140");
+        await felt.FillAsync("");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).PressAsync("Enter");
+        await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Frister", Exact = true })).ToBeVisibleAsync();
+        Assert.Equal("https://regjeringen.no/no/fallback140", (string?)(await n.Frister()).Single(f => (string?)f!["id"] == id)!["kildeUrl"]);
+        await n.Gaa($"/admin/frist/{id}"); await felt.FillAsync(Url);
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).PressAsync("Enter");
+        await Expect(n.Side.GetByRole(AriaRole.Heading, new() { Name = "Frister", Exact = true })).ToBeVisibleAsync();
+
+        await n.LoggInn("demo-fa"); await n.Gaa($"/forslag/endre/{id}");
+        await Expect(n.Side.GetByLabel("Kildelenke (valgfritt)", new() { Exact = true })).ToHaveCountAsync(0);
+        await n.Side.GetByLabel("Notat", new() { Exact = true }).FillAsync("Endret innhold, bevart kilde");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Send inn", Exact = true }).ClickAsync();
+        await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = tittel }).Filter(new() { HasText = "Venter" })).ToHaveCountAsync(1);
+        await n.LoggInn("demo-admin"); await n.Gaa("/admin/ko?aar=alle");
+        var kort = ForslagTester.Kort(n.Side, tittel);
+        if (juster)
+        {
+            await kort.GetByRole(AriaRole.Button, new() { Name = "Juster", Exact = true }).ClickAsync();
+            await Expect(n.Side.GetByLabel("Kildelenke (valgfritt)", new() { Exact = true })).ToHaveCountAsync(0);
+            await n.Side.GetByRole(AriaRole.Button, new() { Name = "Lagre", Exact = true }).PressAsync("Enter");
+        }
+        else
+        {
+            await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
+            await kort.GetByRole(AriaRole.Button, new() { Name = "Bekreft godkjenning", Exact = true }).ClickAsync();
+        }
+        await Expect(ForslagTester.Kort(n.Side, tittel)).ToHaveCountAsync(0);
+        Assert.Equal(Url, (string?)(await n.Frister()).Single(f => (string?)f!["id"] == id)!["kildeUrl"]);
+        await n.LoggInn("demo-fa"); await n.Side.SetViewportSizeAsync(bredde, 1000);
+        await n.Gaa("/kalender"); await KalenderTester.VelgMaaned(n, "2030-11");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = "Liste", Exact = true }).ClickAsync();
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = tittel, Exact = true }).PressAsync("Enter");
+        var dialog = n.Side.GetByRole(AriaRole.Dialog, new() { Name = tittel, Exact = true });
+        var lenke = dialog.GetByRole(AriaRole.Link, new() { Name = "Les rundskrivet på regjeringen.no (åpnes i ny fane)", Exact = true });
+        await Expect(lenke).ToHaveAttributeAsync("href", Url);
+        await Expect(lenke).ToHaveAttributeAsync("target", "_blank");
+        await Expect(lenke).ToHaveAttributeAsync("referrerpolicy", "no-referrer");
+        await Expect(lenke).ToHaveAttributeAsync("rel", "noopener noreferrer");
+        await lenke.FocusAsync(); await Expect(lenke).ToBeFocusedAsync();
+        Assert.True(await n.Side.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth"));
+        await n.Side.ScreenshotAsync(new() { Path = Path.Combine(n.Mappe, $"kilde140-detaljer-{bredde}.png"), FullPage = true });
+        await n.Side.Keyboard.PressAsync("Escape");
+        await n.Gaa("/budsjettaar");
+        await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Velg budsjettår", Exact = true }).SelectOptionAsync("2031");
+        await n.Side.GetByRole(AriaRole.Button, new() { Name = tittel, Exact = true }).PressAsync("Enter");
+        await Expect(n.Side.GetByRole(AriaRole.Dialog, new() { Name = tittel, Exact = true }).GetByRole(AriaRole.Link, new() { Name = "Les rundskrivet på regjeringen.no (åpnes i ny fane)", Exact = true })).ToHaveAttributeAsync("href", Url);
+        n.BekreftIngenKretsfeil();
+    });
+
     [Fact]
     public Task Synlig_kildelenke_er_trygg_for_alle_roller_og_fravaerende_uten_tillatt_kilde() => Nettleser.Kjor(async n =>
     {

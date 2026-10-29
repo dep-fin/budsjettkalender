@@ -25,7 +25,7 @@ public static class EpostoppgraderingBevis
     private sealed class HistoriskKontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
     {
         protected override void OnModelCreating(ModelBuilder b)
-        { base.OnModelCreating(b); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson); }
+        { base.OnModelCreating(b); b.Entity<Epostabonnement>().Ignore(x => x.UtvalgJson); b.Entity<Frist>().Ignore(x => x.ManuellKildeUrl); }
     }
     public sealed record EV03Plan(Guid Behandlet, Guid Ventende, Guid GammelPlan, Guid VentendePlan);
 
@@ -34,7 +34,7 @@ public static class EpostoppgraderingBevis
         var plan = await LeggTilEV03PlanAsync(database, ev04: true);
         await using var db = database.Fabrikk().CreateDbContext();
         var id = await db.NyFristHendelser.Where(h => h.Id == plan.Ventende).Select(h => h.FristId).SingleAsync();
-        var skriving = new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(database.Fabrikk(), new EpostabonnementKontrakt.Proeveklokke());
+        var skriving = new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(FasedataBevis.HistoriskFristFabrikk(database.Fabrikk()), new EpostabonnementKontrakt.Proeveklokke());
         var input = (await skriving.HentForRedigeringAsync(id))!; input.Dato = input.Dato.AddDays(1);
         input.VesentligEndring = true; input.Endringsforklaring = "Bevar EV04-forklaring";
         await skriving.OppdaterAsync(id, input);
@@ -160,7 +160,7 @@ public static class EpostoppgraderingBevis
             return rader.Select(r => JsonSerializer.Serialize(kontekst.Entry(r).Properties.OrderBy(p => p.Metadata.Name)
                 .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue))).Order(StringComparer.Ordinal).ToArray();
         }
-        return JsonSerializer.Serialize(new { Fasedata = await FasedataBevis.HentAsync(database.Fabrikk()),
+        return JsonSerializer.Serialize(new { Fasedata = await FasedataBevis.HentAsync(FasedataBevis.HistoriskFristFabrikk(database.Fabrikk())),
             Abonnement = await Rader<Epostabonnement>(), Feed = await Rader<Kalenderabonnement>(), Runder = await Rader<InternRunde>(),
             Gjoeremaal = await Rader<InterntGjoeremaal>(), Ansvar = await Rader<GjoeremaalAnsvarlig>(),
             Regler = await Rader<GjoeremaalRegel>(), Rundetyper = await Rader<RegelRundetype>(), Regelansvar = await Rader<RegelAnsvarlig>() });

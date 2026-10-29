@@ -13,6 +13,29 @@ namespace Aarshjul.SqlServerTests;
 public sealed class DagligEpostTester : DagligEpostKontrakt
 {
     [Fact]
+    public async Task Manuell_kildelenke_migrerer_fra_levert_EV05_uten_datatap_eller_historiske_hendelser()
+    {
+        await using var database = new Sqldatabase(); await database.OpprettAsync("20261028193853_Abonnementsutvalg");
+        await EpostoppgraderingBevis.LeggTilAsync(database);
+        var foer = await EpostoppgraderingBevis.HentAsync(database);
+        await using (var db = database.Fabrikk().CreateDbContext())
+        {
+            await db.Database.MigrateAsync(); await db.Database.MigrateAsync();
+            Assert.All(await db.Frister.ToListAsync(), f => Assert.Null(f.ManuellKildeUrl));
+            Assert.Empty(await db.NyFristHendelser.ToListAsync());
+        }
+        Assert.Equal(foer, await EpostoppgraderingBevis.HentAsync(database));
+        Aarshjul.Application.Frister.IFristskriving skriving = new Aarshjul.Infrastructure.Frister.FristskrivingTjeneste(database.Fabrikk());
+        var id = await skriving.OpprettAsync(new()
+        {
+            Tittel = "Manuell kilde etter SQL-oppgradering", Dato = new(2030, 11, 20), Budsjettaar = 2031,
+            Synlighetskoder = ["FA"], ManuellKildeUrl = "https://regjeringen.no/no/sql140"
+        });
+        Assert.Equal("https://regjeringen.no/no/sql140", (await skriving.HentForRedigeringAsync(id))!.ManuellKildeUrl);
+        Aarshjul.Application.Frister.IFristlesing lesing = new Aarshjul.Infrastructure.Frister.FristTjeneste(database.Fabrikk(), TimeProvider.System);
+        Assert.Equal("https://regjeringen.no/no/sql140", (await lesing.HentEnAsync(new Aarshjul.Application.Synlighet.Synlighetskontekst(false, ["FA"]), id))!.KildeUrl);
+    }
+    [Fact]
     public async Task EV05_migrasjon_bevarer_EV04_og_fullfoerer_ventende_plan_med_legacy_metadata()
     {
         await using var database = new Sqldatabase(); await database.OpprettAsync("20261028165341_VarseltyperOgEndringer");
@@ -63,8 +86,8 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
         await using (var db = database.Fabrikk().CreateDbContext())
         {
             await db.Database.MigrateAsync();
-            Assert.Equal(new[] { "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering", "20261028165341_VarseltyperOgEndringer", "20261028193853_Abonnementsutvalg" },
-                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(4));
+            Assert.Equal(new[] { "20261028133321_DagligEpostoppsummering", "20261028142358_OrdnetEpostaktivering", "20261028165341_VarseltyperOgEndringer", "20261028193853_Abonnementsutvalg", "20261029092000_ManuellKildelenke" },
+                (await db.Database.GetAppliedMigrationsAsync()).TakeLast(5));
         }
         Assert.True(foer == await EpostoppgraderingBevis.HentAsync(database), "Leverte UX16-/EV02-data må bevares gjennom EV03-oppgraderingen.");
         await EpostoppgraderingBevis.BekreftInternvern(database);

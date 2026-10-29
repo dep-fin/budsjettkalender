@@ -336,6 +336,10 @@ namespace Aarshjul.Infrastructure.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
 
+                    b.Property<string>("ManuellKildeUrl")
+                        .IsConcurrencyToken()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Notat")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");

@@ -1,6 +1,7 @@
 using Aarshjul.Application.Datautveksling;
 using Aarshjul.Domain;
 using Microsoft.EntityFrameworkCore;
+using Aarshjul.Infrastructure.Frister;
 
 namespace Aarshjul.Infrastructure.Datautveksling;
 
@@ -36,6 +37,7 @@ public sealed class FristDatautveksling(IDbContextFactory<AppDbContext> dbFactor
             Loep = f.Loep,
             Kilde = f.Kilde,
             DokumentId = f.DokumentId,
+            ManuellKildeUrl = f.ManuellKildeUrl,
             Status = f.Status,
             Opphav = f.Opphav,
             ForeslaattAv = f.ForeslaattAv,
@@ -100,6 +102,7 @@ public sealed class FristDatautveksling(IDbContextFactory<AppDbContext> dbFactor
         Importvalidering.Kontroller(database.Versjon, database.Frister, f => f.Id);
         if (database.Frister.Any(f => f.SynligFor is null))
             throw new Aarshjul.Application.Valideringsfeil("Alle frister må ha en synlighetsliste. En tom liste er tillatt.");
+        foreach (var frist in database.Frister) Kildelenke.ForLagring(frist.ManuellKildeUrl);
     }
 
     private static async Task<(IReadOnlyList<FristEksport> Frister, IReadOnlyList<string> Advarsler)> KlargjoerAsync(
@@ -117,7 +120,7 @@ public sealed class FristDatautveksling(IDbContextFactory<AppDbContext> dbFactor
                 if (gyldigeKoder.Contains(kode)) koder.Add(kode);
                 else advarsler.Add($"«{kilde.Tittel}»: hoppet over ukjent synlighetsgruppe «{kode}».");
             }
-            frister.Add(kilde with { SynligFor = koder.ToArray() });
+            frister.Add(kilde with { SynligFor = koder.ToArray(), ManuellKildeUrl = Kildelenke.ForLagring(kilde.ManuellKildeUrl) });
         }
         return (frister, advarsler);
     }
@@ -137,6 +140,7 @@ public sealed class FristDatautveksling(IDbContextFactory<AppDbContext> dbFactor
             Loep = kilde.Loep,
             Kilde = kilde.Kilde,
             DokumentId = kilde.DokumentId,
+            ManuellKildeUrl = kilde.ManuellKildeUrl,
             Status = kilde.Status,
             Opphav = kilde.Opphav,
             ForeslaattAv = kilde.ForeslaattAv,

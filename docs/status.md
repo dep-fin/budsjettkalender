@@ -54,8 +54,9 @@ bestod 1063 ordinære, 216 ekte SQL Server- og 336 Chromium-tilfeller uten feil/
 [EV05-akseptansen](acceptance/2026-10-28-epost-ev05.md) skiller opprinnelige lokale
 bevis fra integrasjonsprøver og ny kandidat-CI. Ingen deploy inngår.
 
-EV06 ([#116](https://github.com/depmartin/Budsjettkalender/issues/116)) er en lokal
-kandidat fra denne mergede basen. Begge godkjenningsinnganger lagrer førstegangs-
+EV06 ([#116](https://github.com/depmartin/Budsjettkalender/issues/116)) er bekreftet
+merget i [PR #135](https://github.com/depmartin/Budsjettkalender/pull/135) som
+`28694c580141b91f9707c616a53ee95f05246e11`. Begge godkjenningsinnganger lagrer førstegangs-
 eller vesentlig endringshendelse atomisk med forslag, frist og innboksmelding.
 Godkjennerens begrunnede innholdsendring følger samme regel som direkte redigering;
 endringsforslag beholder synlighet og direkte godkjenning bevarer målfristens tid.
@@ -63,7 +64,21 @@ Innsending, generering/regenerering, avvisning og korrektur gir ingen fristpost.
 [EV06-akseptansen](acceptance/2026-10-29-epost-ev06.md) beskriver rød/grønn,
 konkurranseprøver og reelle brukerforløp. Oppdaget inventar er 1157 ordinære,
 310 SQL Server- og 342 nettlesertilfeller med hele basens navn bevart. Samlet
-review, separat sikkerhetsaudit og full kandidat-CI gjenstår før levering.
+review, separat sikkerhetsaudit og CI fra leveransen er dokumentert i PR #135;
+den daterte akseptansen bevarer de opprinnelige lokale bevisene.
+
+[#140](https://github.com/depmartin/Budsjettkalender/issues/140), parent #136 punkt 4,
+er en ny lokal kandidat fra den faktisk mergede EV06-basen. Direkte administrator-
+oppretting/redigering får valgfri manuell kildelenke, med prioritet foran dokumentets
+lenke og uttrykkelig forklaring ved tømming. Én serverregel gjelder skriving,
+JSON-import og lesing. Additiv migrasjon og demooppgradering bevarer eksisterende
+data. Endringsforslag/godkjenning bevarer lenken; køjustering har ikke feltet.
+JSON versjon 1 bevarer det nye valgfrie feltet i ny app. Lenkeendring er vanlig
+innholdsendring og kan markeres vesentlig med dagens begrunnelse.
+Lokal ordinær suite består 1167/1167. Oppdaget SQL-/nettleserinventar er 316/344;
+SQL Server er ikke kjørt lokalt. [Kildelenkeakseptansen](acceptance/2026-10-29-manuell-kildelenke.md)
+beskriver rød/grønn, faktisk Edge/Kestrel, bilder og bevisgrenser. Samlet review,
+separat sikkerhetsaudit og alle tre faktiske kandidat-CI-porter gjenstår.
 
 ## UX18 – samlet akseptanse og publisering
 

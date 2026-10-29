@@ -82,7 +82,7 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         var fristIder = hendelser.Select(x => x.FristId).ToList();
         var frister = await db.Frister.AsNoTracking().Where(x => x.Status == FristStatus.Godkjent && fristIder.Contains(x.Id))
             .FiltrerSynlige(rett.Synlighet).OrderBy(x => x.Sorteringsdag).ThenBy(x => x.Tittel).ThenBy(x => x.Id)
-            .Select(x => new Fristinnhold(x.Id, x.Tittel, x.Dato, x.Datopresisjon, x.Datokvalifikator, x.Klokkeslett, x.Budsjettaar, x.Kategori, x.Loep, x.Notat)).ToListAsync(ct);
+            .Select(x => new Fristinnhold(x.Id, x.Tittel, x.Dato, x.Datopresisjon, x.Datokvalifikator, x.Klokkeslett, x.Budsjettaar, x.Kategori, x.Loep, x.Notat, x.ManuellKildeUrl)).ToListAsync(ct);
         var gjeldende = await db.Epostabonnementer.AsNoTracking().SingleOrDefaultAsync(x => x.BrukerId == id, ct);
         if (gjeldende is null || gjeldende.Status != "Aktiv" || !(gjeldende.NyeFrister || gjeldende.VesentligeEndringer)
             || gjeldende.Aktivert?.UtcTicks != start || gjeldende.Adresse != abonnent.Adresse || gjeldende.Versjon != abonnent.Versjon)
@@ -105,7 +105,7 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
             return await UtsettAsync(db, plan, "UavklartTilgang", ct);
         var sisteFrister = await db.Frister.AsNoTracking().Where(x => x.Status == FristStatus.Godkjent && fristIder.Contains(x.Id))
             .FiltrerSynlige(rett.Synlighet).OrderBy(x => x.Sorteringsdag).ThenBy(x => x.Tittel).ThenBy(x => x.Id)
-            .Select(x => new Fristinnhold(x.Id, x.Tittel, x.Dato, x.Datopresisjon, x.Datokvalifikator, x.Klokkeslett, x.Budsjettaar, x.Kategori, x.Loep, x.Notat)).ToListAsync(ct);
+            .Select(x => new Fristinnhold(x.Id, x.Tittel, x.Dato, x.Datopresisjon, x.Datokvalifikator, x.Klokkeslett, x.Budsjettaar, x.Kategori, x.Loep, x.Notat, x.ManuellKildeUrl)).ToListAsync(ct);
         var sisteAbonnement = await db.Epostabonnementer.AsNoTracking().SingleOrDefaultAsync(x => x.BrukerId == id, ct);
         if (sisteAbonnement?.Versjon != gjeldende.Versjon || !frister.SequenceEqual(sisteFrister) || !post.Tilgjengelig || Datohjelp.Idag(klokke) != dato)
             return await UtsettAsync(db, plan, "EndretFoerOverlevering", ct);
@@ -206,5 +206,5 @@ public sealed class DagligEpostoppsummering(IDbContextFactory<AppDbContext> fabr
         => presisjon == Datopresisjon.Maaned
             ? $"Tentativt: {(kvalifikator?.ToString().ToLowerInvariant() is { } k ? k + " " : "")}{dato.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("nb-NO"))}"
             : dato.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture) + (tid is { } klokke ? $" kl. {klokke:HH:mm}" : "");
-    private sealed record Fristinnhold(Guid Id, string Tittel, DateOnly Dato, Datopresisjon Presisjon, Datokvalifikator? Kvalifikator, TimeOnly? Tid, int Budsjettaar, Kategori Kategori, string? Loep, string? Notat);
+    private sealed record Fristinnhold(Guid Id, string Tittel, DateOnly Dato, Datopresisjon Presisjon, Datokvalifikator? Kvalifikator, TimeOnly? Tid, int Budsjettaar, Kategori Kategori, string? Loep, string? Notat, string? ManuellKildeUrl);
 }
