@@ -75,6 +75,7 @@ public sealed class EpostabonnementTester : EpostabonnementKontrakt
             base.OnModelCreating(b);
             b.Ignore<Epostabonnement>();
             b.Ignore<Epostadministratorstans>();
+            Aarshjul.Testkontrakter.EpostoppgraderingBevis.IgnorerEV11(b);
         }
     }
 }

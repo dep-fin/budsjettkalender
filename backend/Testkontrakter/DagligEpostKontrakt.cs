@@ -1665,7 +1665,7 @@ public abstract partial class DagligEpostKontrakt
         public IFristskriving Skriv => new FristskrivingTjeneste(database.Fabrikk(), Klokke);
         public IDagligEpostoppsummering Jobb(SaveChangesInterceptor? port = null, IMottakertilgangskilde? tilgang = null,
             IOppsummeringspost? post = null, TimeOnly? sendetid = null) => new DagligEpostoppsummering(database.Fabrikk(port), Klokke,
-                tilgang ?? Tilgang, post ?? Post, Options.Create(new DagligEpostOpsjoner { Klokkeslett = sendetid ?? new(8, 0) }));
+                tilgang ?? Tilgang, post ?? Post, Options.Create(new DagligEpostOpsjoner { Klokkeslett = sendetid ?? new(8, 0), Oppslagspause = TimeSpan.Zero }));
         public async Task Aktiver(string id = "a")
         {
             await Abonnement.MeldPaaAsync(id, "egen@fin.dep.no", true);

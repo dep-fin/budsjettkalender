@@ -38,6 +38,16 @@ og revisjonsspor i samme transaksjon under EV09s overleveringslås. Lesing
 oppretter ingen kontoer. Verken roller, grupper eller kalenderfeed endres.
 Se [EV10-akseptansen](acceptance/2026-10-29-epost-ev10.md) og ADR-0010.
 
+Administrator-innstillinger → e-postdrift går gjennom `IEpostdrift` med egen beskyttet
+HTTP-inngang og en kretskommando som revurderer administratorpolicy ved hver operasjon.
+En seedet, versjonert driftsrad deles av alle jobbinstanser. Stans tar samme globale
+overleveringslås som senderen og kontrolleres igjen før synkront transportmottak.
+Plan og forsøksjournal bevarer status, tellere og ventefrister over omstart og nye dager.
+Bare adapterens uttrykkelige sikkert-usendt-garanti gir begrenset retry; ellers blir
+mulig overlevering Uavklart. TimeProvider avgrenser tilgangsoppslag og kvitteringsventing.
+Opprydding bruker samme lås, begrensede transaksjonsbatcher og bevarer dagsnøkler,
+hendelsesidentiteter og behandlingskoblinger. Se [EV11](acceptance/2026-10-29-epost-ev11.md).
+
 Direkte manuell oppretting → atomisk ny frist-hendelse → varig dagsplan → fersk
 mottakertilgang → sentralt synlighetsfilter → egen tekst-/HTML-melding går gjennom
 `IDagligEpostoppsummering.KjorAsync`. Tid, lagring, identitetskilde og posttransport

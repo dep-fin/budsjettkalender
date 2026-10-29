@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Aarshjul.Tests;
 
-public sealed class DagligEpostTester : DagligEpostKontrakt
+public sealed partial class DagligEpostTester : DagligEpostKontrakt
 {
     [Fact]
     public async Task EV10_demooppgradering_fra_EV09_bevarer_alt_uten_falske_stanser_eller_hendelser()
@@ -260,6 +260,11 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
             await using var db = new EV09Kontekst(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_tilkobling).Options);
             await db.Database.EnsureCreatedAsync();
         }
+        public async Task OpprettEV10SkjemaAsync()
+        {
+            await using var db = new EV10Kontekst(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_tilkobling).Options);
+            await db.Database.EnsureCreatedAsync();
+        }
         public async Task OpprettEV03SkjemaAsync()
         {
             await using var db = new EV03Kontekst(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_tilkobling).Options);
@@ -312,7 +317,12 @@ public sealed class DagligEpostTester : DagligEpostKontrakt
     private sealed class EV09Kontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
     {
         protected override void OnModelCreating(ModelBuilder b)
-        { base.OnModelCreating(b); b.Ignore<Epostadministratorstans>(); }
+        { base.OnModelCreating(b); b.Ignore<Epostadministratorstans>(); EpostoppgraderingBevis.IgnorerEV11(b); }
+    }
+    private sealed class EV10Kontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
+    {
+        protected override void OnModelCreating(ModelBuilder b)
+        { base.OnModelCreating(b); EpostoppgraderingBevis.IgnorerEV11(b); }
     }
     private sealed class EV03Kontekst(DbContextOptions<AppDbContext> options) : AppDbContext(options)
     {

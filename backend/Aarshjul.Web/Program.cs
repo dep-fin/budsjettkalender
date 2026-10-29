@@ -104,6 +104,8 @@ public partial class Program
             builder.Services.AddSingleton<TimeProvider>(s => s.GetRequiredService<KontrollertEpostklokke>());
         }
         builder.Services.AddOptions<DagligEpostOpsjoner>().Bind(builder.Configuration.GetSection("DagligEpost"))
+            .Validate(o => o.Gyldig(), "Ugyldige forsøks-, vente- eller oppbevaringsgrenser for e-postdrift.").ValidateOnStart()
+            .Validate(o => erDemo || erTesting || o.Oppslagspause >= TimeSpan.FromMinutes(1), "Produksjon krever minst ett minutt mellom utsatte oppslag.")
             .Validate(o => Uri.TryCreate(o.OffentligBasisadresse, UriKind.Absolute, out var uri)
                 && (uri.Scheme == "https" || (erDemo || erTesting) && uri.Scheme == "http" && uri.IsLoopback),
                 "DagligEpost:OffentligBasisadresse må være HTTPS, eller lokal loopback i demo/Testing.");
@@ -112,6 +114,8 @@ public partial class Program
         if (!erTesting && !kontrollertEpost) builder.Services.AddHostedService<Aarshjul.Web.Epost.DagligEpostjobb>();
         builder.Services.AddScoped<IEpostabonnement, EpostabonnementTjeneste>();
         builder.Services.AddScoped<IEpostabonnentadministrasjon, Epostabonnentadministrasjon>();
+        builder.Services.AddScoped<IEpostdrift, Aarshjul.Infrastructure.Epost.Epostdrift>();
+        builder.Services.AddScoped<EpostdriftKommando>();
         builder.Services.AddScoped<EpostabonnentadministrasjonKommando>();
         builder.Services.AddScoped<EpostabonnementKommando>();
         if (erDemo || erTesting)
@@ -217,7 +221,9 @@ public partial class Program
         // antiforgery ved ny kjøring av POST og kan erstatte avvisningen med 400.
         app.Use(async (http, neste) =>
         {
-            if (http.Request.Path.StartsWithSegments("/api/admin/epostabonnenter")
+            if (http.Request.Path.StartsWithSegments("/api/admin/epostdrift")
+                || http.Request.Path.StartsWithSegments("/admin/innstillinger/epostdrift")
+                || http.Request.Path.StartsWithSegments("/api/admin/epostabonnenter")
                 || http.Request.Path.StartsWithSegments("/admin/innstillinger/epostvarsling"))
             {
                 http.Response.Headers.CacheControl = "no-store";
@@ -249,6 +255,7 @@ public partial class Program
         app.MapFristEndepunkter();
         app.MapEpostEndepunkter();
         app.MapEpostabonnentEndepunkter();
+        app.MapEpostdriftEndepunkter();
         if (brukEntra)
         {
             app.MapControllers();

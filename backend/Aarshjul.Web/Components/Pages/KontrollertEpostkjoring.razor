@@ -15,7 +15,9 @@
     <input id="eposttid" type="datetime-local" @bind="_tid" />
     <button @onclick="SettTid">Sett kontrollert tid</button>
     <label><input type="checkbox" @bind="_utsett" /> Utsett kontrollert transport</label>
-    <button @onclick="Kjor">Kjør daglig oppsummering</button>
+    <label><input type="checkbox" @bind="_avvis" /> Avvis sikkert før mottak</label>
+    <label><input type="checkbox" @bind="_vent" /> Vent med kontrollert kvittering</label>
+    <button disabled="@_kjorer" @onclick="Kjor">Kjør daglig oppsummering</button>
     <p role="status">@_status</p>
 }
 else
@@ -26,7 +28,7 @@ else
 @code {
     private DateTime _tid = new(2030, 1, 1, 7, 0, 0);
     private string? _status;
-    private bool _utsett;
+    private bool _utsett, _avvis, _vent, _kjorer;
     private bool Tillatt => (Miljoe.IsEnvironment("Testing") || Miljoe.IsDevelopment() && Konfigurasjon.GetValue<bool>("Demo") || Miljoe.IsEnvironment("Demo"))
         && Konfigurasjon.GetValue<bool>("DagligEpost:KontrollertKjoring");
     private void SettTid()
@@ -38,8 +40,15 @@ else
     private async Task Kjor()
     {
         if (!Tillatt) return;
-        Tjenester.GetRequiredService<Aarshjul.Infrastructure.Epost.KontrollertOppsummeringspost>().Stanset = _utsett;
-        var resultat = await Tjenester.GetRequiredService<IDagligEpostoppsummering>().KjorAsync();
-        _status = resultat.FoerSendetid ? "Før sendetid." : $"Kjøring fullført. {resultat.Mottakere.Count(x => x.Status == "Bekreftet")} bekreftet.";
+        var transport = Tjenester.GetRequiredService<Aarshjul.Infrastructure.Epost.KontrollertOppsummeringspost>();
+        transport.Stanset = _utsett; transport.AvvisSikkert = _avvis; transport.VentPaaKvittering = _vent;
+        await Tjenester.GetRequiredService<IEpostdrift>().RyddAsync();
+        _kjorer = true; _status = "Kjøring pågår.";
+        try
+        {
+            var resultat = await Tjenester.GetRequiredService<IDagligEpostoppsummering>().KjorAsync();
+            _status = resultat.FoerSendetid ? "Før sendetid." : $"Kjøring fullført. {resultat.Mottakere.Count(x => x.Status == "Bekreftet")} bekreftet.";
+        }
+        finally { _kjorer = false; }
     }
 }

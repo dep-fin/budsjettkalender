@@ -8,12 +8,18 @@ public sealed class DagligEpostjobb(IServiceScopeFactory scopefabrikk, TimeProvi
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        DateTimeOffset? ryddet = null;
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1), klokke);
         do
         {
             try
             {
                 using var scope = scopefabrikk.CreateScope();
+                if (ryddet is null || klokke.GetUtcNow() >= ryddet.Value.AddHours(1))
+                {
+                    if (scope.ServiceProvider.GetService<IEpostdrift>() is { } drift) await drift.RyddAsync(stoppingToken);
+                    ryddet = klokke.GetUtcNow();
+                }
                 var resultat = await scope.ServiceProvider.GetRequiredService<IDagligEpostoppsummering>().KjorAsync(stoppingToken);
                 foreach (var gruppe in resultat.Mottakere.GroupBy(x => x.Status))
                     logg.LogInformation("Daglig e-post: {Status}, antall {Antall}.", gruppe.Key, gruppe.Count());
