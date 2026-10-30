@@ -20,6 +20,10 @@ om gangen med rød → grønn test, og gjennomgå endringen mot både standarder
 Avklar uavklarte produktvalg; en avgrenset, allerede bestilt feilretting kan utføres direkte.
 Se `CODING_STANDARDS.md` ved kodeendringer og `docs/architecture.md` ved modulendringer.
 
+Ved tekniske valg, nye svar fra produkteier/systemansvarlig og relevante leveranser:
+les og vedlikehold [avklaringsregisteret #151](https://github.com/depmartin/Budsjettkalender/issues/151)
+etter `docs/agents/issue-tracker.md`.
+
 ## Agent skills
 
 ### Issue tracker
