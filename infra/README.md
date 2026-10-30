@@ -34,7 +34,7 @@ Etter første utrulling må web-appens managed identity få databasetilgang i SQ
 
 ## Key Vault ved weboppstart
 
-[#40](https://github.com/depmartin/Budsjettkalender/issues/40) kobler Biceps
+[#40](https://github.com/dep-fin/budsjettkalender/issues/40) kobler Biceps
 `KeyVault__Uri` til webappens konfigurasjon. Oppstarten laster hemmelighetene med den
 offisielle Azure-provideren før valg av demo, registrering av database og Entra-binding.
 `ManagedIdentityCredential` bruker eksplisitt webappens systemtilordnede identitet,
@@ -107,7 +107,7 @@ eksplisitt Trace-regel per loggleverandør og konfigurasjonsreload. Øvrig applo
 kontrollert oppstartsfeil beholdes. Prosessmiljøet gjenopprettes, og testsamlingen
 kjører uten parallellitet med andre testklasser. Dette er ikke bevis for Entra-innlogging, SQL Server,
 managed identity, RBAC eller Azure-nettverk. Faktisk miljøaksept hører til P13–P15 i
-[#38](https://github.com/depmartin/Budsjettkalender/issues/38).
+[#38](https://github.com/dep-fin/budsjettkalender/issues/38).
 Data Protection-oppsett er en egen oppgave (#41).
 
 Primærkilder: [Key Vault-provider, navnemapping og mellomlagring](https://learn.microsoft.com/en-us/aspnet/core/security/key-vault-configuration?view=aspnetcore-10.0),
