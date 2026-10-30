@@ -78,12 +78,13 @@ public sealed class ForslagTester
     internal static ILocator Kort(IPage side, string tittel)
         => side.Locator("article.kort").Filter(new() { Has = side.GetByRole(AriaRole.Heading, new() { Name = tittel, Exact = true }) });
 
-    internal static async Task Send(Nettleser n, string tittel, string gruppe = "FA")
+    internal static async Task Send(Nettleser n, string tittel, string gruppe = "FA", string? kategori = null)
     {
         await n.Gaa("/forslag/ny");
         await n.Side.GetByLabel("Tittel", new() { Exact = true }).FillAsync(tittel);
         await n.Side.GetByLabel("Dato", new() { Exact = true }).FillAsync("2030-11-20");
         await n.Side.GetByLabel("Budsjettår", new() { Exact = true }).FillAsync("2031");
+        if (kategori is not null) await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Kategori", Exact = true }).SelectOptionAsync(kategori);
         await n.Side.GetByRole(AriaRole.Checkbox, new() { NameRegex = new($"\\({gruppe}\\)$") }).CheckAsync();
         await n.Side.GetByRole(AriaRole.Button, new() { Name = "Send inn", Exact = true }).ClickAsync();
         await Expect(n.Side.GetByRole(AriaRole.Row).Filter(new() { HasText = tittel })).ToContainTextAsync("Venter");
@@ -177,14 +178,20 @@ public sealed class ForslagTester
     {
         await n.LoggInn("demo-fa");
         await Send(n, "AK juster");
+        await Send(n, "AK filterkontroll", kategori: "Gulbok");
         await n.LoggInn("demo-admin");
         await n.Gaa("/admin/ko?aar=alle");
         await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Opphav", Exact = true }).SelectOptionAsync("Robot");
         await Expect(Kort(n.Side, "AK juster")).ToHaveCountAsync(0);
         await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Opphav", Exact = true }).SelectOptionAsync("Bruker");
         await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Type", Exact = true }).SelectOptionAsync("NyFrist");
+        var kontrollkort = Kort(n.Side, "AK filterkontroll");
+        await Expect(kontrollkort).ToHaveCountAsync(1);
         await n.Side.GetByRole(AriaRole.Combobox, new() { Name = "Kategori", Exact = true }).SelectOptionAsync("Budsjett");
+        // Målkortet finnes også før filteret; kontrollkortets bortfall beviser siste resultat-render.
+        await Expect(kontrollkort).ToHaveCountAsync(0);
         var kort = Kort(n.Side, "AK juster");
+        await Expect(kort).ToHaveCountAsync(1);
         await kort.GetByRole(AriaRole.Button, new() { Name = "Godkjenn", Exact = true }).ClickAsync();
         await kort.GetByRole(AriaRole.Button, new() { Name = "Avbryt", Exact = true }).ClickAsync();
         Assert.DoesNotContain(await n.Frister(), f => (string?)f!["tittel"] == "AK juster");
