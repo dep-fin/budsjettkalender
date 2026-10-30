@@ -1,11 +1,11 @@
 # Issue tracker: GitHub
 
-Oppgaver og spesifikasjoner ligger i GitHub Issues i `depmartin/Budsjettkalender`.
+Oppgaver og spesifikasjoner ligger i GitHub Issues i `dep-fin/budsjettkalender`.
 Bruk tilkoblet GitHub-verktøy når tilgjengelig, ellers `gh` inne i klonen.
 
 - Les: `gh issue view <nummer> --json number,title,body,labels,comments`.
-- Finn arbeid: `gh issue list --repo depmartin/Budsjettkalender --state open`.
-- Opprett: `gh issue create --repo depmartin/Budsjettkalender --title "..." --body-file <fil>`.
+- Finn arbeid: `gh issue list --repo dep-fin/budsjettkalender --state open`.
+- Opprett: `gh issue create --repo dep-fin/budsjettkalender --title "..." --body-file <fil>`.
 - Oppdater: `gh issue edit <nummer> --body-file <fil>`.
 - Etiketter: `gh issue edit <nummer> --add-label <etikett>`.
 - Lukk: `gh issue close <nummer>` etter at avtalt ferdigkriterium er oppfylt.
@@ -25,7 +25,7 @@ Oppgi avviket ved levering. Et lokalt utkast er ikke en publisert oppgave.
 
 ## Levende tekniske avklaringer
 
-[Avklaringsregisteret #151](https://github.com/depmartin/Budsjettkalender/issues/151)
+[Avklaringsregisteret #151](https://github.com/dep-fin/budsjettkalender/issues/151)
 er felles sjekkliste for spørsmål til produkteier/systemansvarlig, delt etter når
 svaret trengs. Sjekklistens ID-er, status og beslutningshistorikk vedlikeholdes i
 GitHub-oppgaven; repoet peker dit fremfor å kopiere listen.

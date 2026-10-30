@@ -21,13 +21,13 @@ Avklar uavklarte produktvalg; en avgrenset, allerede bestilt feilretting kan utf
 Se `CODING_STANDARDS.md` ved kodeendringer og `docs/architecture.md` ved modulendringer.
 
 Ved tekniske valg, nye svar fra produkteier/systemansvarlig og relevante leveranser:
-les og vedlikehold [avklaringsregisteret #151](https://github.com/depmartin/Budsjettkalender/issues/151)
+les og vedlikehold [avklaringsregisteret #151](https://github.com/dep-fin/budsjettkalender/issues/151)
 etter `docs/agents/issue-tracker.md`.
 
 ## Agent skills
 
 ### Issue tracker
-GitHub Issues i `depmartin/Budsjettkalender`. Les `docs/agents/issue-tracker.md` før oppgaveoperasjoner.
+GitHub Issues i `dep-fin/budsjettkalender`. Les `docs/agents/issue-tracker.md` før oppgaveoperasjoner.
 
 ### Triage labels
 Fem standardroller er definert i `docs/agents/triage-labels.md`.

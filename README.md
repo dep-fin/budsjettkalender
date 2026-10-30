@@ -14,7 +14,7 @@ Krever .NET 10 SDK:
 dotnet run --project backend/Aarshjul.Web --launch-profile demo
 ```
 Åpne `http://localhost:5014/demo` og velg persona.
-[GitHub Codespaces](https://codespaces.new/depmartin/Budsjettkalender) bygger og starter
+[GitHub Codespaces](https://codespaces.new/dep-fin/budsjettkalender) bygger og starter
 demoen på port 5014 gjennom devcontaineren.
 
 ## Utvikling og arbeidsmåte
