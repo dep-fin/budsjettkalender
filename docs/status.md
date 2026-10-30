@@ -1,6 +1,6 @@
 # Gjeldende status
 
-Oppdatert 29. oktober 2026. Dette er samlet leveransestatus. [PR #148](https://github.com/depmartin/Budsjettkalender/pull/148), [PR #147](https://github.com/depmartin/Budsjettkalender/pull/147), [PR #146](https://github.com/depmartin/Budsjettkalender/pull/146),
+Oppdatert 30. oktober 2026. Dette er samlet leveransestatus. [PR #148](https://github.com/depmartin/Budsjettkalender/pull/148), [PR #147](https://github.com/depmartin/Budsjettkalender/pull/147), [PR #146](https://github.com/depmartin/Budsjettkalender/pull/146),
 [PR #145](https://github.com/depmartin/Budsjettkalender/pull/145), [PR #144](https://github.com/depmartin/Budsjettkalender/pull/144), [PR #143](https://github.com/depmartin/Budsjettkalender/pull/143), [PR #142](https://github.com/depmartin/Budsjettkalender/pull/142),
 [PR #135](https://github.com/depmartin/Budsjettkalender/pull/135), [PR #134](https://github.com/depmartin/Budsjettkalender/pull/134), [PR #132](https://github.com/depmartin/Budsjettkalender/pull/132)
 og kommentarene i [#140](https://github.com/depmartin/Budsjettkalender/issues/140),
@@ -9,6 +9,26 @@ og kommentarene i [#140](https://github.com/depmartin/Budsjettkalender/issues/14
 publiserte head, faktisk CI, mergecommit, verifisert main og oppgavenes livsløp. Tidligere kandidatbeskrivelser og lokale
 testtall er bevart som [datert historikk](archive/status-foer-ux18-2026-10-28.md),
 og gjelder den revisjonen som er oppgitt der.
+
+[#150](https://github.com/depmartin/Budsjettkalender/issues/150) har en lokal
+rettingskandidat for køprøvens manglende synlige fullføringsbarriere etter
+filtervalg. Et eget Gulbok-kontrollkort må forsvinne før Godkjenn klikkes.
+[Diagnose- og rettingsbevisene](acceptance/2026-10-30-koefilter.md) omfatter
+kontrollert rød → grønn på den faktiske originalmetoden og en rød mutasjon uten
+barrieren. Produksjonskilder er uendret. Samlet review, separat sikkerhetsaudit,
+ny ordinær/SQL Server/full Linux-Chromium-CI og merge gjenstår.
+Den første brede lokale browserkjøringen forblir historisk **46/47**; de 39
+avtalte regresjonstilfellene bestod. En separat diagnose påviste et for tidlig
+gruppesnapshot i den da uendrede kalenderforslagsprøven. En ny synlighetsbarriere
+krever ferdig resultatregion for riktig budsjettår før snapshotet. Hele den
+faktiske originaltesten er kontrollert rød → grønn → rød ved fjerning av bare
+denne barrieren. Dette er et eget testfunn i valideringsporten; historisk
+millisekundrekkefølge og en produktregresjon er ikke påvist. Full ordinary er
+kjørt på nytt etter tillegget og består 1449/1449. Ny målrettet Windows/Edge-kjøring
+består 90/90, inklusive den gamle 47-unionen og øvrige klasser som bruker den
+endrede visningshjelperen. Inventar og eksisterende assertions er bevart. Hele
+den utvidede kandidaten skal ha ferskt samlet review og separat audit før
+publisering og kandidat-CI.
 
 [EV01 – driftskontrakt for e-postvarsling](operations/epostvarsling-ev01.md) er
 oppdatert mot faktisk EV11-merge `859f34959a408097d66f91debd0d06d9ff62f22c`.

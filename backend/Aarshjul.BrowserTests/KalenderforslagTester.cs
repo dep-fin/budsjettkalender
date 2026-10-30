@@ -358,6 +358,8 @@ public sealed class KalenderforslagTester
             await valg.ClickAsync();
             await Expect(valg).ToHaveAttributeAsync("aria-pressed", "true");
             var flate = n.Side.GetByRole(AriaRole.Region, new() { Name = visning + " for budsjettår " + aar, Exact = true });
+            // Valgt modus kan være klar før årsdataene; AllAsync tar bare et øyeblikksbilde.
+            await Expect(flate).ToBeVisibleAsync();
             foreach (var gruppe in await flate.GetByRole(AriaRole.Button, new() { NameRegex = new("^Vis [0-9]+ frister i ") }).AllAsync())
             {
                 await gruppe.ClickAsync();
