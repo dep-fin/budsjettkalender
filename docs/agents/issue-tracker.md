@@ -21,3 +21,22 @@ det; ellers skriv `Blocked by: #<nummer>` øverst. Klar betyr at alle blokkering
 
 Ved manglende GitHub-tilgang beholdes utkast i `docs/specs/`, merket som upublisert.
 Oppgi avviket ved levering. Et lokalt utkast er ikke en publisert oppgave.
+
+
+## Levende tekniske avklaringer
+
+[Avklaringsregisteret #151](https://github.com/depmartin/Budsjettkalender/issues/151)
+er felles sjekkliste for spørsmål til produkteier/systemansvarlig, delt etter når
+svaret trengs. Sjekklistens ID-er, status og beslutningshistorikk vedlikeholdes i
+GitHub-oppgaven; repoet peker dit fremfor å kopiere listen.
+
+Ved tekniske valg, nye svar og relevante leveranser: hent registerets gjeldende
+tekst og kommentarer og følg vedlikeholdsreglene der. Dokumenter svar fra chat i
+GitHub, kryss av tilstrekkelig avklarte punkter, behold restspørsmål åpne, legg til
+nye nødvendige avklaringer og gjenåpne endrede forutsetninger. Vurder konsekvensene
+for fagoppgaver, ADR-er og driftsdokumenter før arbeidet som avhenger av valget
+fortsetter. Oppgi eventuell manglende tilgang eller upublisert oppdatering ved levering.
+
+Registeret holdes åpent gjennom prosjektet til produkteier beslutter sluttføring.
+Bruk `Refs #151` ved levering av vedlikeholdsregler; opprettelse av registeret eller
+en dokumentasjons-PR oppfyller ikke registerets løpende ferdigkriterium.
